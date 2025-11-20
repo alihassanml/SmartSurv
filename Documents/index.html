@@ -1,0 +1,341 @@
+
+                            <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartSurv System Architecture Flowchart</title>
+    <style>
+        *{
+            font-family: Arial;
+        }
+        
+        body {
+            background-color: #ffffff;
+            margin: 0;
+            padding: 40px;
+            line-height: 1.6;
+            color: #000000;
+        }
+
+        .document-container {
+            max-width: 210mm;
+            margin: 0 auto;
+            background: white;
+            padding: 25.4mm;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            min-height: 297mm;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #000;
+            padding-bottom: 15px;
+        }
+
+        .title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #000;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: #333;
+            
+        }
+
+        .flowchart {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 25px;
+            margin-top: 30px;
+        }
+
+        .flow-level {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 40px;
+            width: 100%;
+            flex-wrap: wrap;
+        }
+
+        .flow-box {
+            border: 2px solid #000;
+            background: #f8f9fa;
+            padding: 12px 18px;
+            text-align: center;
+            font-size: 14px;
+            font-weight: bold;
+            min-width: 140px;
+            max-width: 180px;
+            position: relative;
+            box-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .flow-box.start-end {
+            border-radius: 25px;
+            background: #e3f2fd;
+            border-color: #1976d2;
+            color: #1976d2;
+        }
+
+        .flow-box.process {
+            background: #fff3e0;
+            border-color: #f57c00;
+            color: #e65100;
+        }
+
+        .flow-box.decision {
+            background: #fce4ec;
+            border-color: #c2185b;
+            color: #ad1457;
+            transform: rotate(45deg);
+            width: 100px;
+            height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: unset;
+        }
+
+        .flow-box.decision .text {
+            transform: rotate(-45deg);
+           font-size: 12px;
+            line-height: 1.2;
+        }
+
+        .flow-box.data {
+            background: #e8f5e8;
+            border-color: #388e3c;
+            color: #2e7d32;
+            border-left: 6px solid #4caf50;
+        }
+
+        .flow-box.output {
+            background: #fff8e1;
+            border-color: #ffa000;
+            color: #ff8f00;
+            border-radius: 8px;
+        }
+
+        .connector {
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .arrow-vertical {
+            writing-mode: vertical-lr;
+            height: 30px;
+            transform: rotate(-90deg);
+        }
+
+        .parallel-section {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            gap: 10px;
+        }
+
+        .branch {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            flex: 1;
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #000;
+            margin: 25px 0 15px 0;
+            text-align: center;
+        }
+
+        .figure-caption {
+            text-align: center;
+            font-size: 14px;
+            color: #666;
+            margin-top: 20px;
+            
+        }
+
+        .methodology-note {
+            background: #f5f5f5;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            margin: 20px 0;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .flow-description {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+            
+        }
+
+        /* Academic styling for references */
+        .reference-style {
+           font-size: 12px;
+            color: #888;
+            vertical-align: super;
+        }
+    </style>
+</head>
+<body>
+    <div class="document-container">
+     
+
+        <div class="flowchart">
+            <!-- Input Layer -->
+            <div class="flow-level">
+                <div class="flow-box start-end">
+                    <strong>SYSTEM INITIALIZATION</strong>
+                    <div class="flow-description">Camera feeds & system startup</div>
+                </div>
+            </div>
+
+            <div class="connector arrow-vertical">↓</div>
+
+            <!-- Data Input -->
+            <div class="flow-level">
+                <div class="parallel-section">
+                    <div class="branch">
+                        <div class="flow-box data">
+                            <strong>LIVE VIDEO STREAMS</strong>
+                            <div class="flow-description">Multiple CCTV sources</div>
+                        </div>
+                    </div>
+                    <div class="branch">
+                        <div class="flow-box data">
+                            <strong>AUDIO INPUT</strong>
+                            <div class="flow-description">Environmental sound capture</div>
+                        </div>
+                    </div>
+                    <div class="branch">
+                        <div class="flow-box data">
+                            <strong>SEARCH QUERIES</strong>
+                            <div class="flow-description">Person image uploads</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="connector arrow-vertical">↓</div>
+
+            <!-- Processing Layer -->
+            <div class="section-title">AI Processing Layer</div>
+            
+            <div class="flow-level">
+                <div class="flow-box process">
+                    <strong>PREPROCESSING MODULE</strong>
+                    <div class="flow-description">Frame extraction & normalization</div>
+                </div>
+            </div>
+
+            <div class="connector arrow-vertical">↓</div>
+
+            <div class="flow-level">
+                <div class="parallel-section">
+                    <div class="branch">
+                        <div class="flow-box process">
+                            <strong>YOLO DETECTION</strong>
+                            <div class="flow-description">Object & activity recognition</div>
+                        </div>
+                    </div>
+                    <div class="branch">
+                        <div class="flow-box process">
+                            <strong>AUDIO ANALYSIS</strong>
+                            <div class="flow-description">Sound pattern classification</div>
+                        </div>
+                    </div>
+                    <div class="branch">
+                        <div class="flow-box process">
+                            <strong>FACE RECOGNITION</strong>
+                            <div class="flow-description">Person identification & tracking</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="connector arrow-vertical">↓</div>
+
+            <!-- Decision Point -->
+            <div class="flow-level" style="margin-right: 20px; margin-top: 10px; width: 130px; height: 130px; gap: 0;">
+                <div class="flow-box decision">
+                    <div class="text">THREAT DETECTED?</div>
+                </div>
+            </div>
+
+            <div class="connector arrow-vertical">↓</div>
+
+            <!-- Alert System -->
+            <div class="section-title">Response & Alert Generation</div>
+            
+            <div class="flow-level">
+                <div class="parallel-section">
+                    <div class="branch">
+                        <div class="flow-box output">
+                            <strong>REAL-TIME ALERTS</strong>
+                            <div class="flow-description">WhatsApp/Email notifications</div>
+                        </div>
+                    </div>
+                    <div class="branch">
+                        <div class="flow-box output">
+                            <strong>EVIDENCE CAPTURE</strong>
+                            <div class="flow-description">Annotated video clips</div>
+                        </div>
+                    </div>
+                    <div class="branch">
+                        <div class="flow-box output">
+                            <strong>DASHBOARD UPDATE</strong>
+                            <div class="flow-description">Live monitoring interface</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="connector arrow-vertical">↓</div>
+
+            <!-- Storage & Logging -->
+            <div class="flow-level">
+                <div class="flow-box process">
+                    <strong>DATA MANAGEMENT</strong>
+                    <div class="flow-description">Event logging & evidence archival</div>
+                </div>
+            </div>
+
+            <div class="connector arrow-vertical">↓</div>
+
+            <!-- End -->
+            <div class="flow-level">
+                <div class="flow-box start-end">
+                    <strong>SECURITY RESPONSE</strong>
+                    <div class="flow-description">Enhanced incident management</div>
+                </div>
+            </div>
+        </div>
+
+        
+    </div>
+</body>
+</html>
+
+
+
+							<script>
+                            	
+							</script>
+                        </body>
+                        </html>
+                    
