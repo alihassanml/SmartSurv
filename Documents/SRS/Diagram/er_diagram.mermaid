@@ -1,0 +1,237 @@
+erDiagram
+    CAMERA ||--o{ VIDEO_STREAM : produces
+    CAMERA ||--o{ DETECTION : captures
+    CAMERA ||--o{ EVIDENCE_CLIP : records
+    CAMERA }o--|| LOCATION : installed_at
+    
+    VIDEO_STREAM ||--o{ FRAME : contains
+    
+    FRAME ||--o{ DETECTION : analyzed_for
+    
+    DETECTION ||--|| BOUNDING_BOX : has
+    DETECTION }o--|| ACTIVITY_TYPE : classified_as
+    DETECTION ||--o{ ALERT : triggers
+    DETECTION }o--o| PERSON : identifies
+    DETECTION }o--|| EVIDENCE_CLIP : included_in
+    
+    PERSON ||--o{ DETECTION : appears_in
+    PERSON ||--o{ TRACKING_RECORD : tracked_by
+    PERSON }o--o| SEARCH_SESSION : matched_in
+    
+    TRACKING_RECORD }o--|| CAMERA : observed_by
+    
+    SEARCH_SESSION }o--|| USER : initiated_by
+    SEARCH_SESSION ||--o{ PERSON : finds
+    
+    ALERT }o--|| DETECTION : generated_from
+    ALERT }o--|| SEVERITY_LEVEL : has
+    ALERT ||--o{ NOTIFICATION : sends
+    ALERT }o--|| USER : acknowledged_by
+    ALERT }o--|| EVIDENCE_CLIP : references
+    
+    NOTIFICATION }o--|| NOTIFICATION_CHANNEL : delivered_via
+    NOTIFICATION }o--|| USER : sent_to
+    
+    EVIDENCE_CLIP ||--o{ DETECTION : contains
+    EVIDENCE_CLIP }o--|| CAMERA : recorded_from
+    EVIDENCE_CLIP ||--|| METADATA : has
+    
+    USER ||--o{ ALERT : receives
+    USER ||--o{ SEARCH_SESSION : creates
+    USER }o--|| ROLE : assigned
+    USER ||--o{ AUDIT_LOG : generates
+    
+    ROLE ||--o{ PERMISSION : grants
+    
+    AUDIO_EVENT }o--|| DETECTION : correlates_with
+    
+    CAMERA {
+        string camera_id PK
+        string location
+        string rtsp_url
+        int resolution_width
+        int resolution_height
+        int fps
+        boolean is_active
+        boolean audio_enabled
+        datetime created_at
+    }
+    
+    LOCATION {
+        string location_id PK
+        string name
+        string address
+        float latitude
+        float longitude
+        string zone_type
+    }
+    
+    VIDEO_STREAM {
+        string stream_id PK
+        string camera_id FK
+        datetime start_time
+        datetime end_time
+        boolean is_live
+    }
+    
+    FRAME {
+        string frame_id PK
+        string stream_id FK
+        datetime timestamp
+        int frame_number
+        blob image_data
+    }
+    
+    DETECTION {
+        string detection_id PK
+        string frame_id FK
+        string camera_id FK
+        string activity_type FK
+        float confidence
+        datetime timestamp
+        string bbox_id FK
+        string person_id FK
+    }
+    
+    BOUNDING_BOX {
+        string bbox_id PK
+        int x1
+        int y1
+        int x2
+        int y2
+        int width
+        int height
+    }
+    
+    ACTIVITY_TYPE {
+        string activity_id PK
+        string activity_name
+        string category
+        string severity_default
+        string description
+    }
+    
+    PERSON {
+        string person_id PK
+        blob embedding_vector
+        datetime first_seen
+        datetime last_seen
+        int detection_count
+        string status
+    }
+    
+    TRACKING_RECORD {
+        string track_id PK
+        string person_id FK
+        string camera_id FK
+        datetime timestamp
+        string bbox_id
+        float confidence
+    }
+    
+    SEARCH_SESSION {
+        string session_id PK
+        string user_id FK
+        blob reference_embedding
+        datetime start_time
+        datetime end_time
+        boolean is_active
+        int matches_found
+    }
+    
+    ALERT {
+        string alert_id PK
+        string detection_id FK
+        string severity_level FK
+        datetime timestamp
+        string status
+        string acknowledged_by FK
+        datetime acknowledged_at
+        string clip_id FK
+    }
+    
+    SEVERITY_LEVEL {
+        string severity_id PK
+        string level_name
+        int priority
+        string color_code
+    }
+    
+    NOTIFICATION {
+        string notification_id PK
+        string alert_id FK
+        string channel_id FK
+        string user_id FK
+        datetime sent_at
+        string status
+        string message_content
+    }
+    
+    NOTIFICATION_CHANNEL {
+        string channel_id PK
+        string channel_name
+        string channel_type
+        boolean is_active
+    }
+    
+    EVIDENCE_CLIP {
+        string clip_id PK
+        string camera_id FK
+        datetime start_time
+        datetime end_time
+        string file_path
+        int duration_seconds
+        string metadata_id FK
+        datetime created_at
+    }
+    
+    METADATA {
+        string metadata_id PK
+        json detection_data
+        json camera_info
+        string hash_signature
+        datetime generated_at
+    }
+    
+    USER {
+        string user_id PK
+        string username
+        string password_hash
+        string email
+        string phone
+        string role_id FK
+        datetime created_at
+        datetime last_login
+    }
+    
+    ROLE {
+        string role_id PK
+        string role_name
+        string description
+    }
+    
+    PERMISSION {
+        string permission_id PK
+        string role_id FK
+        string permission_name
+        string resource
+        string action
+    }
+    
+    AUDIT_LOG {
+        string log_id PK
+        string user_id FK
+        string action_type
+        string resource_id
+        datetime timestamp
+        json details
+    }
+    
+    AUDIO_EVENT {
+        string audio_id PK
+        string detection_id FK
+        string event_type
+        float confidence
+        datetime timestamp
+        blob audio_segment
+    }

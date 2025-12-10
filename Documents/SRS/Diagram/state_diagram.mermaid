@@ -1,0 +1,68 @@
+stateDiagram-v2
+    [*] --> Monitoring: System Started
+    
+    Monitoring --> DetectionTriggered: Activity Detected
+    DetectionTriggered --> ConfidenceCheck: Process Detection
+    
+    ConfidenceCheck --> Monitoring: Below Threshold
+    ConfidenceCheck --> AudioCheck: Above Threshold
+    
+    AudioCheck --> AudioFusion: Audio Available
+    AudioCheck --> SeverityDetermination: No Audio
+    
+    AudioFusion --> SeverityDetermination: Fusion Complete
+    
+    SeverityDetermination --> LowSeverity: Confidence < 0.75
+    SeverityDetermination --> MediumSeverity: 0.75 ≤ Confidence < 0.90
+    SeverityDetermination --> HighSeverity: Confidence ≥ 0.90
+    
+    LowSeverity --> EvidenceGeneration: Log to Dashboard
+    MediumSeverity --> EvidenceGeneration: Send Email
+    HighSeverity --> EvidenceGeneration: Send WhatsApp + Email
+    
+    EvidenceGeneration --> AlertPending: Clip Generated
+    
+    AlertPending --> AlertSent: Notifications Delivered
+    AlertSent --> AwaitingAcknowledgment: Alert Active
+    
+    AwaitingAcknowledgment --> Acknowledged: Officer Confirms
+    AwaitingAcknowledgment --> Dismissed: False Positive
+    AwaitingAcknowledgment --> Escalated: Require Action
+    
+    Acknowledged --> UnderInvestigation: Case Opened
+    Dismissed --> Archived: No Action Needed
+    Escalated --> UnderInvestigation: Priority Response
+    
+    UnderInvestigation --> Resolved: Incident Handled
+    UnderInvestigation --> EvidenceRequested: More Info Needed
+    
+    EvidenceRequested --> UnderInvestigation: Additional Clips Provided
+    
+    Resolved --> Archived: Close Case
+    
+    Archived --> [*]: Retention Period Expired
+    
+    note right of Monitoring
+        System continuously
+        processes video streams
+    end note
+    
+    note right of ConfidenceCheck
+        Threshold: 0.65
+        Filters noise
+    end note
+    
+    note right of HighSeverity
+        Immediate response
+        Multi-channel alert
+    end note
+    
+    note right of AwaitingAcknowledgment
+        Timeout: 30 minutes
+        Auto-escalate if no response
+    end note
+    
+    note right of Archived
+        Default retention: 90 days
+        Configurable per policy
+    end note

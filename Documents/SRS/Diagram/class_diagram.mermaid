@@ -1,0 +1,198 @@
+classDiagram
+    class Camera {
+        +String camera_id
+        +String location
+        +String rtsp_url
+        +int resolution_width
+        +int resolution_height
+        +int fps
+        +bool is_active
+        +bool audio_enabled
+        +connect()
+        +disconnect()
+        +get_frame()
+        +get_audio()
+    }
+    
+    class VideoStream {
+        +String stream_id
+        +Camera camera
+        +Queue frame_queue
+        +bool is_running
+        +start_stream()
+        +stop_stream()
+        +read_frame()
+        +release()
+    }
+    
+    class DetectionModel {
+        +String model_name
+        +String model_path
+        +float confidence_threshold
+        +List~String~ activity_classes
+        +load_model()
+        +preprocess_frame()
+        +detect(frame)
+        +postprocess_results()
+    }
+    
+    class Detection {
+        +String detection_id
+        +String activity_type
+        +float confidence
+        +BoundingBox bbox
+        +DateTime timestamp
+        +String camera_id
+        +get_snapshot()
+        +to_dict()
+    }
+    
+    class BoundingBox {
+        +int x1
+        +int y1
+        +int x2
+        +int y2
+        +int width
+        +int height
+        +get_center()
+        +get_area()
+    }
+    
+    class PersonReID {
+        +String model_path
+        +int embedding_dim
+        +float similarity_threshold
+        +load_model()
+        +extract_embedding(image)
+        +compute_similarity(emb1, emb2)
+        +match_person(reference, candidates)
+    }
+    
+    class Person {
+        +String person_id
+        +numpy_array embedding
+        +List~Detection~ detections
+        +List~String~ camera_path
+        +DateTime first_seen
+        +DateTime last_seen
+        +add_detection()
+        +get_trajectory()
+    }
+    
+    class Tracker {
+        +String tracker_type
+        +Dict~int_Person~ tracked_persons
+        +int max_age
+        +update(detections)
+        +get_active_tracks()
+        +remove_stale_tracks()
+    }
+    
+    class AudioProcessor {
+        +String model_path
+        +int sample_rate
+        +List~String~ event_classes
+        +load_model()
+        +extract_features(audio)
+        +detect_events(audio_segment)
+    }
+    
+    class AudioVisualFusion {
+        +float visual_weight
+        +float audio_weight
+        +fuse_detections(visual, audio)
+        +compute_confidence()
+    }
+    
+    class Alert {
+        +String alert_id
+        +String severity
+        +Detection detection
+        +DateTime timestamp
+        +String status
+        +List~String~ notified_users
+        +generate_message()
+        +send_notification()
+        +update_status()
+    }
+    
+    class AlertSystem {
+        +Dict~String_List~ distribution_list
+        +WhatsAppAPI whatsapp_client
+        +EmailService email_client
+        +create_alert(detection)
+        +determine_severity(detection)
+        +send_whatsapp(alert)
+        +send_email(alert)
+        +log_alert(alert)
+    }
+    
+    class EvidenceClip {
+        +String clip_id
+        +String file_path
+        +DateTime start_time
+        +DateTime end_time
+        +String camera_id
+        +List~Detection~ detections
+        +generate_clip()
+        +add_annotations()
+        +save_metadata()
+    }
+    
+    class SearchSession {
+        +String session_id
+        +numpy_array reference_embedding
+        +DateTime start_time
+        +DateTime end_time
+        +List~Person~ matches
+        +bool is_active
+        +start_search()
+        +stop_search()
+        +add_match()
+    }
+    
+    class User {
+        +String user_id
+        +String username
+        +String password_hash
+        +String role
+        +String email
+        +String phone
+        +authenticate()
+        +has_permission(action)
+    }
+    
+    class Dashboard {
+        +render_live_feeds()
+        +display_alerts()
+        +show_search_interface()
+        +update_real_time()
+    }
+    
+    class StorageManager {
+        +String base_path
+        +int retention_days
+        +save_clip(video)
+        +save_metadata(data)
+        +load_alert_history()
+        +cleanup_old_files()
+    }
+    
+    Camera "1" --> "*" VideoStream : streams
+    VideoStream "1" --> "1" DetectionModel : processes
+    DetectionModel "1" --> "*" Detection : produces
+    Detection "1" --> "1" BoundingBox : contains
+    Detection "*" --> "1" Person : belongs_to
+    Person "1" --> "*" Detection : has
+    Tracker "1" --> "*" Person : tracks
+    PersonReID "1" --> "*" Person : identifies
+    SearchSession "1" --> "*" Person : matches
+    SearchSession "1" --> "1" PersonReID : uses
+    Detection "1" --> "*" Alert : triggers
+    AlertSystem "1" --> "*" Alert : manages
+    Alert "1" --> "1" EvidenceClip : includes
+    AudioProcessor "1" --> "1" AudioVisualFusion : feeds
+    DetectionModel "1" --> "1" AudioVisualFusion : feeds
+    User "*" --> "1" Dashboard : accesses
+    StorageManager "1" --> "*" EvidenceClip : stores
+    StorageManager "1" --> "*" Alert : stores

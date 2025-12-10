@@ -1,0 +1,58 @@
+sequenceDiagram
+    actor SecOfficer as Security Officer
+    participant Dashboard
+    participant API as FastAPI Backend
+    participant ReID as Person Re-ID Module
+    participant Detection as Detection Engine
+    participant Tracking as Tracking Module
+    participant Camera as Camera Feeds
+    participant Alert as Alert System
+    participant Storage as Storage System
+    
+    SecOfficer->>Dashboard: Upload Reference Image
+    Dashboard->>API: POST /person-search/start
+    API->>ReID: Extract Person Embedding
+    ReID->>ReID: Process Image (512-dim vector)
+    ReID-->>API: Return Embedding Vector
+    API->>Storage: Save Search Session
+    API-->>Dashboard: Search Session Created
+    Dashboard-->>SecOfficer: Display "Search Active"
+    
+    loop For Each Active Camera
+        Camera->>Detection: Stream Video Frames
+        Detection->>Detection: Detect Persons in Frame
+        Detection->>ReID: Extract Embeddings for Detected Persons
+        ReID->>ReID: Compute Cosine Similarity
+        
+        alt Similarity > Threshold (0.70)
+            ReID->>Tracking: Match Found - Start Tracking
+            Tracking->>Tracking: Assign Unique ID
+            Tracking->>API: Report Match with Location
+            API->>Storage: Log Match Event
+            API->>Alert: Trigger Match Notification
+            
+            par Send Notifications
+                Alert->>SecOfficer: WhatsApp Alert with Snapshot
+                Alert->>Dashboard: Real-time Update
+            end
+            
+            Dashboard-->>SecOfficer: Show Match Location on Map
+            
+            loop Track Across Cameras
+                Camera->>Detection: New Frame from Different Camera
+                Detection->>Tracking: Detected Person
+                Tracking->>Tracking: Match to Existing ID
+                Tracking->>API: Update Trajectory
+                API->>Dashboard: Update Person Movement
+                Dashboard-->>SecOfficer: Live Tracking Update
+            end
+        else No Match
+            ReID->>API: No Match (Continue Scanning)
+        end
+    end
+    
+    SecOfficer->>Dashboard: Stop Search
+    Dashboard->>API: POST /person-search/stop
+    API->>Storage: Close Search Session
+    API-->>Dashboard: Session Closed
+    Dashboard-->>SecOfficer: Search Terminated

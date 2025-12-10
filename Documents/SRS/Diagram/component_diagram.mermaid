@@ -1,0 +1,116 @@
+graph TB
+    subgraph Presentation_Layer["Presentation Layer"]
+        WebUI[Web Dashboard<br/>React/Streamlit]
+        MobileUI[Mobile Interface<br/>Responsive Design]
+        API_Gateway[API Gateway<br/>FastAPI Router]
+    end
+    
+    subgraph Business_Logic_Layer["Business Logic Layer"]
+        subgraph Core_Services["Core Services"]
+            CameraManager[Camera Manager<br/>Stream Handling]
+            DetectionService[Detection Service<br/>Activity Recognition]
+            ReIDService[Re-ID Service<br/>Person Matching]
+            TrackingService[Tracking Service<br/>Multi-Camera Tracking]
+            SearchService[Search Service<br/>Person Search]
+            AlertService[Alert Service<br/>Notification Management]
+            EvidenceService[Evidence Service<br/>Clip Generation]
+        end
+        
+        subgraph AI_Components["AI Components"]
+            YOLOModel[YOLO Detector<br/>v8/v9/v12]
+            ReIDModel[Re-ID Model<br/>ResNet/OSNet]
+            AudioModel[Audio Classifier<br/>CNN-based]
+            FusionEngine[Fusion Engine<br/>Audio-Visual]
+            TrackerAlgo[Tracker Algorithm<br/>ByteTrack/DeepSORT]
+        end
+        
+        subgraph Processing_Components["Processing Components"]
+            FrameProcessor[Frame Processor<br/>Preprocessing]
+            AudioProcessor[Audio Processor<br/>Feature Extraction]
+            VideoEncoder[Video Encoder<br/>H.264]
+            Annotator[Annotator<br/>Bounding Boxes]
+        end
+    end
+    
+    subgraph Data_Layer["Data Layer"]
+        JSONStore[JSON Storage<br/>Alert & Event Logs]
+        FileStore[File Storage<br/>Video Clips]
+        ModelStore[Model Storage<br/>Weights & Config]
+        CacheLayer[Cache Layer<br/>In-Memory]
+    end
+    
+    subgraph Integration_Layer["Integration Layer"]
+        WhatsAppClient[WhatsApp Client<br/>Business API]
+        EmailClient[Email Client<br/>SMTP]
+        CameraDriver[Camera Driver<br/>RTSP/ONVIF]
+        GPUDriver[GPU Driver<br/>CUDA/cuDNN]
+    end
+    
+    subgraph External_Systems["External Systems"]
+        Cameras[IP Cameras<br/>CCTV Network]
+        WhatsAppAPI[WhatsApp API<br/>Cloud Service]
+        EmailServer[Email Server<br/>SMTP Provider]
+        NTPServer[NTP Server<br/>Time Sync]
+    end
+    
+    WebUI --> API_Gateway
+    MobileUI --> API_Gateway
+    
+    API_Gateway --> CameraManager
+    API_Gateway --> DetectionService
+    API_Gateway --> ReIDService
+    API_Gateway --> SearchService
+    API_Gateway --> AlertService
+    API_Gateway --> EvidenceService
+    
+    CameraManager --> CameraDriver
+    CameraManager --> FrameProcessor
+    
+    DetectionService --> YOLOModel
+    DetectionService --> FusionEngine
+    DetectionService --> FrameProcessor
+    
+    ReIDService --> ReIDModel
+    ReIDService --> TrackingService
+    
+    TrackingService --> TrackerAlgo
+    
+    SearchService --> ReIDService
+    SearchService --> TrackingService
+    
+    AlertService --> WhatsAppClient
+    AlertService --> EmailClient
+    AlertService --> JSONStore
+    
+    EvidenceService --> VideoEncoder
+    EvidenceService --> Annotator
+    EvidenceService --> FileStore
+    
+    FusionEngine --> YOLOModel
+    FusionEngine --> AudioModel
+    
+    AudioModel --> AudioProcessor
+    
+    YOLOModel --> GPUDriver
+    ReIDModel --> GPUDriver
+    AudioModel --> GPUDriver
+    
+    YOLOModel --> ModelStore
+    ReIDModel --> ModelStore
+    AudioModel --> ModelStore
+    
+    DetectionService --> JSONStore
+    ReIDService --> CacheLayer
+    SearchService --> CacheLayer
+    
+    CameraDriver --> Cameras
+    WhatsAppClient --> WhatsAppAPI
+    EmailClient --> EmailServer
+    CameraManager --> NTPServer
+    
+    style WebUI fill:#87CEEB
+    style DetectionService fill:#FFB6C1
+    style ReIDService fill:#DDA0DD
+    style YOLOModel fill:#90EE90
+    style AlertService fill:#FFA500
+    style WhatsAppClient fill:#25D366

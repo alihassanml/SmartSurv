@@ -1,0 +1,46 @@
+graph TD
+    Start([Start: Video Stream Received]) --> CaptureFrame[Capture Video Frame]
+    CaptureFrame --> Preprocess[Preprocess Frame<br/>Resize & Normalize]
+    Preprocess --> RunDetection[Run Deep Learning Model<br/>YOLOv8/YOLOv9]
+    RunDetection --> CheckDetection{Activity<br/>Detected?}
+    
+    CheckDetection -->|No| CaptureFrame
+    CheckDetection -->|Yes| CheckConfidence{Confidence<br/>> Threshold?}
+    
+    CheckConfidence -->|No| LogLowConf[Log Low Confidence Detection]
+    LogLowConf --> CaptureFrame
+    
+    CheckConfidence -->|Yes| AudioAvailable{Audio<br/>Available?}
+    
+    AudioAvailable -->|Yes| ProcessAudio[Process Audio Stream]
+    ProcessAudio --> AudioDetection[Run Audio Event Detection]
+    AudioDetection --> FuseData[Fuse Audio-Visual Data]
+    FuseData --> DetermineSeverity
+    
+    AudioAvailable -->|No| DetermineSeverity[Determine Alert Severity<br/>LOW/MEDIUM/HIGH]
+    
+    DetermineSeverity --> ExtractClip[Extract Video Clip<br/>10s before, 15s after]
+    ExtractClip --> AnnotateClip[Add Annotations<br/>Bounding Boxes & Labels]
+    AnnotateClip --> SaveEvidence[Save Evidence to Storage]
+    
+    SaveEvidence --> CheckSeverity{Alert<br/>Severity?}
+    
+    CheckSeverity -->|LOW| DashboardAlert[Show in Dashboard Only]
+    CheckSeverity -->|MEDIUM| EmailAlert[Send Email Notification]
+    CheckSeverity -->|HIGH| MultiAlert[Send WhatsApp + Email]
+    
+    DashboardAlert --> LogEvent[Log Event to JSON]
+    EmailAlert --> LogEvent
+    MultiAlert --> LogEvent
+    
+    LogEvent --> UpdateDashboard[Update Real-time Dashboard]
+    UpdateDashboard --> CaptureFrame
+    
+    style Start fill:#90EE90
+    style CheckDetection fill:#FFE4B5
+    style CheckConfidence fill:#FFE4B5
+    style AudioAvailable fill:#FFE4B5
+    style CheckSeverity fill:#FFE4B5
+    style MultiAlert fill:#FF6B6B
+    style EmailAlert fill:#FFA500
+    style DashboardAlert fill:#4169E1

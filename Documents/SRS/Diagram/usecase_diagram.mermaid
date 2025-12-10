@@ -1,0 +1,70 @@
+graph TB
+    subgraph Actors
+        Admin[System Administrator]
+        SecMgr[Security Operations Manager]
+        FieldOff[Field Security Officer]
+        Analyst[Investigation Analyst]
+        Auditor[Compliance Auditor]
+    end
+    
+    subgraph SmartSurv_System[SmartSurv System]
+        UC1[Monitor Live Camera Feeds]
+        UC2[Detect Illegal Activities]
+        UC3[Search Person by Photo]
+        UC4[Track Person Across Cameras]
+        UC5[Receive Real-time Alerts]
+        UC6[Review Alert History]
+        UC7[Download Evidence Clips]
+        UC8[Generate Incident Reports]
+        UC9[Configure System Settings]
+        UC10[Manage User Accounts]
+        UC11[Monitor System Performance]
+        UC12[Adjust Detection Thresholds]
+        UC13[Confirm/Dismiss Alerts]
+        UC14[View Audit Logs]
+        UC15[Add/Remove Cameras]
+        UC16[Setup Alert Distribution]
+    end
+    
+    Admin --> UC9
+    Admin --> UC10
+    Admin --> UC11
+    Admin --> UC12
+    Admin --> UC15
+    Admin --> UC16
+    
+    SecMgr --> UC1
+    SecMgr --> UC2
+    SecMgr --> UC3
+    SecMgr --> UC4
+    SecMgr --> UC5
+    SecMgr --> UC6
+    SecMgr --> UC7
+    SecMgr --> UC8
+    SecMgr --> UC13
+    
+    FieldOff --> UC1
+    FieldOff --> UC5
+    FieldOff --> UC13
+    
+    Analyst --> UC6
+    Analyst --> UC7
+    Analyst --> UC8
+    Analyst --> UC4
+    
+    Auditor --> UC14
+    Auditor --> UC6
+    
+    UC2 -.->|includes| UC5
+    UC3 -.->|includes| UC4
+    UC8 -.->|includes| UC7
+    UC2 -.->|extends| UC7
+    
+    style Admin fill:#FFB6C1
+    style SecMgr fill:#98FB98
+    style FieldOff fill:#87CEEB
+    style Analyst fill:#DDA0DD
+    style Auditor fill:#F0E68C
+    style UC2 fill:#FF6B6B
+    style UC3 fill:#4ECDC4
+    style UC5 fill:#FFE66D

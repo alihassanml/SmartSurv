@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartSurv Mermaid Diagram Renderer</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .controls {
+            padding: 20px 30px;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #495057;
+        }
+        
+        select, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        
+        select:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        textarea {
+            font-family: 'Courier New', monospace;
+            min-height: 150px;
+            resize: vertical;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        button {
+            flex: 1;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #218838;
+        }
+        
+        .output {
+            padding: 30px;
+            min-height: 400px;
+        }
+        
+        .diagram-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            border: 2px solid #e9ecef;
+            overflow-x: auto;
+            text-align: center;
+        }
+        
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #f5c6cb;
+        }
+        
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #bee5eb;
+            margin-bottom: 20px;
+        }
+        
+        .footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            color: #6c757d;
+            border-top: 2px solid #e9ecef;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎨 SmartSurv Diagram Renderer</h1>
+            <p>Render and Export Mermaid Diagrams Locally</p>
+        </div>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label for="diagramSelect">Select Diagram:</label>
+                <select id="diagramSelect">
+                    <option value="">-- Choose a Diagram --</option>
+                    <option value="activity">Activity Diagram - Detection Flow</option>
+                    <option value="usecase">Use Case Diagram</option>
+                    <option value="sequence">Sequence Diagram - Person Search</option>
+                    <option value="class">Class Diagram</option>
+                    <option value="deployment">Deployment Diagram</option>
+                    <option value="er">Entity-Relationship Diagram</option>
+                    <option value="component">Component Diagram</option>
+                    <option value="state">State Diagram - Alert Lifecycle</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label for="customCode">Or Paste Your Own Mermaid Code:</label>
+                <textarea id="customCode" placeholder="Paste mermaid diagram code here..."></textarea>
+            </div>
+            
+            <div class="button-group">
+                <button class="btn-primary" onclick="renderDiagram()">🎨 Render Diagram</button>
+                <button class="btn-secondary" onclick="clearDiagram()">🗑️ Clear</button>
+                <button class="btn-success" onclick="downloadDiagram()">💾 Download PNG</button>
+            </div>
+        </div>
+        
+        <div class="output">
+            <div class="info">
+                <strong>💡 Instructions:</strong> Select a pre-built diagram or paste your own Mermaid code, then click "Render Diagram". You can download the result as PNG!
+            </div>
+            <div id="output" class="diagram-container">
+                <p style="color: #6c757d;">Your diagram will appear here...</p>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>SmartSurv FYP Project © 2025 | Made with ❤️ by Ali Hassan & M. Faheem Khan</p>
+        </div>
+    </div>
+
+    <script>
+        mermaid.initialize({ 
+            startOnLoad: false,
+            theme: 'default',
+            securityLevel: 'loose'
+        });
+
+        const diagrams = {
+            activity: `graph TD
+    Start([Start: Video Stream Received]) --> CaptureFrame[Capture Video Frame]
+    CaptureFrame --> Preprocess[Preprocess Frame<br/>Resize & Normalize]
+    Preprocess --> RunDetection[Run Deep Learning Model<br/>YOLOv8/YOLOv9]
+    RunDetection --> CheckDetection{Activity<br/>Detected?}
+    CheckDetection -->|No| CaptureFrame
+    CheckDetection -->|Yes| CheckConfidence{Confidence<br/>> Threshold?}
+    CheckConfidence -->|No| LogLowConf[Log Low Confidence Detection]
+    LogLowConf --> CaptureFrame
+    CheckConfidence -->|Yes| AudioAvailable{Audio<br/>Available?}
+    AudioAvailable -->|Yes| ProcessAudio[Process Audio Stream]
+    ProcessAudio --> AudioDetection[Run Audio Event Detection]
+    AudioDetection --> FuseData[Fuse Audio-Visual Data]
+    FuseData --> DetermineSeverity
+    AudioAvailable -->|No| DetermineSeverity[Determine Alert Severity<br/>LOW/MEDIUM/HIGH]
+    DetermineSeverity --> ExtractClip[Extract Video Clip<br/>10s before, 15s after]
+    ExtractClip --> AnnotateClip[Add Annotations<br/>Bounding Boxes & Labels]
+    AnnotateClip --> SaveEvidence[Save Evidence to Storage]
+    SaveEvidence --> CheckSeverity{Alert<br/>Severity?}
+    CheckSeverity -->|LOW| DashboardAlert[Show in Dashboard Only]
+    CheckSeverity -->|MEDIUM| EmailAlert[Send Email Notification]
+    CheckSeverity -->|HIGH| MultiAlert[Send WhatsApp + Email]
+    DashboardAlert --> LogEvent[Log Event to JSON]
+    EmailAlert --> LogEvent
+    MultiAlert --> LogEvent
+    LogEvent --> UpdateDashboard[Update Real-time Dashboard]
+    UpdateDashboard --> CaptureFrame
+    style Start fill:#90EE90
+    style CheckDetection fill:#FFE4B5
+    style CheckConfidence fill:#FFE4B5
+    style AudioAvailable fill:#FFE4B5
+    style CheckSeverity fill:#FFE4B5
+    style MultiAlert fill:#FF6B6B
+    style EmailAlert fill:#FFA500
+    style DashboardAlert fill:#4169E1`,
+
+            usecase: `graph TB
+    subgraph Actors
+        Admin[System Administrator]
+        SecMgr[Security Operations Manager]
+        FieldOff[Field Security Officer]
+        Analyst[Investigation Analyst]
+        Auditor[Compliance Auditor]
+    end
+    subgraph SmartSurv_System[SmartSurv System]
+        UC1[Monitor Live Camera Feeds]
+        UC2[Detect Illegal Activities]
+        UC3[Search Person by Photo]
+        UC4[Track Person Across Cameras]
+        UC5[Receive Real-time Alerts]
+        UC6[Review Alert History]
+        UC7[Download Evidence Clips]
+        UC8[Generate Incident Reports]
+        UC9[Configure System Settings]
+        UC10[Manage User Accounts]
+        UC11[Monitor System Performance]
+        UC12[Adjust Detection Thresholds]
+        UC13[Confirm/Dismiss Alerts]
+        UC14[View Audit Logs]
+        UC15[Add/Remove Cameras]
+        UC16[Setup Alert Distribution]
+    end
+    Admin --> UC9
+    Admin --> UC10
+    Admin --> UC11
+    Admin --> UC12
+    Admin --> UC15
+    Admin --> UC16
+    SecMgr --> UC1
+    SecMgr --> UC2
+    SecMgr --> UC3
+    SecMgr --> UC4
+    SecMgr --> UC5
+    SecMgr --> UC6
+    SecMgr --> UC7
+    SecMgr --> UC8
+    SecMgr --> UC13
+    FieldOff --> UC1
+    FieldOff --> UC5
+    FieldOff --> UC13
+    Analyst --> UC6
+    Analyst --> UC7
+    Analyst --> UC8
+    Analyst --> UC4
+    Auditor --> UC14
+    Auditor --> UC6
+    UC2 -.->|includes| UC5
+    UC3 -.->|includes| UC4
+    UC8 -.->|includes| UC7
+    UC2 -.->|extends| UC7
+    style Admin fill:#FFB6C1
+    style SecMgr fill:#98FB98
+    style FieldOff fill:#87CEEB
+    style Analyst fill:#DDA0DD
+    style Auditor fill:#F0E68C
+    style UC2 fill:#FF6B6B
+    style UC3 fill:#4ECDC4
+    style UC5 fill:#FFE66D`,
+
+            sequence: `sequenceDiagram
+    actor SecOfficer as Security Officer
+    participant Dashboard
+    participant API as FastAPI Backend
+    participant ReID as Person Re-ID Module
+    participant Detection as Detection Engine
+    participant Tracking as Tracking Module
+    participant Camera as Camera Feeds
+    participant Alert as Alert System
+    participant Storage as Storage System
+    SecOfficer->>Dashboard: Upload Reference Image
+    Dashboard->>API: POST /person-search/start
+    API->>ReID: Extract Person Embedding
+    ReID->>ReID: Process Image (512-dim vector)
+    ReID-->>API: Return Embedding Vector
+    API->>Storage: Save Search Session
+    API-->>Dashboard: Search Session Created
+    Dashboard-->>SecOfficer: Display "Search Active"
+    loop For Each Active Camera
+        Camera->>Detection: Stream Video Frames
+        Detection->>Detection: Detect Persons in Frame
+        Detection->>ReID: Extract Embeddings for Detected Persons
+        ReID->>ReID: Compute Cosine Similarity
+        alt Similarity > Threshold (0.70)
+            ReID->>Tracking: Match Found - Start Tracking
+            Tracking->>Tracking: Assign Unique ID
+            Tracking->>API: Report Match with Location
+            API->>Storage: Log Match Event
+            API->>Alert: Trigger Match Notification
+            par Send Notifications
+                Alert->>SecOfficer: WhatsApp Alert with Snapshot
+                Alert->>Dashboard: Real-time Update
+            end
+            Dashboard-->>SecOfficer: Show Match Location on Map
+            loop Track Across Cameras
+                Camera->>Detection: New Frame from Different Camera
+                Detection->>Tracking: Detected Person
+                Tracking->>Tracking: Match to Existing ID
+                Tracking->>API: Update Trajectory
+                API->>Dashboard: Update Person Movement
+                Dashboard-->>SecOfficer: Live Tracking Update
+            end
+        else No Match
+            ReID->>API: No Match (Continue Scanning)
+        end
+    end
+    SecOfficer->>Dashboard: Stop Search
+    Dashboard->>API: POST /person-search/stop
+    API->>Storage: Close Search Session
+    API-->>Dashboard: Session Closed
+    Dashboard-->>SecOfficer: Search Terminated`,
+
+            class: `classDiagram
+    class Camera {
+        +String camera_id
+        +String location
+        +String rtsp_url
+        +int resolution_width
+        +int resolution_height
+        +int fps
+        +bool is_active
+        +bool audio_enabled
+        +connect()
+        +disconnect()
+        +get_frame()
+        +get_audio()
+    }
+    class VideoStream {
+        +String stream_id
+        +Camera camera
+        +Queue frame_queue
+        +bool is_running
+        +start_stream()
+        +stop_stream()
+        +read_frame()
+        +release()
+    }
+    class DetectionModel {
+        +String model_name
+        +String model_path
+        +float confidence_threshold
+        +List activity_classes
+        +load_model()
+        +preprocess_frame()
+        +detect(frame)
+        +postprocess_results()
+    }
+    class Detection {
+        +String detection_id
+        +String activity_type
+        +float confidence
+        +BoundingBox bbox
+        +DateTime timestamp
+        +String camera_id
+        +get_snapshot()
+        +to_dict()
+    }
+    class Alert {
+        +String alert_id
+        +String severity
+        +Detection detection
+        +DateTime timestamp
+        +String status
+        +List notified_users
+        +generate_message()
+        +send_notification()
+        +update_status()
+    }
+    class Person {
+        +String person_id
+        +numpy_array embedding
+        +List detections
+        +List camera_path
+        +DateTime first_seen
+        +DateTime last_seen
+        +add_detection()
+        +get_trajectory()
+    }
+    Camera "1" --> "*" VideoStream
+    VideoStream "1" --> "1" DetectionModel
+    DetectionModel "1" --> "*" Detection
+    Detection "*" --> "1" Person
+    Detection "1" --> "*" Alert`,
+
+            deployment: `graph TB
+    subgraph Client_Tier["Client Tier"]
+        Browser[Web Browser<br/>Chrome/Firefox/Safari]
+        Mobile[Mobile Device<br/>iOS/Android]
+    end
+    subgraph Application_Server["Application Server"]
+        FastAPI[FastAPI Application<br/>Port 8000]
+        Dashboard[Dashboard Interface<br/>React/Streamlit]
+        Detection[Detection Engine<br/>YOLOv8/v9/v12]
+        ReID[Person Re-ID Module]
+    end
+    subgraph GPU_Server["GPU Server"]
+        NVIDIA[NVIDIA GPU<br/>RTX 3070+<br/>CUDA 11.0+]
+    end
+    subgraph Camera_Network["Camera Network"]
+        IPCam1[IP Camera 1<br/>RTSP Stream]
+        IPCam2[IP Camera 2<br/>RTSP Stream]
+        IPCam3[IP Camera N<br/>RTSP Stream]
+    end
+    subgraph External_Services["External Services"]
+        WhatsApp[WhatsApp Business API]
+        SMTP[Email Server<br/>SMTP/TLS]
+    end
+    Browser -->|HTTPS| FastAPI
+    Mobile -->|HTTPS| FastAPI
+    FastAPI --> Dashboard
+    FastAPI --> Detection
+    FastAPI --> ReID
+    Detection -.->|GPU Acceleration| NVIDIA
+    ReID -.->|GPU Acceleration| NVIDIA
+    IPCam1 -->|RTSP/TCP| Detection
+    IPCam2 -->|RTSP/TCP| Detection
+    IPCam3 -->|RTSP/TCP| Detection
+    FastAPI -->|REST API| WhatsApp
+    FastAPI -->|SMTP Port 587| SMTP
+    style Browser fill:#87CEEB
+    style Detection fill:#FFB6C1
+    style NVIDIA fill:#90EE90
+    style WhatsApp fill:#25D366`,
+
+            er: `erDiagram
+    CAMERA ||--o{ VIDEO_STREAM : produces
+    CAMERA ||--o{ DETECTION : captures
+    VIDEO_STREAM ||--o{ FRAME : contains
+    FRAME ||--o{ DETECTION : analyzed_for
+    DETECTION ||--|| BOUNDING_BOX : has
+    DETECTION }o--|| ACTIVITY_TYPE : classified_as
+    DETECTION ||--o{ ALERT : triggers
+    DETECTION }o--o| PERSON : identifies
+    PERSON ||--o{ DETECTION : appears_in
+    PERSON ||--o{ TRACKING_RECORD : tracked_by
+    ALERT }o--|| DETECTION : generated_from
+    ALERT }o--|| SEVERITY_LEVEL : has
+    ALERT ||--o{ NOTIFICATION : sends
+    USER ||--o{ ALERT : receives
+    USER }o--|| ROLE : assigned
+    CAMERA {
+        string camera_id PK
+        string location
+        string rtsp_url
+        int resolution_width
+        int resolution_height
+        boolean is_active
+    }
+    DETECTION {
+        string detection_id PK
+        string activity_type FK
+        float confidence
+        datetime timestamp
+        string camera_id FK
+    }
+    ALERT {
+        string alert_id PK
+        string detection_id FK
+        string severity_level FK
+        datetime timestamp
+        string status
+    }
+    USER {
+        string user_id PK
+        string username
+        string email
+        string role_id FK
+    }`,
+
+            component: `graph TB
+    subgraph Presentation["Presentation Layer"]
+        WebUI[Web Dashboard]
+        API[API Gateway]
+    end
+    subgraph Business["Business Logic"]
+        Detection[Detection Service]
+        ReID[Re-ID Service]
+        Alert[Alert Service]
+        Evidence[Evidence Service]
+    end
+    subgraph AI["AI Components"]
+        YOLO[YOLO Model]
+        ReIDModel[Re-ID Model]
+        Audio[Audio Model]
+    end
+    subgraph Data["Data Layer"]
+        JSON[JSON Storage]
+        Files[File Storage]
+    end
+    subgraph Integration["Integration"]
+        WhatsApp[WhatsApp Client]
+        Email[Email Client]
+        Camera[Camera Driver]
+    end
+    WebUI --> API
+    API --> Detection
+    API --> ReID
+    API --> Alert
+    Detection --> YOLO
+    ReID --> ReIDModel
+    Alert --> WhatsApp
+    Alert --> Email
+    Evidence --> Files
+    Detection --> JSON
+    Camera --> Detection
+    style Detection fill:#FFB6C1
+    style Alert fill:#FFA500`,
+
+            state: `stateDiagram-v2
+    [*] --> Monitoring
+    Monitoring --> DetectionTriggered: Activity Detected
+    DetectionTriggered --> ConfidenceCheck
+    ConfidenceCheck --> Monitoring: Below Threshold
+    ConfidenceCheck --> SeverityDetermination: Above Threshold
+    SeverityDetermination --> LowSeverity: < 0.75
+    SeverityDetermination --> MediumSeverity: 0.75-0.90
+    SeverityDetermination --> HighSeverity: > 0.90
+    LowSeverity --> AlertPending
+    MediumSeverity --> AlertPending
+    HighSeverity --> AlertPending
+    AlertPending --> AlertSent
+    AlertSent --> AwaitingAcknowledgment
+    AwaitingAcknowledgment --> Acknowledged
+    AwaitingAcknowledgment --> Dismissed
+    AwaitingAcknowledgment --> Escalated
+    Acknowledged --> UnderInvestigation
+    Dismissed --> Archived
+    Escalated --> UnderInvestigation
+    UnderInvestigation --> Resolved
+    Resolved --> Archived
+    Archived --> [*]`
+        };
+
+        function renderDiagram() {
+            const select = document.getElementById('diagramSelect');
+            const customCode = document.getElementById('customCode').value.trim();
+            const output = document.getElementById('output');
+            
+            let code = customCode || diagrams[select.value];
+            
+            if (!code) {
+                output.innerHTML = '<div class="error">⚠️ Please select a diagram or paste mermaid code!</div>';
+                return;
+            }
+            
+            output.innerHTML = '<div class="mermaid">' + code + '</div>';
+            
+            try {
+                mermaid.init(undefined, document.querySelectorAll('.mermaid'));
+            } catch (error) {
+                output.innerHTML = '<div class="error">❌ Error rendering diagram: ' + error.message + '</div>';
+            }
+        }
+
+        function clearDiagram() {
+            document.getElementById('output').innerHTML = '<p style="color: #6c757d;">Your diagram will appear here...</p>';
+            document.getElementById('customCode').value = '';
+            document.getElementById('diagramSelect').value = '';
+        }
+
+        async function downloadDiagram() {
+            const svg = document.querySelector('.mermaid svg');
+            if (!svg) {
+                alert('Please render a diagram first!');
+                return;
+            }
+            
+            const svgData = new XMLSerializer().serializeToString(svg);
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const img = new Image();
+            
+            const svgBlob = new Blob([svgData], {type: 'image/svg+xml;charset=utf-8'});
+            const url = URL.createObjectURL(svgBlob);
+            
+            img.onload = function() {
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0);
+                
+                canvas.toBlob(function(blob) {
+                    const link = document.createElement('a');
+                    link.download = 'smartsurv_diagram.png';
+                    link.href = URL.createObjectURL(blob);
+                    link.click();
+                });
+                
+                URL.revokeObjectURL(url);
+            };
+            
+            img.src = url;
+        }
+    </script>
+</body>
+</html>
