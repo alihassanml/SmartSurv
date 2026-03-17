@@ -33,15 +33,23 @@ class CameraEngine:
         self.processing_frame = False
 
     def start(self):
-        self.running = True
-        self.thread = threading.Thread(target=self._run, daemon=True)
-        self.thread.start()
+        if not self.running:
+            if not self.cap.isOpened():
+                self.cap = cv2.VideoCapture(self.source)
+                self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+                self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+                self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+            self.running = True
+            self.thread = threading.Thread(target=self._run, daemon=True)
+            self.thread.start()
 
     def stop(self):
-        self.running = False
-        if self.thread:
-            self.thread.join()
-        self.cap.release()
+        if self.running:
+            self.running = False
+            if self.thread:
+                self.thread.join()
+            if self.cap.isOpened():
+                self.cap.release()
 
     def _run(self):
         frame_counter = 0
