@@ -565,24 +565,7 @@ const App: React.FC = () => {
             )}
           </div>
 
-          {/* Activity Timeline / Console */}
-          <div className="h-32 bg-[#0a0a0a] border border-[#1a1a1a] p-4 flex flex-col font-mono">
-            <div className="flex justify-between items-center mb-2 border-b border-[#1a1a1a] pb-2">
-               <span className="text-[10px] font-bold opacity-30 text-[#00ff00]">CORE_EVENT_STREAM</span>
-               <span className="text-[9px] opacity-20">SYSTEM_READY</span>
-            </div>
-            <div className="flex-1 overflow-hidden space-y-1 text-[10px]">
-              {alerts.slice(0, 4).map((a, i) => (
-                <div key={i} className={`flex gap-4 ${a.is_person_search_match ? 'text-red-500 animate-pulse' : 'text-[#00ff00]/70'}`}>
-                  <span className="opacity-40">[{a.timestamp}]</span>
-                  <span className="font-bold">
-                    {a.is_person_search_match ? '>> CRITICAL_ALERT: TARGET_OMEGA_MATCH_CONFIRMED' : `>> DETECTED: ${a.detections.map(d => d.label.toUpperCase()).join(', ')}`}
-                  </span>
-                </div>
-              ))}
-              {!alerts.length && <div className="opacity-20">&gt; LISTENING_FOR_TRIGGERS...</div>}
-            </div>
-          </div>
+         
         </section>
 
         {/* Alerts Sidebar - High contrast List */}
