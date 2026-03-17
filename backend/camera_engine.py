@@ -193,8 +193,8 @@ class CameraEngine:
                             is_target_match = True
                             top, right, bottom, left = face_locations[i]
                             cv2.rectangle(display_frame, (left, top), (right, bottom), (255, 0, 0), 2)
-                            cv2.putText(display_frame, "IDENTITY_MATCH", (left, top - 10),
-                                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
+                            cv2.putText(display_frame, "Target Lock", (left, top - 10),
+                                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (25, 0, 0), 2)
                             break
 
             # --- ALERTS ---

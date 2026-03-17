@@ -211,25 +211,87 @@ const App: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen bg-[#050505] text-[#00ff00] font-mono">
-      {/* Search Animation Overlay (only when searching) */}
-      {searchStatus === 'active' && (
-        <div className="fixed inset-0 pointer-events-none z-0 opacity-10">
-          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-[800px] h-[800px] border border-[#00ff00] rounded-full animate-ping-slow"></div>
-            <div className="absolute w-[600px] h-[600px] border border-[#00ff00]/50 rounded-full animate-ping-slow [animation-delay:1s]"></div>
-            <div className="absolute w-[400px] h-[400px] border border-[#00ff00]/30 rounded-full animate-ping-slow [animation-delay:2s]"></div>
-            
-            {/* Radar Sweep */}
-            <div className="absolute w-[1000px] h-[1000px] bg-gradient-to-tr from-[#00ff00]/20 to-transparent rounded-full animate-radar-sweep origin-center"></div>
-          </div>
+      {/* BIOMETRIC SEARCH OVERLAY (Active during Person Search) */}
+      {(systemMode === 'search' || systemMode === 'both') && searchStatus === 'active' && (
+        <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden bg-[#020202]">
+          {/* Hexagonal Pattern Background */}
+          <div className="absolute inset-0 opacity-[0.03] bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
           
-          {/* Moving Map Grid Effect */}
-          <div className="absolute inset-0 grid grid-cols-12 grid-rows-12 gap-0">
-             {[...Array(144)].map((_, i) => (
-               <div key={i} className="border-[0.5px] border-[#00ff00]/5 animate-pulse" style={{ animationDelay: `${Math.random() * 5}s` }}></div>
-             ))}
+          {/* Cyberpunk Grid */}
+          <div className="absolute inset-0 opacity-10 bg-[linear-gradient(rgba(0,255,153,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(0,255,153,0.05)_1px,transparent_1px)] bg-[size:100px_100px]"></div>
+
+          {/* Central Biometric Ring */}
+          <div className="absolute inset-0 flex items-center justify-center">
+             <div className="relative w-[800px] h-[800px] flex items-center justify-center">
+                {/* Rotating Outer Hexagon */}
+                <div className="absolute inset-0 border-[1px] border-hacker-green/20 rounded-[10%] animate-spin-slow rotate-45"></div>
+                <div className="absolute inset-[5%] border-[1px] border-hacker-green/10 rounded-[15%] animate-reverse-spin"></div>
+                
+                {/* Pulsing Scan Circle */}
+                <div className="absolute inset-[20%] border-2 border-hacker-green/30 rounded-full animate-pulse shadow-[0_0_30px_rgba(0,255,153,0.2)]"></div>
+                
+                {/* Target Brackets */}
+                <div className="absolute inset-[25%] flex items-center justify-center">
+                   <div className="absolute top-0 left-0 w-20 h-20 border-t-2 border-l-2 border-hacker-green"></div>
+                   <div className="absolute top-0 right-0 w-20 h-20 border-t-2 border-r-2 border-hacker-green"></div>
+                   <div className="absolute bottom-0 left-0 w-20 h-20 border-b-2 border-l-2 border-hacker-green"></div>
+                   <div className="absolute bottom-0 right-0 w-20 h-20 border-b-2 border-r-2 border-hacker-green"></div>
+                </div>
+
+                {/* Vertical Scanning Beam */}
+                <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-hacker-green to-transparent animate-biometric-scan shadow-[0_0_15px_#00ff99]"></div>
+             </div>
           </div>
+
+          {/* Left Side: Biometric Telemetry */}
+          <div className="absolute left-10 top-1/2 -translate-y-1/2 w-64 space-y-12">
+             <div className="space-y-2">
+                <div className="flex justify-between text-[10px] font-bold text-hacker-green">
+                   <span>FACIAL_VECTORS</span>
+                   <span className="animate-pulse">PROCESSING...</span>
+                </div>
+                <div className="h-1 bg-black border border-hacker-green/20 overflow-hidden">
+                   <div className="h-full bg-hacker-green animate-progress-fast w-1/2"></div>
+                </div>
+                <div className="grid grid-cols-4 gap-1">
+                   {[...Array(16)].map((_, i) => (
+                     <div key={i} className={`h-4 border border-hacker-green/20 ${Math.random() > 0.6 ? 'bg-hacker-green/40' : ''}`}></div>
+                   ))}
+                </div>
+             </div>
+
+             <div className="space-y-4 opacity-40">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="flex items-center gap-4 text-[9px] font-mono">
+                     <span className="text-hacker-green font-bold">PT_0{i}</span>
+                     <span className="flex-1 border-b border-dashed border-hacker-green/20"></span>
+                     <span className="animate-pulse">{(Math.random()*100).toFixed(2)}%</span>
+                  </div>
+                ))}
+             </div>
+          </div>
+
+          {/* Right Side: Identity Buffering */}
+          <div className="absolute right-10 top-1/2 -translate-y-1/2 w-64 space-y-12 text-right">
+             <div className="space-y-2">
+                <div className="text-[10px] font-bold text-hacker-green mb-1">DATA_STREAM_OMEGA</div>
+                <div className="flex flex-col gap-1 overflow-hidden h-40 opacity-30 text-[8px] font-mono leading-tight">
+                   {[...Array(20)].map((_, i) => (
+                     <div key={i} className="animate-data-stream">
+                        {`DB_QUERY_${Math.random().toString(16).slice(2, 10).toUpperCase()} >> NO_MATCH_FOUND`}
+                     </div>
+                   ))}
+                </div>
+             </div>
+             
+             <div className="bg-hacker-green/5 border border-hacker-green/20 p-4 inline-block">
+                <div className="text-[8px] opacity-40 mb-2">MATCH_THRESHOLD</div>
+                <div className="text-2xl font-bold tracking-tighter">0.985</div>
+             </div>
+          </div>
+
+          {/* Screen Glitch Overlay */}
+          <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] z-[100] pointer-events-none bg-[length:100%_2px,3px_100%]"></div>
         </div>
       )}
 
@@ -488,13 +550,20 @@ const App: React.FC = () => {
                )}
             </div>
 
-            {/* Animated Scanning Line (only when camera on) */}
-            {cameraActive && (
+            {/* Animated Scanning Line (only during Active Person Search) */}
+            {cameraActive && (systemMode === 'search' || systemMode === 'both') && searchStatus === 'active' && (
               <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                <div className="w-full h-[1px] bg-[#00ff00]/20 absolute animate-v-scan"></div>
-                <div className="h-full w-[1px] bg-[#00ff00]/20 absolute left-1/4"></div>
-                <div className="h-full w-[1px] bg-[#00ff00]/20 absolute left-2/4"></div>
-                <div className="h-full w-[1px] bg-[#00ff00]/20 absolute left-3/4"></div>
+                <div className="w-full h-[1px] bg-[#00ff00]/40 absolute animate-v-scan shadow-[0_0_10px_#00ff00]"></div>
+                
+                {/* Tracking Reticle Lines */}
+                <div className="h-full w-[0.5px] bg-[#00ff00]/10 absolute left-1/4 backdrop-blur-[1px]"></div>
+                <div className="h-full w-[0.5px] bg-[#00ff00]/10 absolute left-2/4 backdrop-blur-[1px]"></div>
+                <div className="h-full w-[0.5px] bg-[#00ff00]/10 absolute left-3/4 backdrop-blur-[1px]"></div>
+                
+                <div className="w-full h-[0.5px] bg-[#00ff00]/10 absolute top-1/4 backdrop-blur-[1px]"></div>
+                <div className="w-full h-[0.5px] bg-[#00ff00]/10 absolute top-2/4 backdrop-blur-[1px]"></div>
+                <div className="w-full h-[0.5px] bg-[#00ff00]/10 absolute top-3/4 backdrop-blur-[1px]"></div>
+                
               </div>
             )}
           </div>
@@ -607,9 +676,35 @@ const App: React.FC = () => {
       </main>
 
       <style>{`
-        @keyframes radar-sweep {
+        @keyframes sonar-spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
+        }
+        @keyframes spin-slow {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        @keyframes reverse-spin {
+          from { transform: rotate(360deg); }
+          to { transform: rotate(0deg); }
+        }
+        @keyframes biometric-scan {
+          0% { top: 0; opacity: 0; }
+          10% { opacity: 1; }
+          90% { opacity: 1; }
+          100% { top: 100%; opacity: 0; }
+        }
+        @keyframes progress-fast {
+          0% { width: 0%; }
+          100% { width: 100%; }
+        }
+        @keyframes data-stream {
+          0% { transform: translateY(0); }
+          100% { transform: translateY(-100%); }
+        }
+        @keyframes data-stream-reverse {
+          0% { transform: translateY(-100%); }
+          100% { transform: translateY(0); }
         }
         @keyframes ping-slow {
           0% { transform: scale(0.8); opacity: 0; }
@@ -624,14 +719,32 @@ const App: React.FC = () => {
           0% { top: 0; }
           100% { top: 100%; }
         }
-        .animate-radar-sweep {
-          animation: radar-sweep 8s linear infinite;
+        .animate-sonar-spin {
+          animation: sonar-spin 8s linear infinite;
+        }
+        .animate-spin-slow {
+          animation: spin-slow 20s linear infinite;
+        }
+        .animate-reverse-spin {
+          animation: reverse-spin 15s linear infinite;
+        }
+        .animate-biometric-scan {
+          animation: biometric-scan 4s linear infinite;
+        }
+        .animate-progress-fast {
+          animation: progress-fast 2s ease-in-out infinite;
+        }
+        .animate-data-stream {
+          animation: data-stream 20s linear infinite;
+        }
+        .animate-data-stream-reverse {
+          animation: data-stream-reverse 30s linear infinite;
         }
         .animate-ping-slow {
           animation: ping-slow 4s cubic-bezier(0, 0, 0.2, 1) infinite;
         }
         .animate-v-scan {
-          animation: v-scan 5s linear infinite;
+          animation: v-scan 3s linear infinite;
         }
         .animate-scanner {
           animation: scanner 2s ease-in-out infinite;
