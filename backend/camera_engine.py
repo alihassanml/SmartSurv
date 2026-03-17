@@ -122,10 +122,20 @@ class CameraEngine:
             self.thread.start()
 
     def stop(self):
-        if self.running:
-            self.running = False
-            if self.thread: self.thread.join()
-            if self.cap.isOpened(): self.cap.release()
+        """Shutdown the camera feed and processing thread."""
+        self.running = False
+        if self.thread:
+            # Join with timeout to prevent blocking the entire process if thread hangs
+            self.thread.join(timeout=1.0) 
+            self.thread = None
+        
+        # Ensure camera is released
+        if self.cap and self.cap.isOpened():
+            try:
+                self.cap.release()
+                print("DEBUG: Camera resource released.")
+            except Exception as e:
+                print(f"DEBUG: Error releasing camera: {e}")
 
     def restart(self):
         self.stop()

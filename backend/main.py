@@ -6,8 +6,8 @@ from sqlalchemy.orm import Session
 import asyncio
 import json
 import os
-import shutil
 from typing import Dict
+from contextlib import asynccontextmanager
 
 from camera_engine import CameraEngine
 from database import SessionLocal, Base, engine, User
@@ -21,6 +21,33 @@ def get_db():
         yield db
     finally:
         db.close()
+
+# --- LIFESPAN MANAGEMENT ---
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Initialize camera resources
+    print("STARTING_SMARTSURV_CORE...")
+    yield
+    # Shutdown: Release resources
+    print("SHUTTING_DOWN_RESOURCES...")
+    camera.stop()
+
+app = FastAPI(lifespan=lifespan)
+
+# Rest of the implementation...
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+camera = CameraEngine()
+
+# Ensure temp directory for uploads
+TEMP_DIR = "temp_uploads"
+os.makedirs(TEMP_DIR, exist_ok=True)
 
 class UserCreate(BaseModel):
     username: str
@@ -36,22 +63,6 @@ class ThresholdsUpdate(BaseModel):
 
 class ModeUpdate(BaseModel):
     mode: str
-
-app = FastAPI()
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-camera = CameraEngine()
-
-# Ensure temp directory for uploads
-TEMP_DIR = "temp_uploads"
-os.makedirs(TEMP_DIR, exist_ok=True)
 
 @app.post("/api/auth/signup")
 def signup(user: UserCreate, db: Session = Depends(get_db)):
@@ -106,49 +117,32 @@ def update_thresholds(body: ThresholdsUpdate):
         camera.restart()
     return {"status": "updated", "thresholds": camera.get_thresholds()}
 
-# --- Person Search Endpoint ---
 @app.post("/api/person/search")
 async def setup_person_search(file: UploadFile = File(...)):
-    """Upload a person's photo to search for them in the camera feed."""
-    # Create a unique filename to avoid path issues
     import time
     timestamp = int(time.time())
     safe_filename = f"target_{timestamp}_{file.filename.replace(' ', '_')}"
     file_path = os.path.abspath(os.path.join(TEMP_DIR, safe_filename))
     
     try:
-        print(f"DEBUG: Saving upload to {file_path}")
-        
-        # Reset file pointer
         await file.seek(0)
-        
-        # Save explicitly using bytes
         with open(file_path, "wb") as f:
             content = await file.read()
             f.write(content)
             f.flush()
-            os.fsync(f.fileno()) # Ensure it's written to disk
+            os.fsync(f.fileno())
         
-        if not os.path.exists(file_path):
-            raise Exception("File failed to save to disk")
-
-        # Pass absolute path to camera engine
         success = camera.set_search_target(file_path)
-        
         if success:
             return {"status": "success", "message": f"Searching for person: {file.filename}"}
         else:
-            return JSONResponse(status_code=400, content={"status": "error", "message": "Face recognition failed to process image."})
-            
+            return JSONResponse(status_code=400, content={"status": "error", "message": "Face recognition failed."})
     except Exception as e:
-        print(f"DEBUG: Server upload error: {e}")
-        import traceback
-        traceback.print_exc()
-        return JSONResponse(status_code=500, content={"status": "error", "message": f"Server error: {str(e)}"})
+        return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
     finally:
-        # Cleanup is handled after a short delay or in the next request to be safe
-        # but for now we try to cleanup
-        pass
+        if os.path.exists(file_path):
+            try: os.remove(file_path)
+            except: pass
 
 @app.delete("/api/person/search")
 def clear_person_search():
@@ -164,7 +158,6 @@ async def video_feed():
                 continue
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
-    
     return StreamingResponse(generate(), media_type="multipart/x-mixed-replace; boundary=frame")
 
 @app.websocket("/ws")
@@ -178,11 +171,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     await websocket.send_text(json.dumps(alert))
             await asyncio.sleep(0.5)
     except WebSocketDisconnect:
-        print("Client disconnected")
-
-@app.on_event("shutdown")
-def shutdown_event():
-    camera.stop()
+        pass
 
 if __name__ == "__main__":
     import uvicorn
