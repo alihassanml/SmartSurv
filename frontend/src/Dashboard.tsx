@@ -506,7 +506,7 @@ const App: React.FC = () => {
       <main className="flex flex-1 overflow-hidden relative z-10">
         <section className="flex-1 p-6 flex flex-col gap-6">
           {/* Main Feed Container */}
-          <div className="flex-1 bg-black overflow-hidden flex items-center justify-center relative border border-[#1a1a1a] shadow-[0_0_50px_rgba(0,255,0,0.05)]">
+          <div className="flex-1  overflow-hidden flex items-center justify-center relative border border-[#1a1a1a] shadow-[0_0_50px_rgba(0,255,0,0.05)]">
             
             {/* Corners Decorative */}
             <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-[#00ff00]/20"></div>
