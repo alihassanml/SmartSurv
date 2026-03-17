@@ -4,6 +4,7 @@ import { Shield, Eye, Bell, Activity } from 'lucide-react';
 
 const LandingPage: React.FC = () => {
   const navigate = useNavigate();
+  const isAuthenticated = !!localStorage.getItem('token');
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-[#00ff00] font-mono selection:bg-[#00ff00] selection:text-[#0a0a0a] overflow-x-hidden">
@@ -15,18 +16,31 @@ const LandingPage: React.FC = () => {
           <span>SMARTSURV</span>
         </div>
         <div className="flex gap-4">
-          <button 
-            onClick={() => navigate('/login')}
-            className="px-6 py-2 border border-[#00ff00] hover:bg-[#00ff00] hover:text-[#0a0a0a] transition-all duration-300 font-bold tracking-widest uppercase text-sm"
-          >
-            [ LOGIN ]
-          </button>
-          <button 
-            onClick={() => navigate('/signup')}
-            className="px-6 py-2 bg-[#00ff00] text-[#0a0a0a] hover:bg-transparent hover:text-[#00ff00] border border-[#00ff00] transition-all duration-300 font-bold tracking-widest uppercase text-sm"
-          >
-            [ INITIATE ]
-          </button>
+          {isAuthenticated ? (
+            <>
+              <button 
+                onClick={() => navigate('/dashboard')}
+                className="px-6 py-2 bg-[#00ff00] text-[#0a0a0a] hover:bg-transparent hover:text-[#00ff00] border border-[#00ff00] transition-all duration-300 font-bold tracking-widest uppercase text-sm"
+              >
+                [ ENTER_DASHBOARD ]
+              </button>
+            </>
+          ) : (
+            <>
+              <button 
+                onClick={() => navigate('/login')}
+                className="px-6 py-2 border border-[#00ff00] hover:bg-[#00ff00] hover:text-[#0a0a0a] transition-all duration-300 font-bold tracking-widest uppercase text-sm"
+              >
+                [ LOGIN ]
+              </button>
+              <button 
+                onClick={() => navigate('/signup')}
+                className="px-6 py-2 bg-[#00ff00] text-[#0a0a0a] hover:bg-transparent hover:text-[#00ff00] border border-[#00ff00] transition-all duration-300 font-bold tracking-widest uppercase text-sm"
+              >
+                [ INITIATE ]
+              </button>
+            </>
+          )}
         </div>
       </nav>
 

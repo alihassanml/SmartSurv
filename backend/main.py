@@ -39,7 +39,7 @@ app.add_middleware(
 )
 
 camera = CameraEngine()
-camera.start()
+# Camera is NOT started on boot — it starts when the Dashboard mounts
 
 @app.post("/api/auth/signup")
 def signup(user: UserCreate, db: Session = Depends(get_db)):

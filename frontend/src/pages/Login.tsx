@@ -22,6 +22,7 @@ const Login: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         localStorage.setItem('token', data.access_token);
+        localStorage.setItem('username', username);
         navigate('/dashboard');
       } else {
         const data = await response.json();
@@ -34,7 +35,7 @@ const Login: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen bg-[#0a0a0a] text-[#00ff00] font-mono items-center justify-center relative overflow-hidden">
-      <div className="absolute top-6 left-6 flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
+      <div className="absolute top-6 left-6 flex items-center gap-2 cursor-pointer hover:opacity-70 transition-opacity" onClick={() => navigate('/')}>
          <Shield className="w-6 h-6" /> <span className="font-bold tracking-widest text-xl">SMARTSURV</span>
       </div>
 
@@ -48,13 +49,13 @@ const Login: React.FC = () => {
 
         <form onSubmit={handleLogin} className="space-y-6">
           <div>
-            <label className="block text-xs uppercase tracking-widest mb-2 opacity-70">Username_ID</label>
+            <label className="block text-xs uppercase tracking-widest mb-2 opacity-70">Username</label>
             <input 
               type="text" 
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               className="w-full bg-[#1a1a1a] border border-[#00ff00]/30 p-3 text-[#00ff00] focus:outline-none focus:border-[#00ff00] transition-colors font-mono"
-              placeholder="Enter ID..."
+              placeholder="Enter Username..."
               required
             />
           </div>
