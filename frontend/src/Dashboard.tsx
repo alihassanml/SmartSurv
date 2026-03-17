@@ -523,7 +523,7 @@ const App: React.FC = () => {
             {/* Viewport HUD */}
             <div className="absolute top-6 left-6 flex flex-col gap-1">
                <div className="bg-[#00ff00] text-black px-2 py-0.5 text-[10px] font-bold">LIVE_INTERCEPT</div>
-               <div className="text-[9px] opacity-40">RES_640x480 // FPS_30</div>
+               <div className="text-[9px] opacity-40">RES_800x600 // FPS_30</div>
             </div>
 
             <div className="absolute top-6 right-6 flex flex-col items-end gap-2">
@@ -598,7 +598,7 @@ const App: React.FC = () => {
                   </div>
 
                   <div className="p-3 pl-8">
-                     <div className="relative mb-3 aspect-video overflow-hidden">
+                     <div className="relative mb-3 aspect-[4/3] overflow-hidden">
                         <img 
                           src={`data:image/jpeg;base64,${alert.image}`} 
                           alt="INCIDENT" 

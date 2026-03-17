@@ -24,8 +24,8 @@ class CameraEngine:
             
         self.source = source
         self.cap = cv2.VideoCapture(source)
-        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 800)
+        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 600)
         
         self.frame_queue = queue.Queue(maxsize=1)
         self.alert_queue = queue.Queue()
@@ -150,6 +150,9 @@ class CameraEngine:
                 time.sleep(0.01)
                 continue
 
+            # Always resize for consistency
+            frame = cv2.resize(frame, (800, 600))
+
             frame_counter += 1
             if frame_counter % 2 != 0:
                 if not self.frame_queue.full():
@@ -157,15 +160,14 @@ class CameraEngine:
                     self.frame_queue.put(buffer.tobytes())
                 continue
 
-            small_frame = cv2.resize(frame, (640, 480))
-            display_frame = small_frame.copy()
+            display_frame = frame.copy()
             
             detections = []
             is_target_match = False
             
             # --- BLOCK 1: ACTIVITY DETECTION (WEAPONS / VIOLENCE) ---
             if self.mode in ["detection", "both"]:
-                results = self.model(small_frame, verbose=False)
+                results = self.model(frame, verbose=False)
                 for box in results[0].boxes:
                     label = self.model.names[int(box.cls[0])]
                     conf = float(box.conf[0])
@@ -181,7 +183,7 @@ class CameraEngine:
             # --- BLOCK 2: PERSON SEARCH (FACE MATCH) ---
             if self.mode in ["search", "both"] and self.target_face_encoding is not None:
                 # Convert frame to RGB and ensure correct layout
-                rgb_frame = cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB)
+                rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 rgb_frame = np.ascontiguousarray(rgb_frame, dtype=np.uint8)
                 
                 face_locations = face_recognition.face_locations(rgb_frame, model="hog")
