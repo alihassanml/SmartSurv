@@ -31,11 +31,11 @@ class CameraEngine:
         self.alert_queue = queue.Queue()
         self.running = False
         self.thread = None
-        self.last_alert_time = 0
+        self.last_alert_time = 0.0
         self.alert_cooldown = 3
 
         # Modes: "detection", "search", "both"
-        self.mode = "both"
+        self.mode = "detection"
 
         # Activity Thresholds
         self.class_names = list(self.model.names.values())
@@ -44,7 +44,7 @@ class CameraEngine:
         # 2. PERSON SEARCH (Separated Face Recognition)
         self.target_face_encoding = None
         self.sound_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'sound', 'drop.mp3'))
-        self.last_sound_time = 0
+        self.last_sound_time = 0.0
         self.sound_cooldown = 5
 
     def get_class_names(self) -> list[str]:

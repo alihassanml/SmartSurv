@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Settings, User, LogOut, Shield, RefreshCw, Sliders, Search, Trash2, Camera, UploadCloud, AlertTriangle, Crosshair, Map } from 'lucide-react';
+import { Settings, User, LogOut, Shield, RefreshCw, Sliders, Search, Camera, UploadCloud, AlertTriangle, Crosshair } from 'lucide-react';
 
 interface Detection {
   label: string;
@@ -33,7 +33,8 @@ const App: React.FC = () => {
   const username = localStorage.getItem('username') || 'OPERATOR';
 
   // --- Mode State ---
-  const [systemMode, setSystemMode] = useState<'detection' | 'search' | 'both'>('both');
+  const savedMode = localStorage.getItem('systemMode') as 'detection' | 'search' | 'both' | null;
+  const [systemMode, setSystemMode] = useState<'detection' | 'search' | 'both'>(savedMode || 'detection');
 
   // --- Threshold state ---
   const [classThresholds, setClassThresholds] = useState<ClassThreshold[]>([]);
@@ -41,9 +42,10 @@ const App: React.FC = () => {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
   // --- Person Search state ---
-  const [searchFile, setSearchFile] = useState<File | null>(null);
-  const [searchStatus, setSearchStatus] = useState<'idle' | 'uploading' | 'active' | 'error'>('idle');
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const savedSearchStatus = localStorage.getItem('searchStatus') as 'idle' | 'uploading' | 'active' | 'error' | null;
+  const savedPreview = localStorage.getItem('searchPreview');
+  const [searchStatus, setSearchStatus] = useState<'idle' | 'uploading' | 'active' | 'error'>(savedSearchStatus || 'idle');
+  const [previewUrl, setPreviewUrl] = useState<string | null>(savedPreview);
 
   // Fetch model classes + current thresholds when settings panel opens
   useEffect(() => {
@@ -66,6 +68,7 @@ const App: React.FC = () => {
         body: JSON.stringify({ mode }),
       });
       setSystemMode(mode);
+      localStorage.setItem('systemMode', mode);
     } catch (e) {
       console.error("Failed to change mode", e);
     }
@@ -101,9 +104,17 @@ const App: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setSearchFile(file);
-    setPreviewUrl(URL.createObjectURL(file));
+    // Convert file to base64 for persistence
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      setPreviewUrl(base64String);
+      localStorage.setItem('searchPreview', base64String);
+    };
+    reader.readAsDataURL(file);
+
     setSearchStatus('uploading');
+    localStorage.setItem('searchStatus', 'uploading');
 
     const formData = new FormData();
     formData.append('file', file);
@@ -115,17 +126,20 @@ const App: React.FC = () => {
       });
       if (!res.ok) throw new Error('Upload failed');
       setSearchStatus('active');
+      localStorage.setItem('searchStatus', 'active');
     } catch {
       setSearchStatus('error');
+      localStorage.setItem('searchStatus', 'error');
     }
   };
 
   const clearPersonSearch = async () => {
     try {
       await fetch(`${API}/api/person/search`, { method: 'DELETE' });
-      setSearchFile(null);
       setPreviewUrl(null);
       setSearchStatus('idle');
+      localStorage.removeItem('searchPreview');
+      localStorage.removeItem('searchStatus');
     } catch (e) {
       console.error('Failed to clear search', e);
     }
@@ -151,7 +165,16 @@ const App: React.FC = () => {
   useEffect(() => {
     const initCam = async () => {
       const pref = localStorage.getItem('cameraActive');
+      const curMode = localStorage.getItem('systemMode') || 'detection';
       const shouldStart = pref === null || pref === 'true';
+
+      // Sync initial mode to backend
+      fetch(`${API}/api/camera/mode`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: curMode }),
+      }).catch(() => {});
+
       if (shouldStart) {
         try {
           await fetch(`${API}/api/camera/start`, { method: 'POST' });
@@ -185,18 +208,6 @@ const App: React.FC = () => {
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = 0;
   }, [alerts]);
-
-  const saveLabel =
-    saveStatus === 'saving' ? 'APPLYING...' :
-    saveStatus === 'saved'  ? '✓ APPLIED & RESTARTED' :
-    saveStatus === 'error'  ? '✗ ERROR' :
-    'UPDATE & RESTART';
-
-  const saveBtnClass =
-    saveStatus === 'saved'  ? 'bg-[#00ff00] text-black border-[#00ff00]' :
-    saveStatus === 'error'  ? 'border-red-500 text-red-500' :
-    saveStatus === 'saving' ? 'opacity-50 cursor-not-allowed border-[#00ff00]' :
-    'border-[#00ff00] hover:bg-[#00ff00] hover:text-black';
 
   return (
     <div className="flex flex-col h-screen bg-[#050505] text-[#00ff00] font-mono">
