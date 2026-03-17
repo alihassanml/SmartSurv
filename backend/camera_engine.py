@@ -6,7 +6,7 @@ from ultralytics import YOLO
 import queue
 
 class CameraEngine:
-    def __init__(self, model_path='../model/S Model/best.pt', source=0):
+    def __init__(self, model_path='../model/N Model/best.pt', source=0):
         self.model = YOLO(model_path)
         # Try to move to GPU if available
         try:
