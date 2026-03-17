@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Settings, User, LogOut, Shield, RefreshCw, Sliders } from 'lucide-react';
+import { Settings, User, LogOut, Shield, RefreshCw, Sliders, Search, Trash2, Camera, UploadCloud, AlertTriangle, Crosshair, Map } from 'lucide-react';
 
 interface Detection {
   label: string;
@@ -12,6 +12,7 @@ interface Alert {
   timestamp: string;
   detections: Detection[];
   image: string;
+  is_person_search_match?: boolean;
 }
 
 interface ClassThreshold {
@@ -31,10 +32,18 @@ const App: React.FC = () => {
   const navigate = useNavigate();
   const username = localStorage.getItem('username') || 'OPERATOR';
 
+  // --- Mode State ---
+  const [systemMode, setSystemMode] = useState<'detection' | 'search' | 'both'>('both');
+
   // --- Threshold state ---
   const [classThresholds, setClassThresholds] = useState<ClassThreshold[]>([]);
   const [thresholdsLoading, setThresholdsLoading] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+
+  // --- Person Search state ---
+  const [searchFile, setSearchFile] = useState<File | null>(null);
+  const [searchStatus, setSearchStatus] = useState<'idle' | 'uploading' | 'active' | 'error'>('idle');
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   // Fetch model classes + current thresholds when settings panel opens
   useEffect(() => {
@@ -48,6 +57,19 @@ const App: React.FC = () => {
       .catch(() => setClassThresholds([]))
       .finally(() => setThresholdsLoading(false));
   }, [showSettings]);
+
+  const changeMode = async (mode: 'detection' | 'search' | 'both') => {
+    try {
+      await fetch(`${API}/api/camera/mode`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode }),
+      });
+      setSystemMode(mode);
+    } catch (e) {
+      console.error("Failed to change mode", e);
+    }
+  };
 
   const handleThresholdChange = (name: string, value: number) => {
     setClassThresholds(prev =>
@@ -68,14 +90,44 @@ const App: React.FC = () => {
       });
       if (!res.ok) throw new Error('Failed');
       setSaveStatus('saved');
-      // Camera was restarted by backend; update button state
-      if (cameraActive) {
-        localStorage.setItem('cameraActive', 'true');
-      }
       setTimeout(() => setSaveStatus('idle'), 3000);
     } catch {
       setSaveStatus('error');
       setTimeout(() => setSaveStatus('idle'), 3000);
+    }
+  };
+
+  const handleSearchFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setSearchFile(file);
+    setPreviewUrl(URL.createObjectURL(file));
+    setSearchStatus('uploading');
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await fetch(`${API}/api/person/search`, {
+        method: 'POST',
+        body: formData,
+      });
+      if (!res.ok) throw new Error('Upload failed');
+      setSearchStatus('active');
+    } catch {
+      setSearchStatus('error');
+    }
+  };
+
+  const clearPersonSearch = async () => {
+    try {
+      await fetch(`${API}/api/person/search`, { method: 'DELETE' });
+      setSearchFile(null);
+      setPreviewUrl(null);
+      setSearchStatus('idle');
+    } catch (e) {
+      console.error('Failed to clear search', e);
     }
   };
 
@@ -123,7 +175,8 @@ const App: React.FC = () => {
     ws.onopen = () => setIsConnected(true);
     ws.onclose = () => setIsConnected(false);
     ws.onmessage = (event) => {
-      const newAlert: Alert = JSON.parse(event.data);
+      const data = JSON.parse(event.data);
+      const newAlert: Alert = data;
       setAlerts((prev) => [newAlert, ...prev].slice(0, 50));
     };
     return () => ws.close();
@@ -146,289 +199,442 @@ const App: React.FC = () => {
     'border-[#00ff00] hover:bg-[#00ff00] hover:text-black';
 
   return (
-    <div className="flex flex-col h-screen bg-hacker-dark text-hacker-green">
-      {/* Header */}
-      <header className="p-4 flex justify-between items-center bg-hacker-gray">
-        <div
-          className="text-xl font-bold tracking-widest flex items-center gap-4 cursor-pointer hover:text-white transition-colors"
-        >
-          <span>SMARTSURV // SYSTEM_V1.0</span>
-          <button
-            onClick={(e) => { e.stopPropagation(); toggleCamera(); }}
-            className={`px-3 py-1 text-xs border border-hacker-green hover:bg-hacker-green hover:text-black transition-colors ${!cameraActive && 'opacity-50 text-red-500 border-red-500 hover:bg-red-500'}`}
-          >
-            {cameraActive ? 'STOP_CAM' : 'START_CAM'}
-          </button>
+    <div className="flex flex-col h-screen bg-[#050505] text-[#00ff00] font-mono">
+      {/* Search Animation Overlay (only when searching) */}
+      {searchStatus === 'active' && (
+        <div className="fixed inset-0 pointer-events-none z-0 opacity-10">
+          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-[800px] h-[800px] border border-[#00ff00] rounded-full animate-ping-slow"></div>
+            <div className="absolute w-[600px] h-[600px] border border-[#00ff00]/50 rounded-full animate-ping-slow [animation-delay:1s]"></div>
+            <div className="absolute w-[400px] h-[400px] border border-[#00ff00]/30 rounded-full animate-ping-slow [animation-delay:2s]"></div>
+            
+            {/* Radar Sweep */}
+            <div className="absolute w-[1000px] h-[1000px] bg-gradient-to-tr from-[#00ff00]/20 to-transparent rounded-full animate-radar-sweep origin-center"></div>
+          </div>
+          
+          {/* Moving Map Grid Effect */}
+          <div className="absolute inset-0 grid grid-cols-12 grid-rows-12 gap-0">
+             {[...Array(144)].map((_, i) => (
+               <div key={i} className="border-[0.5px] border-[#00ff00]/5 animate-pulse" style={{ animationDelay: `${Math.random() * 5}s` }}></div>
+             ))}
+          </div>
         </div>
-        <div className="flex items-center gap-4">
-          <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-hacker-green' : 'bg-red-600'}`} />
-          <span className="text-sm">{isConnected ? 'UPLINK_STABLE' : 'UPLINK_OFFLINE'}</span>
-          <span className="text-sm opacity-50">{new Date().toLocaleTimeString()}</span>
+      )}
+
+      {/* Header */}
+      <header className="p-4 flex justify-between items-center bg-[#0a0a0a] border-b border-[#1a1a1a] relative z-10">
+        <div className="text-xl font-bold tracking-tighter flex items-center gap-6">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-[#00ff00] rounded-full animate-pulse"></div>
+            <span>SMARTSURV // OPS_CORE</span>
+          </div>
+          
+          {/* Mode Switcher */}
+          <div className="flex bg-[#111] border border-[#1a1a1a] p-1 gap-1">
+            <button 
+              onClick={() => changeMode('detection')}
+              className={`px-3 py-1 text-[10px] transition-all ${systemMode === 'detection' ? 'bg-[#00ff00] text-black font-bold' : 'hover:bg-[#1a1a1a] opacity-50'}`}
+            >
+              ACTIVITY_SCAN
+            </button>
+            <button 
+              onClick={() => changeMode('search')}
+              className={`px-3 py-1 text-[10px] transition-all ${systemMode === 'search' ? 'bg-red-600 text-white font-bold' : 'hover:bg-[#1a1a1a] opacity-50'}`}
+            >
+              PERSON_SEARCH
+            </button>
+            <button 
+              onClick={() => changeMode('both')}
+              className={`px-3 py-1 text-[10px] transition-all ${systemMode === 'both' ? 'bg-[#00ffea] text-black font-bold' : 'hover:bg-[#1a1a1a] opacity-50'}`}
+            >
+              HYBRID_LINK
+            </button>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-6">
           <button
-            onClick={() => setShowSettings(true)}
-            className="p-1 hover:text-white transition-colors"
-            title="Settings"
+            onClick={toggleCamera}
+            className={`px-4 py-1.5 text-[11px] border border-[#00ff00] transition-all hover:bg-[#00ff00] hover:text-black flex items-center gap-2 ${!cameraActive && 'border-red-600 text-red-600'}`}
           >
-            <Settings className="w-5 h-5" />
+            <Camera className="w-3 h-3" />
+            {cameraActive ? 'TERMINATE_FEED' : 'INITIALIZE_FEED'}
           </button>
+          
+          <div className="flex items-center gap-4 text-[11px]">
+             <div className="flex flex-col items-end">
+               <span className="opacity-40 text-[9px]">UPLINK_STATUS</span>
+               <span className={isConnected ? 'text-[#00ff00]' : 'text-red-600'}>{isConnected ? 'STABLE' : 'LOST'}</span>
+             </div>
+             <button onClick={() => setShowSettings(true)} className="p-2 border border-[#1a1a1a] hover:border-[#00ff00] bg-[#111] transition-all">
+                <Settings className="w-4 h-4" />
+             </button>
+          </div>
         </div>
       </header>
 
       {/* Settings Panel */}
       {showSettings && (
         <>
-          {/* Backdrop */}
-          <div
-            className="fixed inset-0 bg-black/60 z-40"
-            onClick={() => setShowSettings(false)}
-          />
-          {/* Panel */}
-          <div className="fixed top-0 right-0 h-full w-[420px] bg-[#0a0a0a] border-l border-[#1a1a1a] z-50 flex flex-col font-mono text-[#00ff00] overflow-hidden">
-            {/* Panel Header */}
-            <div className="flex justify-between items-center p-4 border-b border-[#1a1a1a] shrink-0">
-              <span className="font-bold tracking-widest uppercase text-sm">CONFIG // SETTINGS</span>
-              <button
-                onClick={() => setShowSettings(false)}
-                className="text-xs opacity-50 hover:opacity-100 transition-opacity"
-              >
-                [ CLOSE ]
+          <div className="fixed inset-0 bg-black/80 z-40 backdrop-blur-sm" onClick={() => setShowSettings(false)} />
+          <div className="fixed top-0 right-0 h-full w-[460px] bg-[#080808] border-l border-[#1a1a1a] z-50 flex flex-col shadow-2xl overflow-hidden">
+            <div className="flex justify-between items-center p-6 border-b border-[#1a1a1a] shrink-0">
+              <span className="font-bold tracking-widest text-sm flex items-center gap-2">
+                <div className="w-1.5 h-1.5 bg-[#00ff00]"></div>
+                SYSTEM_PARAMETERS
+              </span>
+              <button onClick={() => setShowSettings(false)} className="text-[10px] px-2 py-1 bg-[#111] border border-[#1a1a1a] hover:text-white">
+                QUIT
               </button>
             </div>
 
-            {/* Scrollable body */}
             <div className="flex-1 overflow-y-auto">
-
-              {/* Profile */}
-              <div className="p-6 border-b border-[#1a1a1a]">
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 border border-[#00ff00] flex items-center justify-center">
-                    <User className="w-7 h-7" />
+              {/* User Profile */}
+              <div className="p-8 border-b border-[#1a1a1a] bg-gradient-to-b from-[#0a0a0a] to-transparent">
+                <div className="flex items-center gap-6">
+                  <div className="w-16 h-16 border-2 border-[#00ff00] p-1">
+                    <div className="w-full h-full bg-[#00ff00]/10 flex items-center justify-center">
+                      <User className="w-8 h-8" />
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs opacity-50 uppercase tracking-widest mb-1">Operator</p>
-                    <p className="font-bold text-lg tracking-wide uppercase">{username}</p>
-                    <div className="flex items-center gap-1 mt-1">
-                      <div className="w-2 h-2 rounded-full bg-[#00ff00] animate-pulse" />
-                      <span className="text-xs opacity-60">ACTIVE_SESSION</span>
+                  <div className="flex-1">
+                    <p className="text-[10px] opacity-30 tracking-[0.2em] mb-1">AUTHORIZED_OPERATOR</p>
+                    <p className="text-xl font-bold tracking-tight uppercase">{username}</p>
+                    <div className="mt-2 text-[9px] bg-[#00ff00]/5 border border-[#00ff00]/20 px-2 py-1 inline-block">
+                       LEVEL_01_ACCESS
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Stats */}
-              <div className="p-6 border-b border-[#1a1a1a] space-y-3">
-                <p className="text-xs opacity-50 uppercase tracking-widest mb-3">System Info</p>
-                <div className="flex justify-between text-xs">
-                  <span className="opacity-60">WebSocket</span>
-                  <span className={isConnected ? 'text-[#00ff00]' : 'text-red-500'}>
-                    {isConnected ? 'CONNECTED' : 'OFFLINE'}
-                  </span>
+              {/* PERSON SEARCH UI */}
+              <div className="p-8 border-b border-[#1a1a1a]">
+                <div className="flex justify-between items-center mb-6">
+                   <div className="flex items-center gap-2">
+                      <Search className="w-4 h-4 text-[#00ff00]" />
+                      <span className="text-xs font-bold tracking-widest">PERSON_TARGET_LOCK</span>
+                   </div>
+                   {searchStatus === 'active' && (
+                     <span className="text-[9px] text-red-500 animate-pulse font-bold">[ SCANNING_ACTIVE ]</span>
+                   )}
                 </div>
-                <div className="flex justify-between text-xs">
-                  <span className="opacity-60">Camera</span>
-                  <span className={cameraActive ? 'text-[#00ff00]' : 'text-red-500'}>
-                    {cameraActive ? 'ONLINE' : 'OFFLINE'}
-                  </span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="opacity-60">Total Alerts</span>
-                  <span>{alerts.length}</span>
-                </div>
+
+                {searchStatus === 'idle' ? (
+                  <label className="flex flex-col items-center justify-center w-full h-40 border border-dashed border-[#1a1a1a] hover:bg-[#00ff00]/5 hover:border-[#00ff00]/50 transition-all cursor-pointer group">
+                    <UploadCloud className="w-8 h-8 opacity-20 group-hover:opacity-100 group-hover:scale-110 transition-all" />
+                    <span className="text-[10px] opacity-40 mt-3 font-bold group-hover:text-[#00ff00]">INJECT_FACIAL_DATA</span>
+                    <input type="file" className="hidden" accept="image/*" onChange={handleSearchFileUpload} />
+                  </label>
+                ) : (
+                  <div className="bg-[#0c0c0c] border border-[#1a1a1a] p-4 relative overflow-hidden">
+                    {/* Background animation for target box */}
+                    <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-[#00ff00]"></div>
+                    <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-[#00ff00]"></div>
+                    <div className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-[#00ff00]"></div>
+                    <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-[#00ff00]"></div>
+
+                    <div className="flex gap-6 relative z-10">
+                      {previewUrl && (
+                        <div className="relative">
+                          <img src={previewUrl} alt="Target" className="w-24 h-24 object-cover grayscale brightness-110" />
+                          <div className="absolute inset-0 border border-[#00ff00]/30"></div>
+                          <div className="absolute top-0 left-0 w-full h-0.5 bg-[#00ff00]/50 animate-scanner"></div>
+                        </div>
+                      )}
+                      <div className="flex-1 space-y-3">
+                        <div>
+                          <p className="text-[10px] font-bold opacity-30">DATA_SET</p>
+                          <p className="text-[11px] font-bold">TARGET_OMEGA_01</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold opacity-30">MATCH_ENGINE</p>
+                          <p className="text-[11px] text-[#00ff00] flex items-center gap-1">
+                            <div className="w-1 h-1 bg-[#00ff00] animate-ping"></div>
+                            ACTIVE_SCAN
+                          </p>
+                        </div>
+                        <button
+                          onClick={clearPersonSearch}
+                          className="w-full py-2 bg-red-950/20 border border-red-900/50 text-red-500 text-[9px] font-bold hover:bg-red-900/40 transition-all"
+                        >
+                          PURGE_TARGET_DATA
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* ── Detection Confidence Thresholds ── */}
-              <div className="p-6 border-b border-[#1a1a1a]">
-                <div className="flex items-center gap-2 mb-4">
-                  <Sliders className="w-4 h-4 opacity-70" />
-                  <p className="text-xs uppercase tracking-widest font-bold">Detection Thresholds</p>
+              {/* THRESHOLDS UI */}
+              <div className="p-8">
+                <div className="flex items-center gap-2 mb-8">
+                  <Sliders className="w-4 h-4 text-[#00ffea]" />
+                  <span className="text-xs font-bold tracking-widest">ACTIVITY_CONFIDENCE</span>
                 </div>
-                <p className="text-[10px] opacity-40 mb-5 leading-relaxed">
-                  Set the minimum confidence required per class before an alert is triggered.
-                  Hit UPDATE &amp; RESTART to apply — the camera engine will reload automatically.
-                </p>
 
                 {thresholdsLoading ? (
-                  <div className="flex items-center gap-2 text-xs opacity-50 py-4">
+                  <div className="flex items-center justify-center py-10 opacity-30 text-[10px] gap-2">
                     <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>LOADING MODEL CLASSES...</span>
+                    FETCHING_DYNAMIC_CLASSES...
                   </div>
-                ) : classThresholds.length === 0 ? (
-                  <p className="text-xs text-red-500 opacity-70">
-                    Could not load model classes. Is the backend running?
-                  </p>
                 ) : (
-                  <div className="space-y-5">
+                  <div className="space-y-8">
                     {classThresholds.map((cls) => (
-                      <div key={cls.name}>
-                        {/* Label row */}
-                        <div className="flex justify-between items-center mb-1">
-                          <span className="text-[11px] uppercase tracking-widest font-bold">
-                            {cls.name}
+                      <div key={cls.name} className="group">
+                        <div className="flex justify-between items-end mb-3">
+                          <span className="text-[10px] font-bold opacity-40 group-hover:opacity-100 transition-opacity">
+                            {cls.name.toUpperCase()}_CHECK
                           </span>
-                          <span className="text-[11px] font-mono tabular-nums px-2 py-0.5 border border-[#00ff00]/30 bg-[#00ff00]/5">
-                            {(cls.threshold * 100).toFixed(0)}%
+                          <span className="text-[14px] font-bold tabular-nums">
+                            {(cls.threshold * 100).toFixed(0)}<span className="text-[10px] opacity-40 ml-0.5">%</span>
                           </span>
                         </div>
-
-                        {/* Slider */}
-                        <div className="relative">
-                          <input
-                            id={`threshold-${cls.name}`}
-                            type="range"
-                            min={0}
-                            max={1}
-                            step={0.01}
-                            value={cls.threshold}
-                            onChange={(e) =>
-                              handleThresholdChange(cls.name, parseFloat(e.target.value))
-                            }
-                            className="w-full appearance-none h-[3px] bg-[#1a1a1a] rounded-none outline-none cursor-pointer"
-                            style={{
-                              background: `linear-gradient(to right, #00ff00 0%, #00ff00 ${cls.threshold * 100}%, #1a1a1a ${cls.threshold * 100}%, #1a1a1a 100%)`,
-                            }}
-                          />
-                        </div>
-
-                        {/* Tick labels */}
-                        <div className="flex justify-between text-[9px] opacity-30 mt-1">
-                          <span>0%</span>
-                          <span>25%</span>
-                          <span>50%</span>
-                          <span>75%</span>
-                          <span>100%</span>
-                        </div>
+                        <input
+                          type="range" min={0} max={1} step={0.01} value={cls.threshold}
+                          onChange={(e) => handleThresholdChange(cls.name, parseFloat(e.target.value))}
+                          className="w-full appearance-none h-1 bg-[#1a1a1a] rounded-none outline-none cursor-pointer range-hacker"
+                          style={{ background: `linear-gradient(to right, #00ffea 0%, #00ffea ${cls.threshold * 100}%, #1a1a1a ${cls.threshold * 100}%, #1a1a1a 100%)` }}
+                        />
                       </div>
                     ))}
+                    
+                    <button
+                      onClick={handleSaveThresholds}
+                      disabled={saveStatus === 'saving'}
+                      className={`w-full py-4 border-2 font-bold text-xs tracking-widest transition-all mt-4 flex items-center justify-center gap-2 ${
+                        saveStatus === 'saved' ? 'bg-[#00ffea] text-black border-[#00ffea]' : 
+                        saveStatus === 'error' ? 'bg-red-600 text-white border-red-600' :
+                        'bg-transparent border-[#00ffea] text-[#00ffea] hover:bg-[#00ffea] hover:text-black'
+                      }`}
+                    >
+                      <RefreshCw className={`w-4 h-4 ${saveStatus === 'saving' ? 'animate-spin' : ''}`} />
+                      {saveStatus === 'saving' ? 'UPLOADING_VECTORS...' : 'REBOOT_CORE_SYNC'}
+                    </button>
+                    {saveStatus === 'saved' && (
+                       <p className="text-[10px] text-[#00ffea] text-center font-bold mt-2 animate-pulse">✓ ENGINE_HOT_RELOADED</p>
+                    )}
                   </div>
                 )}
-
-                {/* Save button */}
-                {classThresholds.length > 0 && (
-                  <button
-                    onClick={handleSaveThresholds}
-                    disabled={saveStatus === 'saving'}
-                    className={`mt-6 w-full flex items-center justify-center gap-2 px-4 py-3 border text-xs uppercase tracking-widest transition-colors ${saveBtnClass}`}
-                  >
-                    <RefreshCw className={`w-4 h-4 ${saveStatus === 'saving' ? 'animate-spin' : ''}`} />
-                    {saveLabel}
-                  </button>
-                )}
               </div>
-
             </div>
 
-            {/* Actions — always at bottom */}
-            <div className="p-6 border-t border-[#1a1a1a] space-y-3 shrink-0">
-              <button
-                onClick={() => { setShowSettings(false); navigate('/'); }}
-                className="w-full flex items-center gap-3 px-4 py-3 border border-[#1a1a1a] hover:border-[#00ff00]/50 text-xs uppercase tracking-widest transition-colors"
-              >
-                <Shield className="w-4 h-4 opacity-60" />
-                HOME
-              </button>
-              <button
-                onClick={handleLogout}
-                className="w-full flex items-center gap-3 px-4 py-3 border border-[#00ff00] hover:bg-[#00ff00] hover:text-black text-xs uppercase tracking-widest transition-colors"
-              >
-                <LogOut className="w-4 h-4" />
-                LOGOUT
-              </button>
+            <div className="p-6 border-t border-[#1a1a1a]">
+               <button onClick={handleLogout} className="w-full py-3 flex items-center justify-center gap-3 bg-[#111] border border-red-900/30 text-red-500 hover:bg-red-900/10 text-[10px] font-bold transition-all">
+                  <LogOut className="w-4 h-4" />
+                  TERMINATE_SESSION
+               </button>
             </div>
           </div>
         </>
       )}
 
       {/* Main Content */}
-      <main className="flex flex-1 overflow-hidden">
-        {/* Live Feed */}
-        <section className="flex-1 p-4 flex flex-col gap-4">
-          <div className="flex-1 bg-black overflow-hidden flex items-center justify-center relative border border-hacker-gray">
+      <main className="flex flex-1 overflow-hidden relative z-10">
+        <section className="flex-1 p-6 flex flex-col gap-6">
+          {/* Main Feed Container */}
+          <div className="flex-1 bg-black overflow-hidden flex items-center justify-center relative border border-[#1a1a1a] shadow-[0_0_50px_rgba(0,255,0,0.05)]">
+            
+            {/* Corners Decorative */}
+            <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-[#00ff00]/20"></div>
+            <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-[#00ff00]/20"></div>
+            <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-[#00ff00]/20"></div>
+            <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-[#00ff00]/20"></div>
+
             {cameraActive ? (
-              <img
-                src={`${API}/video_feed`}
-                alt="LIVE FEED"
-                className="max-h-full max-w-full object-contain"
-                onError={(e) => (e.currentTarget.style.display = 'none')}
-              />
+              <img src={`${API}/video_feed`} alt="LIVE FEED" className="max-h-full max-w-full object-contain brightness-110 contrast-110" />
             ) : (
-              <div className="text-hacker-green animate-pulse">CAMERA_OFFLINE</div>
+              <div className="flex flex-col items-center gap-4 text-[#00ff00]/40">
+                <Camera className="w-12 h-12 animate-pulse" />
+                <div className="text-[10px] font-bold tracking-[0.4em]">FEED_OFFLINE</div>
+              </div>
             )}
-            <div className="absolute top-4 left-4 text-xs font-bold bg-black/50 p-1 px-2">
-              LIVE_STREAM // CAM_00
+
+            {/* Viewport HUD */}
+            <div className="absolute top-6 left-6 flex flex-col gap-1">
+               <div className="bg-[#00ff00] text-black px-2 py-0.5 text-[10px] font-bold">LIVE_INTERCEPT</div>
+               <div className="text-[9px] opacity-40">RES_640x480 // FPS_30</div>
             </div>
+
+            <div className="absolute top-6 right-6 flex flex-col items-end gap-2">
+               {systemMode === 'search' && (
+                 <div className="bg-red-600 text-white px-3 py-1 text-[10px] font-bold animate-pulse flex items-center gap-2 shadow-[0_0_20px_rgba(255,0,0,0.4)]">
+                    <Crosshair className="w-3 h-3" />
+                    SEARCHING_FACIAL_OMEGA
+                 </div>
+               )}
+               {systemMode === 'detection' && (
+                 <div className="bg-[#00ff00] text-black px-3 py-1 text-[10px] font-bold flex items-center gap-2">
+                    <AlertTriangle className="w-3 h-3" />
+                    ACTIVITY_MONITOR_ON
+                 </div>
+               )}
+               {systemMode === 'both' && (
+                 <div className="bg-[#00ffea] text-black px-3 py-1 text-[10px] font-bold flex items-center gap-2">
+                    <RefreshCw className="w-3 h-3" />
+                    HYBRID_MODE_ACTIVE
+                 </div>
+               )}
+            </div>
+
+            {/* Animated Scanning Line (only when camera on) */}
+            {cameraActive && (
+              <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                <div className="w-full h-[1px] bg-[#00ff00]/20 absolute animate-v-scan"></div>
+                <div className="h-full w-[1px] bg-[#00ff00]/20 absolute left-1/4"></div>
+                <div className="h-full w-[1px] bg-[#00ff00]/20 absolute left-2/4"></div>
+                <div className="h-full w-[1px] bg-[#00ff00]/20 absolute left-3/4"></div>
+              </div>
+            )}
           </div>
 
-          <div className="h-24 bg-hacker-gray p-2 text-xs overflow-hidden font-mono">
-            <div className="text-opacity-70 mb-1 tracking-tighter">[ SYSTEM LOGS ]</div>
-            {alerts.slice(0, 3).map((a, i) => (
-              <div key={i} className="opacity-80">
-                {`> ${a.timestamp} : DETECTED ${a.detections.map(d => d.label).join(', ')}`}
-              </div>
-            ))}
-            {!alerts.length && <div>{"> WAITING FOR SYSTEM TRIGGERS..."}</div>}
+          {/* Activity Timeline / Console */}
+          <div className="h-32 bg-[#0a0a0a] border border-[#1a1a1a] p-4 flex flex-col font-mono">
+            <div className="flex justify-between items-center mb-2 border-b border-[#1a1a1a] pb-2">
+               <span className="text-[10px] font-bold opacity-30 text-[#00ff00]">CORE_EVENT_STREAM</span>
+               <span className="text-[9px] opacity-20">SYSTEM_READY</span>
+            </div>
+            <div className="flex-1 overflow-hidden space-y-1 text-[10px]">
+              {alerts.slice(0, 4).map((a, i) => (
+                <div key={i} className={`flex gap-4 ${a.is_person_search_match ? 'text-red-500 animate-pulse' : 'text-[#00ff00]/70'}`}>
+                  <span className="opacity-40">[{a.timestamp}]</span>
+                  <span className="font-bold">
+                    {a.is_person_search_match ? '>> CRITICAL_ALERT: TARGET_OMEGA_MATCH_CONFIRMED' : `>> DETECTED: ${a.detections.map(d => d.label.toUpperCase()).join(', ')}`}
+                  </span>
+                </div>
+              ))}
+              {!alerts.length && <div className="opacity-20">&gt; LISTENING_FOR_TRIGGERS...</div>}
+            </div>
           </div>
         </section>
 
-        {/* Sidebar Alerts */}
-        <aside className="w-80 bg-hacker-gray flex flex-col">
-          <div className="p-4 text-lg font-bold">ALERTS_QUEUE</div>
-          <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
-            {alerts.map((alert, index) => (
-              <div key={index} className="bg-hacker-dark p-2 animate-pulse-once">
-                <div className="flex justify-between text-[10px] mb-1">
-                  <span className="font-bold underline">ID_{index.toString().padStart(3, '0')}</span>
-                  <span>{alert.timestamp}</span>
+        {/* Alerts Sidebar - High contrast List */}
+        <aside className="w-[360px] bg-[#080808] border-l border-[#1a1a1a] flex flex-col shadow-2xl">
+          <div className="p-6 border-b border-[#1a1a1a] flex justify-between items-center bg-[#0a0a0a]">
+            <div>
+              <h2 className="text-sm font-bold tracking-widest">ALERTS_BUFFER</h2>
+              <p className="text-[9px] opacity-30 mt-1 uppercase">Intercepted Incidents Queue</p>
+            </div>
+            <div className="w-2 h-2 rounded-full bg-red-600 animate-pulse"></div>
+          </div>
+          
+          <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-6">
+            {alerts.length === 0 ? (
+               <div className="h-full flex flex-col items-center justify-center space-y-4 opacity-20">
+                  <Shield className="w-12 h-12" />
+                  <span className="text-[10px] tracking-widest">NO_THREATS_DETECTED</span>
+               </div>
+            ) : (
+              alerts.map((alert, index) => (
+                <div key={index} className={`relative overflow-hidden group border-2 ${alert.is_person_search_match ? 'border-red-600/50 bg-red-950/10' : 'border-[#1a1a1a] bg-[#0c0c0c]'}`}>
+                  {/* Event ID Badge */}
+                  <div className={`absolute top-0 right-0 px-2 py-1 text-[9px] font-bold ${alert.is_person_search_match ? 'bg-red-600 text-white' : 'bg-[#1a1a1a] text-[#00ff00]'}`}>
+                    ID_{index.toString().padStart(3, '0')}
+                  </div>
+
+                  {/* Timestamp Sidebar */}
+                  <div className="absolute left-2 top-2 text-[8px] opacity-40 rotate-180 [writing-mode:vertical-lr]">
+                    {alert.timestamp}_UTC
+                  </div>
+
+                  <div className="p-3 pl-8">
+                     <div className="relative mb-3 aspect-video overflow-hidden">
+                        <img 
+                          src={`data:image/jpeg;base64,${alert.image}`} 
+                          alt="INCIDENT" 
+                          className={`w-full h-full object-cover transition-all duration-700 ${alert.is_person_search_match ? 'brightness-125 saturate-150 scale-105' : 'grayscale group-hover:grayscale-0'}`} 
+                        />
+                        {alert.is_person_search_match && (
+                          <div className="absolute inset-0 bg-red-600/20 mix-blend-overlay animate-pulse"></div>
+                        )}
+                        
+                        {/* Target Marker for Face Match */}
+                        {alert.is_person_search_match && (
+                           <div className="absolute inset-0 flex items-center justify-center">
+                              <Crosshair className="w-12 h-12 text-red-600 animate-ping opacity-60" />
+                           </div>
+                        )}
+                     </div>
+
+                     <div className="space-y-3">
+                        <div className="flex justify-between items-center bg-black/40 p-1.5 border-l-2 border-[#00ff00]">
+                           <span className="text-[10px] font-bold">THREAT_IDENT:</span>
+                           <div className="flex flex-wrap gap-1 justify-end">
+                              {alert.is_person_search_match && (
+                                <span className="text-[9px] bg-red-600 text-white px-1.5 py-0.5 font-bold">TARGET_OMEGA</span>
+                              )}
+                              {alert.detections.map((d, i) => (
+                                <span key={i} className="text-[9px] bg-[#1a1a1a] text-[#00ff00] px-1.5 py-0.5 border border-[#00ff00]/20">
+                                  {d.label.toUpperCase()}
+                                </span>
+                              ))}
+                           </div>
+                        </div>
+
+                        {alert.is_person_search_match && (
+                          <div className="bg-red-600/20 border border-red-600/40 p-2">
+                             <p className="text-[9px] text-red-500 font-bold leading-tight">
+                               MATCH_CONFIRMED: Visual verification required immediately. GPS tracking initiated.
+                             </p>
+                          </div>
+                        )}
+
+                        <div className="flex justify-between items-center text-[9px] opacity-40 font-bold pt-1">
+                           <span>AI_REL_SCORE: {(Math.max(...(alert.detections.map(d => d.confidence) || [0]), 0) * 100).toFixed(1)}%</span>
+                           <span>CHANNEL_00</span>
+                        </div>
+                     </div>
+                  </div>
+                  
+                  {/* Decorative Scanline */}
+                  <div className="absolute bottom-0 left-0 w-full h-[0.5px] bg-[#00ff00]/10"></div>
                 </div>
-                <img
-                  src={`data:image/jpeg;base64,${alert.image}`}
-                  alt="EVENT SNAPSHOT"
-                  className="w-full h-auto mb-2 grayscale contrast-125"
-                />
-                <div className="text-[10px] space-y-1">
-                  {alert.detections.map((d, i) => (
-                    <div key={i} className="flex justify-between items-center">
-                      <span className="text-black bg-hacker-green px-1">{d.label.toUpperCase()}</span>
-                      <span className="opacity-60">{(d.confidence * 100).toFixed(0)}%</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-            {!alerts.length && (
-              <div className="text-center opacity-30 mt-20">NO_INCIDENTS_DETECTED</div>
+              ))
             )}
           </div>
         </aside>
       </main>
 
       <style>{`
-        @keyframes pulse-once {
-          0%   { background-color: #00ff0033; }
-          100% { background-color: transparent; }
+        @keyframes radar-sweep {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
         }
-        .animate-pulse-once {
-          animation: pulse-once 1s ease-out;
+        @keyframes ping-slow {
+          0% { transform: scale(0.8); opacity: 0; }
+          50% { opacity: 0.3; }
+          100% { transform: scale(1.5); opacity: 0; }
         }
-
-        /* Custom range slider styling */
-        input[type='range']::-webkit-slider-thumb {
-          -webkit-appearance: none;
-          appearance: none;
-          width: 14px;
-          height: 14px;
-          background: #00ff00;
-          border: 2px solid #000;
-          cursor: pointer;
-          border-radius: 0;
+        @keyframes v-scan {
+          0% { top: 0; }
+          100% { top: 100%; }
         }
-        input[type='range']::-moz-range-thumb {
-          width: 14px;
-          height: 14px;
-          background: #00ff00;
-          border: 2px solid #000;
-          cursor: pointer;
-          border-radius: 0;
+        @keyframes scanner {
+          0% { top: 0; }
+          100% { top: 100%; }
         }
+        .animate-radar-sweep {
+          animation: radar-sweep 8s linear infinite;
+        }
+        .animate-ping-slow {
+          animation: ping-slow 4s cubic-bezier(0, 0, 0.2, 1) infinite;
+        }
+        .animate-v-scan {
+          animation: v-scan 5s linear infinite;
+        }
+        .animate-scanner {
+          animation: scanner 2s ease-in-out infinite;
+        }
+        
+        .range-hacker::-webkit-slider-thumb {
+          -webkit-appearance: none; appearance: none;
+          width: 8px; height: 16px; background: #00ffea; border: 1px solid #000; cursor: pointer;
+        }
+        
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: #050505; }
+        ::-webkit-scrollbar-thumb { background: #1a1a1a; }
+        ::-webkit-scrollbar-thumb:hover { background: #00ff00; }
       `}</style>
     </div>
   );
