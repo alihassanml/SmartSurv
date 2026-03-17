@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 import asyncio
 import json
+from typing import Dict
 
 from camera_engine import CameraEngine
 from database import SessionLocal, Base, engine, User
@@ -27,6 +28,9 @@ class UserCreate(BaseModel):
 class UserLogin(BaseModel):
     username: str
     password: str
+
+class ThresholdsUpdate(BaseModel):
+    thresholds: Dict[str, float]
 
 app = FastAPI()
 
@@ -72,6 +76,25 @@ def start_camera():
 def stop_camera():
     camera.stop()
     return {"status": "stopped"}
+
+@app.get("/api/model/classes")
+def get_model_classes():
+    """Return model class names and their current confidence thresholds."""
+    thresholds = camera.get_thresholds()
+    classes = [
+        {"name": name, "threshold": thresholds.get(name, 0.4)}
+        for name in camera.get_class_names()
+    ]
+    return {"classes": classes}
+
+@app.post("/api/model/thresholds")
+def update_thresholds(body: ThresholdsUpdate):
+    """Update per-class confidence thresholds and restart the camera engine."""
+    camera.set_thresholds(body.thresholds)
+    # Restart only if camera was running
+    if camera.running:
+        camera.restart()
+    return {"status": "updated", "thresholds": camera.get_thresholds()}
 
 @app.get("/video_feed")
 async def video_feed():

@@ -28,9 +28,29 @@ class CameraEngine:
         self.running = False
         self.thread = None
         self.last_alert_time = 0
-        self.alert_cooldown = 3 
+        self.alert_cooldown = 3
+
+        # Per-class confidence thresholds: default 0.4 for every class
+        self.class_names = list(self.model.names.values())
+        self.class_thresholds: dict[str, float] = {
+            name: 0.4 for name in self.class_names
+        }
         
         self.processing_frame = False
+
+    def get_class_names(self) -> list[str]:
+        """Return the list of class names this model knows about."""
+        return self.class_names
+
+    def get_thresholds(self) -> dict[str, float]:
+        """Return current per-class confidence thresholds."""
+        return dict(self.class_thresholds)
+
+    def set_thresholds(self, thresholds: dict[str, float]):
+        """Update per-class confidence thresholds."""
+        for name, val in thresholds.items():
+            if name in self.class_thresholds:
+                self.class_thresholds[name] = float(val)
 
     def start(self):
         if not self.running:
@@ -51,6 +71,12 @@ class CameraEngine:
             if self.cap.isOpened():
                 self.cap.release()
 
+    def restart(self):
+        """Stop and restart the camera engine (e.g. after threshold changes)."""
+        self.stop()
+        time.sleep(0.3)
+        self.start()
+
     def _run(self):
         frame_counter = 0
         while self.running:
@@ -60,7 +86,6 @@ class CameraEngine:
                 continue
 
             # Performance: 1. Skip frames (process only every 2nd frame for YOLO)
-            # Performance: 2. Resize frame for inference
             frame_counter += 1
             if frame_counter % 2 != 0:
                 # Still show the actual frame even if we skip detection
@@ -79,7 +104,9 @@ class CameraEngine:
                 cls = int(box.cls[0])
                 label = self.model.names[cls]
                 conf = float(box.conf[0])
-                if conf > 0.4: # Lowered threshold slightly for responsiveness
+                # Use per-class threshold
+                threshold = self.class_thresholds.get(label, 0.4)
+                if conf > threshold:
                     detections.append({
                         "label": label,
                         "confidence": conf,
@@ -89,7 +116,6 @@ class CameraEngine:
             # If we have significant detections, trigger an alert
             if detections and (time.time() - self.last_alert_time > self.alert_cooldown):
                 self.last_alert_time = time.time()
-                # Use the original frame (annotated) for the snapshot
                 annotated_frame = result.plot()
                 _, buffer = cv2.imencode('.jpg', annotated_frame, [cv2.IMWRITE_JPEG_QUALITY, 50])
                 img_base64 = base64.b64encode(buffer).decode('utf-8')
@@ -101,12 +127,11 @@ class CameraEngine:
                 }
                 self.alert_queue.put(alert_data)
 
-            # Update live frame with annotations (using the small frame for speed)
+            # Update live frame with annotations
             annotated_feed = result.plot()
             if self.frame_queue.full():
                 self.frame_queue.get()
             
-            # Compress JPEG quality to reduce bandwidth/latency
             _, buffer = cv2.imencode('.jpg', annotated_feed, [cv2.IMWRITE_JPEG_QUALITY, 60])
             self.frame_queue.put(buffer.tobytes())
 
