@@ -224,19 +224,16 @@ const App: React.FC = () => {
           <div className="absolute inset-0 flex items-center justify-center">
              <div className="relative w-[800px] h-[800px] flex items-center justify-center">
                 {/* Rotating Outer Hexagon */}
-                <div className="absolute inset-0 border-[1px] border-hacker-green/20 rounded-[10%] animate-spin-slow rotate-45"></div>
-                <div className="absolute inset-[5%] border-[1px] border-hacker-green/10 rounded-[15%] animate-reverse-spin"></div>
                 
                 {/* Pulsing Scan Circle */}
-                <div className="absolute inset-[20%] border-2 border-hacker-green/30 rounded-full animate-pulse shadow-[0_0_30px_rgba(0,255,153,0.2)]"></div>
                 
                 {/* Target Brackets */}
-                <div className="absolute inset-[25%] flex items-center justify-center">
+                {/* <div className="absolute inset-[25%] flex items-center justify-center">
                    <div className="absolute top-0 left-0 w-20 h-20 border-t-2 border-l-2 border-hacker-green"></div>
                    <div className="absolute top-0 right-0 w-20 h-20 border-t-2 border-r-2 border-hacker-green"></div>
                    <div className="absolute bottom-0 left-0 w-20 h-20 border-b-2 border-l-2 border-hacker-green"></div>
                    <div className="absolute bottom-0 right-0 w-20 h-20 border-b-2 border-r-2 border-hacker-green"></div>
-                </div>
+                </div> */}
 
                 {/* Vertical Scanning Beam */}
                 <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-hacker-green to-transparent animate-biometric-scan shadow-[0_0_15px_#00ff99]"></div>
