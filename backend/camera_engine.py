@@ -144,7 +144,7 @@ class CameraEngine:
 
     def start(self):
         if not self.running:
-            if not self.cap.isOpened():
+            if self.cap is None or not self.cap.isOpened():
                 self.cap = cv2.VideoCapture(self.source)
             self.running = True
             self.thread = threading.Thread(target=self._run, daemon=True)
@@ -152,19 +152,33 @@ class CameraEngine:
 
     def stop(self):
         """Shutdown the camera feed and processing thread."""
+        print("DEBUG: Stopping CameraEngine...")
         self.running = False
+        
         if self.thread:
-            # Join with timeout to prevent blocking the entire process if thread hangs
-            self.thread.join(timeout=1.0) 
+            if self.thread.is_alive():
+                try:
+                    self.thread.join(timeout=0.5)
+                except RuntimeError:
+                    pass
             self.thread = None
         
         # Ensure camera is released
-        if self.cap and self.cap.isOpened():
+        if self.cap:
             try:
-                self.cap.release()
-                print("DEBUG: Camera resource released.")
+                if self.cap.isOpened():
+                    self.cap.release()
+                    print("DEBUG: Camera resource released.")
             except Exception as e:
                 print(f"DEBUG: Error releasing camera: {e}")
+            self.cap = None
+        
+        # Shutdown executor
+        if hasattr(self, 'executor'):
+            try:
+                self.executor.shutdown(wait=False)
+            except:
+                pass
 
     def restart(self):
         self.stop()
