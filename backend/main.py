@@ -64,6 +64,9 @@ class ThresholdsUpdate(BaseModel):
 class ModeUpdate(BaseModel):
     mode: str
 
+class SoundUpdate(BaseModel):
+    enabled: bool
+
 @app.post("/api/auth/signup")
 def signup(user: UserCreate, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.username == user.username).first()
@@ -100,6 +103,10 @@ def stop_camera():
 def set_camera_mode(body: ModeUpdate):
     camera.set_mode(body.mode)
     return {"status": "success", "mode": camera.mode}
+@app.post("/api/camera/sound")
+def set_camera_sound(body: SoundUpdate):
+    camera.set_sound_enabled(body.enabled)
+    return {"status": "success", "sound_enabled": camera.sound_enabled}
 
 @app.get("/api/model/classes")
 def get_model_classes():

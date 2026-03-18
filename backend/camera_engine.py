@@ -60,6 +60,8 @@ class CameraEngine:
         # Thread Pool for heavy lifting
         self.executor = ThreadPoolExecutor(max_workers=2)
         
+        self.sound_enabled = True # Master switch
+        
         # Load persistent target on startup
         self.persistent_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'persistent_target.jpg'))
         self._load_persistent_target()
@@ -82,6 +84,10 @@ class CameraEngine:
     def set_mode(self, mode: str):
         if mode in ["detection", "search", "both"]:
             self.mode = mode
+
+    def set_sound_enabled(self, enabled: bool):
+        self.sound_enabled = enabled
+        print(f"DEBUG: Sound enabled: {enabled}")
 
     def set_search_target(self, image_path, persist=True):
         """Ultra-robust image loading using OpenCV and explicit 8-bit RGB enforcement."""
@@ -261,6 +267,11 @@ class CameraEngine:
                 self.last_activity_alert = now
                 trigger_alert = True
                 print(f"DEBUG: Activity detected: {[d['label'] for d in detections]}")
+                
+                # SOUND FOR ACTIVITY
+                if self.sound_enabled and (now - self.last_sound_time > self.sound_cooldown):
+                    self.last_sound_time = now
+                    threading.Thread(target=self._play_alert_sound, daemon=True).start()
             
             # Check Search Alert
             if is_target_match and (now - self.last_search_alert > self.search_cooldown):
@@ -269,7 +280,7 @@ class CameraEngine:
                 print("DEBUG: Target face matched!")
                 
                 # Independent sound alert
-                if (now - self.last_sound_time > self.sound_cooldown):
+                if self.sound_enabled and (now - self.last_sound_time > self.sound_cooldown):
                     self.last_sound_time = now
                     threading.Thread(target=self._play_alert_sound, daemon=True).start()
 

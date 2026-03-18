@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Settings, User, LogOut, Shield, RefreshCw, Sliders, Search, Camera, UploadCloud, AlertTriangle, Crosshair } from 'lucide-react';
+import { Settings, User, LogOut, Shield, RefreshCw, Sliders, Search, Camera, UploadCloud, AlertTriangle, Crosshair, Volume2 } from 'lucide-react';
 
 interface Detection {
   label: string;
@@ -56,10 +56,27 @@ const App: React.FC = () => {
       .then(res => res.json())
       .then(data => {
         setClassThresholds(data.classes ?? []);
+        // Also fetch sound status if needed, but for now we trust local
       })
       .catch(() => setClassThresholds([]))
       .finally(() => setThresholdsLoading(false));
   }, [showSettings]);
+
+  const [soundEnabled, setSoundEnabled] = useState(true);
+
+  const toggleSound = async () => {
+    const newVal = !soundEnabled;
+    try {
+      await fetch(`${API}/api/camera/sound`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: newVal }),
+      });
+      setSoundEnabled(newVal);
+    } catch (err) {
+      console.error("Failed to toggle sound", err);
+    }
+  };
 
   const changeMode = async (mode: 'detection' | 'search' | 'both') => {
     if (mode === systemMode) return;
@@ -346,7 +363,7 @@ const App: React.FC = () => {
 
             <Shield className="w-8 h-8" />
             
-            <span  onClick={() => navigate('/')} >SMARTSURV // OPS_CORE</span>
+            <span  onClick={() => navigate('/')} style={{cursor:"pointer"}}>SMARTSURV // OPS_CORE</span>
           </div>
           
           {/* Mode Switcher */}
@@ -483,6 +500,26 @@ const App: React.FC = () => {
                     </div>
                   </div>
                 )}
+              </div>
+
+              {/* AUDIO FEED CONTROL */}
+              <div className="p-8 border-b border-[#1a1a1a]">
+                 <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                       <Volume2 className={`w-4 h-4 ${soundEnabled ? 'text-[#00ffea]' : 'text-red-500'}`} />
+                       <div className="flex flex-col">
+                          <span className="text-xs font-bold tracking-widest">AUDIO_FEED_SYSTEM</span>
+                          <span className="text-[9px] opacity-40 uppercase">Broadcast real-time audio alerts</span>
+                       </div>
+                    </div>
+                    
+                    <button 
+                      onClick={toggleSound}
+                      className={`relative w-12 h-6 transition-all duration-300 ${soundEnabled ? 'bg-[#00ffea/20]' : 'bg-red-950/20'} border ${soundEnabled ? 'border-[#00ffea]' : 'border-red-600'}`}
+                    >
+                      <div className={`absolute top-1 bottom-1 w-4 transition-all duration-300 ${soundEnabled ? 'left-6 bg-[#00ffea] shadow-[0_0_10px_#00ffea]' : 'left-1 bg-red-600'}`}></div>
+                    </button>
+                 </div>
               </div>
 
               {/* THRESHOLDS UI */}
