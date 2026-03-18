@@ -26,8 +26,9 @@ const App: React.FC = () => {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const savedCamState = localStorage.getItem('cameraActive');
-  const [cameraActive, setCameraActive] = useState(savedCamState === null ? true : savedCamState === 'true');
+  const [cameraActive, setCameraActive] = useState(savedCamState === 'true'); // Default to false
   const [showSettings, setShowSettings] = useState(false);
+  const [isReconnecting, setIsReconnecting] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const username = localStorage.getItem('username') || 'OPERATOR';
@@ -61,16 +62,27 @@ const App: React.FC = () => {
   }, [showSettings]);
 
   const changeMode = async (mode: 'detection' | 'search' | 'both') => {
+    if (mode === systemMode) return;
+    
+    setIsReconnecting(true);
+    setAlerts([]); // Clear old alerts on mode change
+
     try {
       await fetch(`${API}/api/camera/mode`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mode }),
       });
+      
+      // Artificial delay for the hacker loading experience
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
       setSystemMode(mode);
       localStorage.setItem('systemMode', mode);
     } catch (e) {
       console.error("Failed to change mode", e);
+    } finally {
+      setIsReconnecting(false);
     }
   };
 
@@ -166,7 +178,7 @@ const App: React.FC = () => {
     const initCam = async () => {
       const pref = localStorage.getItem('cameraActive');
       const curMode = localStorage.getItem('systemMode') || 'detection';
-      const shouldStart = pref === null || pref === 'true';
+      const shouldStart = pref === 'true'; // Default to false if null
 
       // Sync initial mode to backend
       fetch(`${API}/api/camera/mode`, {
@@ -194,6 +206,9 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    // Only connect if not currently in the middle of a mode change
+    if (isReconnecting) return;
+
     const ws = new WebSocket(`ws://localhost:8000/ws`);
     ws.onopen = () => setIsConnected(true);
     ws.onclose = () => setIsConnected(false);
@@ -203,7 +218,7 @@ const App: React.FC = () => {
       setAlerts((prev) => [newAlert, ...prev].slice(0, 50));
     };
     return () => ws.close();
-  }, []);
+  }, [systemMode, isReconnecting]);
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = 0;
@@ -292,12 +307,47 @@ const App: React.FC = () => {
         </div>
       )}
 
+      {/* MODE CHANGE LOADER */}
+      {isReconnecting && (
+        <div className="fixed inset-0 z-[1000] bg-black flex flex-col items-center justify-center font-mono">
+           <div className="w-full max-w-md space-y-6 px-10">
+              <div className="flex justify-between items-end">
+                 <div className="space-y-1">
+                    <p className="text-[10px] text-hacker-green/40 font-bold tracking-[0.3em]">INITIALIZING_LINK</p>
+                    <p className="text-xl font-bold text-hacker-green tracking-tighter italic">RECONFIGURING_CORE...</p>
+                 </div>
+                 <div className="text-hacker-green text-[10px] animate-pulse">ESTABLISHING_SECURE_WS</div>
+              </div>
+              
+              <div className="h-1 w-full bg-hacker-green/10 border border-hacker-green/20 relative overflow-hidden">
+                 <div className="absolute inset-0 bg-hacker-green animate-progress-fast"></div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-8 text-[9px] opacity-40">
+                 <div className="space-y-1">
+                    <p>PORT: 8000</p>
+                    <p>PROTOCOL: WSS_V2</p>
+                    <p>ENCRYPTION: AES_256</p>
+                 </div>
+                 <div className="text-right space-y-1">
+                    <p>TARGET: {systemMode === 'detection' ? 'ACTIVITY_SCAN' : systemMode === 'search' ? 'PERSON_SEARCH' : 'HYBRID_LINK'}</p>
+                    <p>LATENCY: 12ms</p>
+                    <p>STATUS: INJECTING...</p>
+                 </div>
+              </div>
+           </div>
+           
+        </div>
+      )}
+
       {/* Header */}
       <header className="p-4 flex justify-between items-center bg-[#0a0a0a] border-b border-[#1a1a1a] relative z-10">
         <div className="text-xl font-bold tracking-tighter flex items-center gap-6">
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-[#00ff00] rounded-full animate-pulse"></div>
-            <span>SMARTSURV // OPS_CORE</span>
+
+            <Shield className="w-8 h-8" />
+            
+            <span  onClick={() => navigate('/')} >SMARTSURV // OPS_CORE</span>
           </div>
           
           {/* Mode Switcher */}
@@ -550,7 +600,6 @@ const App: React.FC = () => {
             {/* Animated Scanning Line (only during Active Person Search) */}
             {cameraActive && (systemMode === 'search' || systemMode === 'both') && searchStatus === 'active' && (
               <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                <div className="w-full h-[1px] bg-[#00ff00]/40 absolute animate-v-scan shadow-[0_0_10px_#00ff00]"></div>
                 
                 {/* Tracking Reticle Lines */}
                 <div className="h-full w-[0.5px] bg-[#00ff00]/10 absolute left-1/4 backdrop-blur-[1px]"></div>
