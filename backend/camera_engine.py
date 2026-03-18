@@ -8,9 +8,11 @@ import face_recognition
 import numpy as np
 import os
 from playsound import playsound
+from concurrent.futures import ThreadPoolExecutor
+import shutil
 
 class CameraEngine:
-    def __init__(self, model_path='../model/N Model/best.pt', source=0):
+    def __init__(self, model_path='../model/S Model/best.pt', source=0):
         # 1. ACTIVITY DETECTION (Your Weapon/Violence Model)
         self.model = YOLO(model_path)
         
@@ -44,8 +46,28 @@ class CameraEngine:
         # 2. PERSON SEARCH (Separated Face Recognition)
         self.target_face_encoding = None
         self.sound_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'sound', 'drop.mp3'))
+        
+        # Cooldowns
+        self.last_activity_alert = 0.0
+        self.activity_cooldown = 3.0
+        
+        self.last_search_alert = 0.0
+        self.search_cooldown = 1.5  # Reduced from 4.0
+        
         self.last_sound_time = 0.0
         self.sound_cooldown = 5
+        
+        # Thread Pool for heavy lifting
+        self.executor = ThreadPoolExecutor(max_workers=2)
+        
+        # Load persistent target on startup
+        self.persistent_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'persistent_target.jpg'))
+        self._load_persistent_target()
+
+    def _load_persistent_target(self):
+        if os.path.exists(self.persistent_path):
+            print(f"DEBUG: Restoring persistent search target from {self.persistent_path}")
+            self.set_search_target(self.persistent_path, persist=False)
 
     def get_class_names(self) -> list[str]:
         return self.class_names
@@ -61,9 +83,13 @@ class CameraEngine:
         if mode in ["detection", "search", "both"]:
             self.mode = mode
 
-    def set_search_target(self, image_path):
+    def set_search_target(self, image_path, persist=True):
         """Ultra-robust image loading using OpenCV and explicit 8-bit RGB enforcement."""
         try:
+            if persist and image_path != self.persistent_path:
+                shutil.copy(image_path, self.persistent_path)
+                image_path = self.persistent_path
+            
             print(f"DEBUG: Attempting to load search target from: {image_path}")
             # Load using OpenCV
             img = cv2.imread(image_path)
@@ -105,6 +131,9 @@ class CameraEngine:
 
     def clear_search_target(self):
         self.target_face_encoding = None
+        if os.path.exists(self.persistent_path):
+            try: os.remove(self.persistent_path)
+            except: pass
 
     def _play_alert_sound(self):
         try:
@@ -142,67 +171,95 @@ class CameraEngine:
         time.sleep(0.3)
         self.start()
 
+    def _process_detections(self, frame):
+        detections = []
+        if self.mode in ["detection", "both"]:
+            results = self.model(frame, verbose=False)
+            for box in results[0].boxes:
+                label = self.model.names[int(box.cls[0])]
+                conf = float(box.conf[0])
+                if conf >= self.class_thresholds.get(label, 0.5):
+                    detections.append({"label": label, "confidence": conf, "box": box.xyxy[0].tolist()})
+        return detections
+
+    def _process_face_search(self, frame):
+        if self.mode in ["search", "both"] and self.target_face_encoding is not None:
+            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            rgb_frame = np.ascontiguousarray(rgb_frame, dtype=np.uint8)
+            face_locations = face_recognition.face_locations(rgb_frame, model="hog")
+            if face_locations:
+                face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
+                for i, encoding in enumerate(face_encodings):
+                    matches = face_recognition.compare_faces([self.target_face_encoding], encoding, tolerance=0.5)
+                    if matches[0]:
+                        return True, face_locations[i]
+        return False, None
+
     def _run(self):
-        frame_counter = 0
         while self.running:
-            ret, frame = self.cap.read()
+            # 1. FLUSH CAMERA BUFFER (Crucial for real-time accuracy)
+            # Read all pending frames and discard them, keeping only the latest one
+            for _ in range(5): # Quickly check for buffered frames
+                self.cap.grab()
+            
+            ret, frame = self.cap.retrieve()
+            if not ret:
+                # Fallback to normal read if grab/retrieve fails
+                ret, frame = self.cap.read()
+            
             if not ret:
                 time.sleep(0.01)
                 continue
 
-            # Always resize for consistency
             frame = cv2.resize(frame, (800, 600))
-
-            frame_counter += 1
-            if frame_counter % 2 != 0:
-                if not self.frame_queue.full():
-                    _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 70])
-                    self.frame_queue.put(buffer.tobytes())
-                continue
-
             display_frame = frame.copy()
             
-            detections = []
-            is_target_match = False
+            # Parallel processing using the thread pool
+            future_det = self.executor.submit(self._process_detections, frame)
+            future_face = self.executor.submit(self._process_face_search, frame)
             
-            # --- BLOCK 1: ACTIVITY DETECTION (WEAPONS / VIOLENCE) ---
-            if self.mode in ["detection", "both"]:
-                results = self.model(frame, verbose=False)
-                for box in results[0].boxes:
-                    label = self.model.names[int(box.cls[0])]
-                    conf = float(box.conf[0])
-                    if conf >= self.class_thresholds.get(label, 0.5):
-                        detections.append({"label": label, "confidence": conf, "box": box.xyxy[0].tolist()})
-                        
-                        x1, y1, x2, y2 = [int(v) for v in box.xyxy[0].tolist()]
-                        color = (0, 0, 255) if label.lower() in ['weapons', 'violence'] else (0, 255, 0)
-                        cv2.rectangle(display_frame, (x1, y1), (x2, y2), color, 2)
-                        cv2.putText(display_frame, f"{label} {conf:.2f}", (x1, y1 - 10),
-                                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+            detections = future_det.result()
+            is_target_match, face_loc = future_face.result()
 
-            # --- BLOCK 2: PERSON SEARCH (FACE MATCH) ---
-            if self.mode in ["search", "both"] and self.target_face_encoding is not None:
-                # Convert frame to RGB and ensure correct layout
-                rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                rgb_frame = np.ascontiguousarray(rgb_frame, dtype=np.uint8)
-                
-                face_locations = face_recognition.face_locations(rgb_frame, model="hog")
-                if face_locations:
-                    face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
-                    for i, encoding in enumerate(face_encodings):
-                        matches = face_recognition.compare_faces([self.target_face_encoding], encoding, tolerance=0.5)
-                        if matches[0]:
-                            is_target_match = True
-                            top, right, bottom, left = face_locations[i]
-                            cv2.rectangle(display_frame, (left, top), (right, bottom), (255, 0, 0), 2)
-                            cv2.putText(display_frame, "Target Lock", (left, top - 10),
-                                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (25, 0, 0), 2)
-                            break
+            # --- DRAWING ---
+            for d in detections:
+                x1, y1, x2, y2 = [int(v) for v in d["box"]]
+                color = (0, 0, 255) if d["label"].lower() in ['weapons', 'weapon', 'violence', 'pistol', 'knife', 'guns', 'person with knife'] else (0, 255, 0)
+                cv2.rectangle(display_frame, (x1, y1), (x2, y2), color, 2)
+                cv2.putText(display_frame, f"{d['label']} {d['confidence']:.2f}", (x1, y1 - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+
+            if is_target_match and face_loc:
+                top, right, bottom, left = face_loc
+                center = ((left + right) // 2, (top + bottom) // 2)
+                radius = int(max(right - left, bottom - top) * 0.7)
+                color = (0, 0, 255) # RED
+                cv2.circle(display_frame, center, radius, color, 3)
+                # cv2.putText(display_frame, "TARGET LOCK", (left, top - 20),
+                #             cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
 
             # --- ALERTS ---
             now = time.time()
-            if is_target_match or (detections and (now - self.last_alert_time > self.alert_cooldown)):
-                self.last_alert_time = now
+            trigger_alert = False
+            
+            # Check Activity Alert
+            if detections and (now - self.last_activity_alert > self.activity_cooldown):
+                self.last_activity_alert = now
+                trigger_alert = True
+                print(f"DEBUG: Activity detected: {[d['label'] for d in detections]}")
+            
+            # Check Search Alert
+            if is_target_match and (now - self.last_search_alert > self.search_cooldown):
+                self.last_search_alert = now
+                trigger_alert = True
+                print("DEBUG: Target face matched!")
+                
+                # Independent sound alert
+                if (now - self.last_sound_time > self.sound_cooldown):
+                    self.last_sound_time = now
+                    threading.Thread(target=self._play_alert_sound, daemon=True).start()
+
+            if trigger_alert:
                 _, buffer = cv2.imencode('.jpg', display_frame, [cv2.IMWRITE_JPEG_QUALITY, 50])
                 img_base64 = base64.b64encode(buffer).decode('utf-8')
                 
@@ -212,11 +269,6 @@ class CameraEngine:
                     "image": img_base64,
                     "is_person_search_match": is_target_match
                 })
-                
-                if is_target_match and (now - self.last_sound_time > self.sound_cooldown):
-                    self.last_sound_time = now
-                    threading.Thread(target=self._play_alert_sound, daemon=True).start()
-
             # --- STREAM ---
             if self.frame_queue.full(): self.frame_queue.get()
             _, buffer = cv2.imencode('.jpg', display_frame, [cv2.IMWRITE_JPEG_QUALITY, 60])
