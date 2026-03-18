@@ -175,30 +175,36 @@ def clear_person_search():
 
 @app.get("/video_feed")
 async def video_feed():
+    from fastapi.concurrency import run_in_threadpool
     async def generate():
         try:
             while app.state.is_running:
-                frame = camera.get_frame()
+                # Use run_in_threadpool to avoid blocking the main event loop
+                frame = await run_in_threadpool(camera.get_frame)
                 if frame is None:
                     await asyncio.sleep(0.01)
                     continue
                 yield (b'--frame\r\n'
                        b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+        except (RuntimeError, GeneratorExit, asyncio.CancelledError):
+            pass
         except Exception:
             pass
     return StreamingResponse(generate(), media_type="multipart/x-mixed-replace; boundary=frame")
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
+    from fastapi.concurrency import run_in_threadpool
     await websocket.accept()
     try:
         while app.state.is_running:
-            alerts = camera.get_alerts()
+            # Avoid blocking the event loop
+            alerts = await run_in_threadpool(camera.get_alerts)
             if alerts:
                 for alert in alerts:
                     await websocket.send_text(json.dumps(alert))
             await asyncio.sleep(0.5)
-    except (WebSocketDisconnect, asyncio.CancelledError):
+    except (WebSocketDisconnect, asyncio.CancelledError, RuntimeError):
         pass
     except Exception:
         pass

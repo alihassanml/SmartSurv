@@ -82,7 +82,7 @@ const App: React.FC = () => {
       console.error("Failed to sync sound setting", err);
     }
   };
-  const [searchSoundEnabled, setSearchSoundEnabled] = useState(false);
+  const [searchSoundEnabled, setSearchSoundEnabled] = useState(true);
 
   const toggleSearchSound = async () => {
     const newVal = !searchSoundEnabled;

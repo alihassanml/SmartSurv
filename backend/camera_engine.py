@@ -57,12 +57,12 @@ class CameraEngine:
         self.last_sound_time = 0.0
         self.sound_cooldown = 5
         
-        # Thread Pool for heavy lifting
-        self.executor = ThreadPoolExecutor(max_workers=2)
+        # Thread Pool for heavy lifting (initialized in start)
+        self.executor = None
         
         # Audio Settings (Per-class toggles)
         self.class_sounds = { name: False for name in self.class_names }
-        self.search_sound_enabled = False # Specific toggle for Person Search
+        self.search_sound_enabled = True # Specific toggle for Person Search
         
         self.sound_enabled = True # Master switch
         
@@ -169,6 +169,10 @@ class CameraEngine:
 
     def start(self):
         if not self.running:
+            # Re-initialize executor if needed
+            if self.executor is None:
+                self.executor = ThreadPoolExecutor(max_workers=2)
+                
             if self.cap is None or not self.cap.isOpened():
                 self.cap = cv2.VideoCapture(self.source)
             self.running = True
@@ -199,11 +203,12 @@ class CameraEngine:
             self.cap = None
         
         # Shutdown executor
-        if hasattr(self, 'executor'):
+        if self.executor:
             try:
                 self.executor.shutdown(wait=False)
             except:
                 pass
+            self.executor = None
 
     def restart(self):
         self.stop()
@@ -253,16 +258,24 @@ class CameraEngine:
             frame = cv2.resize(frame, (800, 600))
             display_frame = frame.copy()
             
+            if not self.executor:
+                time.sleep(0.01)
+                continue
+
             # Parallel processing using the thread pool
-            future_det = self.executor.submit(self._process_detections, frame)
-            future_face = self.executor.submit(self._process_face_search, frame)
-            
             try:
+                future_det = self.executor.submit(self._process_detections, frame)
+                future_face = self.executor.submit(self._process_face_search, frame)
+                
                 # Add a timeout so the loop doesn't hang if shutdown is requested
                 detections = future_det.result(timeout=2.0)
                 is_target_match, face_loc = future_face.result(timeout=2.0)
+            except (RuntimeError, AttributeError, TimeoutError):
+                # Executor might be shutting down or task timed out
+                if not self.running: break
+                continue
             except Exception as e:
-                # If we timeout or fail, skip this frame
+                # If we fail for other reasons, skip this frame
                 if not self.running: break
                 continue
 
