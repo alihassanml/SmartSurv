@@ -60,10 +60,16 @@ class CameraEngine:
         # Thread Pool for heavy lifting
         self.executor = ThreadPoolExecutor(max_workers=2)
         
+        # Audio Settings (Per-class toggles)
+        self.class_sounds = { name: False for name in self.class_names }
+        self.search_sound_enabled = False # Specific toggle for Person Search
+        
         self.sound_enabled = True # Master switch
         
         # Load persistent target on startup
-        self.persistent_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'persistent_target.jpg'))
+        data_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data'))
+        os.makedirs(data_dir, exist_ok=True)
+        self.persistent_path = os.path.join(data_dir, 'persistent_target.jpg')
         self._load_persistent_target()
 
     def _load_persistent_target(self):
@@ -84,6 +90,19 @@ class CameraEngine:
     def set_mode(self, mode: str):
         if mode in ["detection", "search", "both"]:
             self.mode = mode
+
+    def get_class_sounds(self) -> dict[str, bool]:
+        return dict(self.class_sounds)
+
+    def set_class_sounds(self, sounds: dict[str, bool]):
+        for name, val in sounds.items():
+            if name in self.class_sounds:
+                self.class_sounds[name] = bool(val)
+        print(f"DEBUG: Updated class sounds: {self.class_sounds}")
+
+    def set_search_sound_enabled(self, enabled: bool):
+        self.search_sound_enabled = enabled
+        print(f"DEBUG: Search sound enabled: {enabled}")
 
     def set_sound_enabled(self, enabled: bool):
         self.sound_enabled = enabled
@@ -238,8 +257,14 @@ class CameraEngine:
             future_det = self.executor.submit(self._process_detections, frame)
             future_face = self.executor.submit(self._process_face_search, frame)
             
-            detections = future_det.result()
-            is_target_match, face_loc = future_face.result()
+            try:
+                # Add a timeout so the loop doesn't hang if shutdown is requested
+                detections = future_det.result(timeout=2.0)
+                is_target_match, face_loc = future_face.result(timeout=2.0)
+            except Exception as e:
+                # If we timeout or fail, skip this frame
+                if not self.running: break
+                continue
 
             # --- DRAWING ---
             for d in detections:
@@ -268,8 +293,9 @@ class CameraEngine:
                 trigger_alert = True
                 print(f"DEBUG: Activity detected: {[d['label'] for d in detections]}")
                 
-                # SOUND FOR ACTIVITY
-                if self.sound_enabled and (now - self.last_sound_time > self.sound_cooldown):
+                # SOUND FOR ACTIVITY (Check if sound is enabled for any of the detected classes)
+                any_sound_enabled = any(self.class_sounds.get(d['label'], True) for d in detections)
+                if any_sound_enabled and (now - self.last_sound_time > self.sound_cooldown):
                     self.last_sound_time = now
                     threading.Thread(target=self._play_alert_sound, daemon=True).start()
             
@@ -280,7 +306,7 @@ class CameraEngine:
                 print("DEBUG: Target face matched!")
                 
                 # Independent sound alert
-                if self.sound_enabled and (now - self.last_sound_time > self.sound_cooldown):
+                if self.search_sound_enabled and (now - self.last_sound_time > self.sound_cooldown):
                     self.last_sound_time = now
                     threading.Thread(target=self._play_alert_sound, daemon=True).start()
 

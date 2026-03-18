@@ -18,6 +18,7 @@ interface Alert {
 interface ClassThreshold {
   name: string;
   threshold: number;
+  sound_enabled: boolean;
 }
 
 const API = 'http://localhost:8000';
@@ -62,19 +63,38 @@ const App: React.FC = () => {
       .finally(() => setThresholdsLoading(false));
   }, [showSettings]);
 
-  const [soundEnabled, setSoundEnabled] = useState(true);
+  const handleSoundToggle = async (className: string) => {
+    const updated = classThresholds.map(cls => 
+      cls.name === className ? { ...cls, sound_enabled: !cls.sound_enabled } : cls
+    );
+    setClassThresholds(updated);
 
-  const toggleSound = async () => {
-    const newVal = !soundEnabled;
+    try {
+      const sounds: Record<string, boolean> = {};
+      updated.forEach(c => sounds[c.name] = c.sound_enabled);
+      
+      await fetch(`${API}/api/model/sounds`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sounds }),
+      });
+    } catch (err) {
+      console.error("Failed to sync sound setting", err);
+    }
+  };
+  const [searchSoundEnabled, setSearchSoundEnabled] = useState(false);
+
+  const toggleSearchSound = async () => {
+    const newVal = !searchSoundEnabled;
     try {
       await fetch(`${API}/api/camera/sound`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ enabled: newVal }),
       });
-      setSoundEnabled(newVal);
+      setSearchSoundEnabled(newVal);
     } catch (err) {
-      console.error("Failed to toggle sound", err);
+      console.error("Failed to toggle search sound", err);
     }
   };
 
@@ -451,7 +471,26 @@ const App: React.FC = () => {
                       <Search className="w-4 h-4 text-[#00ff00]" />
                       <span className="text-xs font-bold tracking-widest">PERSON_TARGET_LOCK</span>
                    </div>
-                   {searchStatus === 'active' && (
+                   {/* GLOBAL PERSON SEARCH AUDIO */}
+                 <div className="p-8 border-b border-[#111]">
+                    <div className="flex items-center justify-between">
+                       <div className="flex items-center gap-3">
+                          <Volume2 className={`w-4 h-4 ${searchSoundEnabled ? 'text-red-500' : 'text-[#333]'}`} />
+                          <div className="flex flex-col">
+                             <span className="text-[10px] font-bold tracking-widest">PERSON_SEARCH_AUDIO</span>
+                             <span className="text-[8px] opacity-40 uppercase">Alert for Target Match</span>
+                          </div>
+                       </div>
+                       <button 
+                         onClick={toggleSearchSound}
+                         className={`relative w-10 h-5 transition-all duration-300 border ${searchSoundEnabled ? 'border-red-600 bg-red-950/10' : 'border-[#222] bg-[#111]'}`}
+                       >
+                         <div className={`absolute top-0.5 bottom-0.5 w-3.5 transition-all duration-300 ${searchSoundEnabled ? 'left-5.5 bg-red-600 shadow-[0_0_8px_#ff0000]' : 'left-1 bg-[#444]'}`}></div>
+                       </button>
+                    </div>
+                 </div>
+
+                 {searchStatus === 'active' && (
                      <span className="text-[9px] text-red-500 animate-pulse font-bold">[ SCANNING_ACTIVE ]</span>
                    )}
                 </div>
@@ -502,26 +541,6 @@ const App: React.FC = () => {
                 )}
               </div>
 
-              {/* AUDIO FEED CONTROL */}
-              <div className="p-8 border-b border-[#1a1a1a]">
-                 <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                       <Volume2 className={`w-4 h-4 ${soundEnabled ? 'text-[#00ffea]' : 'text-red-500'}`} />
-                       <div className="flex flex-col">
-                          <span className="text-xs font-bold tracking-widest">AUDIO_FEED_SYSTEM</span>
-                          <span className="text-[9px] opacity-40 uppercase">Broadcast real-time audio alerts</span>
-                       </div>
-                    </div>
-                    
-                    <button 
-                      onClick={toggleSound}
-                      className={`relative w-12 h-6 transition-all duration-300 ${soundEnabled ? 'bg-[#00ffea/20]' : 'bg-red-950/20'} border ${soundEnabled ? 'border-[#00ffea]' : 'border-red-600'}`}
-                    >
-                      <div className={`absolute top-1 bottom-1 w-4 transition-all duration-300 ${soundEnabled ? 'left-6 bg-[#00ffea] shadow-[0_0_10px_#00ffea]' : 'left-1 bg-red-600'}`}></div>
-                    </button>
-                 </div>
-              </div>
-
               {/* THRESHOLDS UI */}
               <div className="p-8">
                 <div className="flex items-center gap-2 mb-8">
@@ -535,12 +554,29 @@ const App: React.FC = () => {
                     FETCHING_DYNAMIC_CLASSES...
                   </div>
                 ) : (
-                  <div className="space-y-8">
+                  <div className="space-y-12">
                     {classThresholds.map((cls) => (
-                      <div key={cls.name} className="group">
+                      <div key={cls.name} className="group border-b border-[#111] pb-8 last:border-0">
+                        {/* Per-class Sound Toggle */}
+                        <div className="flex items-center justify-between mb-6">
+                           <div className="flex items-center gap-3">
+                              <Volume2 className={`w-4 h-4 ${cls.sound_enabled ? 'text-[#00ffea]' : 'text-red-600/50'}`} />
+                              <div className="flex flex-col">
+                                 <span className="text-[10px] font-bold tracking-widest">AUDIO_FEED_SYSTEM</span>
+                                 <span className="text-[8px] opacity-40 uppercase">Alert for {cls.name}</span>
+                              </div>
+                           </div>
+                           <button 
+                             onClick={() => handleSoundToggle(cls.name)}
+                             className={`relative w-10 h-5 transition-all duration-300 border ${cls.sound_enabled ? 'border-[#00ffea] bg-[#00ffea]/5' : 'border-red-900/30 bg-red-950/5'}`}
+                           >
+                             <div className={`absolute top-0.5 bottom-0.5 w-3.5 transition-all duration-300 ${cls.sound_enabled ? 'left-5.5 bg-[#00ffea] shadow-[0_0_8px_#00ffea]' : 'left-1 bg-red-900'}`}></div>
+                           </button>
+                        </div>
+
                         <div className="flex justify-between items-end mb-3">
-                          <span className="text-[10px] font-bold opacity-40 group-hover:opacity-100 transition-opacity">
-                            {cls.name.toUpperCase()}_CHECK
+                          <span className="text-[10px] font-bold opacity-40 group-hover:opacity-100 transition-opacity uppercase">
+                            {cls.name}_CONFIDENCE_LINK
                           </span>
                           <span className="text-[14px] font-bold tabular-nums">
                             {(cls.threshold * 100).toFixed(0)}<span className="text-[10px] opacity-40 ml-0.5">%</span>

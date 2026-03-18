@@ -27,9 +27,11 @@ def get_db():
 async def lifespan(app: FastAPI):
     # Startup: Initialize camera resources
     print("STARTING_SMARTSURV_CORE...")
+    app.state.is_running = True
     yield
     # Shutdown: Release resources
     print("SHUTTING_DOWN_RESOURCES...")
+    app.state.is_running = False
     camera.stop()
 
 app = FastAPI(lifespan=lifespan)
@@ -66,6 +68,9 @@ class ModeUpdate(BaseModel):
 
 class SoundUpdate(BaseModel):
     enabled: bool
+
+class ClassSoundsUpdate(BaseModel):
+    sounds: Dict[str, bool]
 
 @app.post("/api/auth/signup")
 def signup(user: UserCreate, db: Session = Depends(get_db)):
@@ -105,14 +110,26 @@ def set_camera_mode(body: ModeUpdate):
     return {"status": "success", "mode": camera.mode}
 @app.post("/api/camera/sound")
 def set_camera_sound(body: SoundUpdate):
+    camera.set_search_sound_enabled(body.enabled)
+    # Also update master switch if needed, but per-class is more granular
     camera.set_sound_enabled(body.enabled)
     return {"status": "success", "sound_enabled": camera.sound_enabled}
+
+@app.post("/api/model/sounds")
+def update_class_sounds(body: ClassSoundsUpdate):
+    camera.set_class_sounds(body.sounds)
+    return {"status": "updated", "sounds": camera.get_class_sounds()}
 
 @app.get("/api/model/classes")
 def get_model_classes():
     thresholds = camera.get_thresholds()
+    sounds = camera.get_class_sounds()
     classes = [
-        {"name": name, "threshold": thresholds.get(name, 0.4)}
+        {
+            "name": name, 
+            "threshold": thresholds.get(name, 0.4),
+            "sound_enabled": sounds.get(name, False)
+        }
         for name in camera.get_class_names()
     ]
     return {"classes": classes}
@@ -158,27 +175,36 @@ def clear_person_search():
 
 @app.get("/video_feed")
 async def video_feed():
-    def generate():
-        while True:
-            frame = camera.get_frame()
-            if frame is None:
-                continue
-            yield (b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+    async def generate():
+        try:
+            while app.state.is_running:
+                frame = camera.get_frame()
+                if frame is None:
+                    await asyncio.sleep(0.01)
+                    continue
+                yield (b'--frame\r\n'
+                       b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+        except Exception:
+            pass
     return StreamingResponse(generate(), media_type="multipart/x-mixed-replace; boundary=frame")
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     try:
-        while True:
+        while app.state.is_running:
             alerts = camera.get_alerts()
             if alerts:
                 for alert in alerts:
                     await websocket.send_text(json.dumps(alert))
             await asyncio.sleep(0.5)
-    except WebSocketDisconnect:
+    except (WebSocketDisconnect, asyncio.CancelledError):
         pass
+    except Exception:
+        pass
+    finally:
+        try: await websocket.close()
+        except: pass
 
 if __name__ == "__main__":
     import uvicorn
