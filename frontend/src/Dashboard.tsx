@@ -20,8 +20,11 @@ const Dashboard: React.FC = () => {
   const [cameraActive, setCameraActive] = useState(savedCamState === 'true');
   const [showSettings, setShowSettings] = useState(false);
   const [isReconnecting, setIsReconnecting] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const navigate = useNavigate();
+  const scrollRef  = useRef<HTMLDivElement>(null);
+  const canvasRef  = useRef<HTMLCanvasElement>(null);
+  const rafRef     = useRef<number>(0);
+  const frameRef   = useRef<string | null>(null);
+  const navigate   = useNavigate();
   const username = localStorage.getItem('username') || 'OPERATOR';
 
   const savedMode = localStorage.getItem('systemMode') as 'detection' | 'search' | 'both' | null;
@@ -192,7 +195,68 @@ const Dashboard: React.FC = () => {
     if (scrollRef.current) scrollRef.current.scrollTop = 0;
   }, [alerts]);
 
+  // ── Smooth canvas-based frame rendering ──────────────────────────────────
+  // Reads the MJPEG stream boundary-by-boundary, decodes each JPEG frame,
+  // and draws it onto a canvas — eliminating the white-flash MJPEG stutter.
+  useEffect(() => {
+    if (!cameraActive) { cancelAnimationFrame(rafRef.current); return; }
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    let active = true;
+
+    const run = async () => {
+      try {
+        const res = await fetch(`${API}/video_feed`, { cache: 'no-store' });
+        if (!res.body || !active) return;
+        const reader = res.body.getReader();
+        let buffer   = new Uint8Array(0);
+
+        while (active) {
+          const { done, value } = await reader.read();
+          if (done || !active) { reader.cancel(); break; }
+
+          // Append chunk
+          const tmp = new Uint8Array(buffer.length + value.length);
+          tmp.set(buffer); tmp.set(value, buffer.length);
+          buffer = tmp;
+
+          // Find complete JPEG (FF D8 … FF D9) inside the MJPEG boundary stream
+          let start = -1, end = -1;
+          for (let i = 0; i < buffer.length - 1; i++) {
+            if (buffer[i] === 0xFF && buffer[i + 1] === 0xD8) start = i;
+            if (start >= 0 && buffer[i] === 0xFF && buffer[i + 1] === 0xD9) { end = i + 2; break; }
+          }
+
+          if (start >= 0 && end > start) {
+            const jpeg = buffer.slice(start, end);
+            buffer = buffer.slice(end);
+
+            const url = URL.createObjectURL(new Blob([jpeg], { type: 'image/jpeg' }));
+            const img = new Image();
+            img.onload = () => {
+              if (!active) { URL.revokeObjectURL(url); return; }
+              if (canvas.width !== img.naturalWidth)   canvas.width  = img.naturalWidth;
+              if (canvas.height !== img.naturalHeight)  canvas.height = img.naturalHeight;
+              ctx.drawImage(img, 0, 0);
+              URL.revokeObjectURL(url);
+            };
+            img.src = url;
+          }
+        }
+      } catch (_) {
+        // Backend not ready — retry after 600ms
+        if (active) setTimeout(run, 600);
+      }
+    };
+
+    run();
+    return () => { active = false; };
+  }, [cameraActive]);
+
   const modeConfig = {
+
     detection: { label: 'ACTIVITY_SCAN',  color: '#00ff85', bg: 'rgba(0,255,133,0.1)',  border: 'rgba(0,255,133,0.4)' },
     search:    { label: 'PERSON_SEARCH',  color: '#ff4466', bg: 'rgba(255,68,102,0.1)', border: 'rgba(255,68,102,0.4)' },
     both:      { label: 'HYBRID_LINK',    color: '#00e5ff', bg: 'rgba(0,229,255,0.1)',  border: 'rgba(0,229,255,0.4)' },
@@ -545,11 +609,13 @@ const Dashboard: React.FC = () => {
               <div key={i} className={`absolute w-8 h-8 ${cls} border-[#00ff85]/30 group-hover:border-[#00ff85]/70 transition-colors duration-500 animate-corner-pulse`} />
             ))}
 
-            {/* Active feed or offline state */}
-            {cameraActive ? (
-              <img src={`${API}/video_feed`} alt="LIVE FEED"
-                className="absolute inset-0 w-full h-full object-contain brightness-105" />
-            ) : (
+            {/* Smooth canvas-based video feed */}
+            <canvas
+              ref={canvasRef}
+              className="absolute inset-0 w-full h-full object-contain"
+              style={{ display: cameraActive ? 'block' : 'none', imageRendering: 'auto' }}
+            />
+            {!cameraActive ? (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-[#00ff85]/25">
                 <motion.div animate={{ opacity: [0.3, 0.7, 0.3] }} transition={{ repeat: Infinity, duration: 2 }}>
                   <Camera className="w-14 h-14" />
@@ -560,7 +626,7 @@ const Dashboard: React.FC = () => {
                   INITIALIZE_FEED
                 </button>
               </div>
-            )}
+            ) : null}
 
             {/* HUD — top-left */}
             <div className="absolute top-4 left-4 flex flex-col gap-1.5 z-10">

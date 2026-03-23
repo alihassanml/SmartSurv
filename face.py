@@ -1,8 +1,21 @@
+import os
+import sys
+import warnings
+import contextlib
+
+os.environ["TRANSFORMERS_NO_ADVISORY_WARNINGS"] = "1"
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
 import cv2
 import threading
 import torch
-from facenet_pytorch import MTCNN, InceptionResnetV1
+
+# Suppress noisy stderr from transformers "Disabling PyTorch" message during facenet import
+with open(os.devnull, 'w') as devnull, contextlib.redirect_stderr(devnull):
+    from facenet_pytorch import MTCNN, InceptionResnetV1
+
 from PIL import Image
+
 
 # Select the most suitable device (GPU if available, otherwise CPU)
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
