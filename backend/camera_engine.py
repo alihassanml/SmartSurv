@@ -12,7 +12,7 @@ from concurrent.futures import ThreadPoolExecutor
 import shutil
 
 class CameraEngine:
-    def __init__(self, model_path='../model/S Model/best.pt', source=0):
+    def __init__(self, model_path='../model/N2 Model/best.pt', source=0):
         # 1. ACTIVITY DETECTION (Your Weapon/Violence Model)
         self.model = YOLO(model_path)
         
@@ -109,35 +109,18 @@ class CameraEngine:
         print(f"DEBUG: Sound enabled: {enabled}")
 
     def set_search_target(self, image_path, persist=True):
-        """Ultra-robust image loading using OpenCV and explicit 8-bit RGB enforcement."""
+        """Robust image loading using PIL via face_recognition."""
         try:
             if persist and image_path != self.persistent_path:
                 shutil.copy(image_path, self.persistent_path)
                 image_path = self.persistent_path
             
             print(f"DEBUG: Attempting to load search target from: {image_path}")
-            # Load using OpenCV
-            img = cv2.imread(image_path)
-            if img is None:
-                print(f"DEBUG Error: OpenCV failed to read image at: {image_path}")
-                return False
             
-            # 1. Ensure it is uint8
-            if img.dtype != np.uint8:
-                img = img.astype(np.uint8)
-                
-            # 2. Convert BGR to RGB
-            image_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            # Load using face_recognition (uses PIL internally, guarantees 8-bit RGB array compatible with dlib)
+            image_rgb = face_recognition.load_image_file(image_path)
             
-            # 3. FORCE C-CONTIGUOUS AND UINT8 AGAIN (Strict requirement for dlib)
-            image_rgb = np.ascontiguousarray(image_rgb, dtype=np.uint8)
-            
-            # 4. Final safety check on dimensions
-            if len(image_rgb.shape) != 3 or image_rgb.shape[2] != 3:
-                print(f"DEBUG Error: Image has invalid shape {image_rgb.shape}")
-                return False
-
-            print(f"DEBUG: Image converted to RGB. Shape: {image_rgb.shape}, Dtype: {image_rgb.dtype}")
+            print(f"DEBUG: Image loaded. Shape: {image_rgb.shape}, Dtype: {image_rgb.dtype}")
             
             # Extract encoding
             encodings = face_recognition.face_encodings(image_rgb)
@@ -240,7 +223,13 @@ class CameraEngine:
         return False, None
 
     def _run(self):
+        frame_counter = 0
+        last_detections = []
+        last_is_target_match = False
+        last_face_loc = None
+
         while self.running:
+            frame_counter += 1
             # 1. FLUSH CAMERA BUFFER (Crucial for real-time accuracy)
             # Read all pending frames and discard them, keeping only the latest one
             for _ in range(5): # Quickly check for buffered frames
@@ -263,32 +252,34 @@ class CameraEngine:
                 continue
 
             # Parallel processing using the thread pool
-            try:
-                future_det = self.executor.submit(self._process_detections, frame)
-                future_face = self.executor.submit(self._process_face_search, frame)
-                
-                # Add a timeout so the loop doesn't hang if shutdown is requested
-                detections = future_det.result(timeout=2.0)
-                is_target_match, face_loc = future_face.result(timeout=2.0)
-            except (RuntimeError, AttributeError, TimeoutError):
-                # Executor might be shutting down or task timed out
-                if not self.running: break
-                continue
-            except Exception as e:
-                # If we fail for other reasons, skip this frame
-                if not self.running: break
-                continue
+            # PROCESS EVERY 5th FRAME TO MAKE THE STREAM FAST
+            if frame_counter % 5 == 0:
+                try:
+                    future_det = self.executor.submit(self._process_detections, frame)
+                    future_face = self.executor.submit(self._process_face_search, frame)
+                    
+                    # Add a timeout so the loop doesn't hang if shutdown is requested
+                    last_detections = future_det.result(timeout=2.0)
+                    last_is_target_match, last_face_loc = future_face.result(timeout=2.0)
+                except (RuntimeError, AttributeError, TimeoutError):
+                    # Executor might be shutting down or task timed out
+                    if not self.running: break
+                    pass
+                except Exception as e:
+                    # If we fail for other reasons, keep previous detections
+                    if not self.running: break
+                    pass
 
             # --- DRAWING ---
-            for d in detections:
+            for d in last_detections:
                 x1, y1, x2, y2 = [int(v) for v in d["box"]]
                 color = (0, 0, 255) if d["label"].lower() in ['weapons', 'weapon', 'violence', 'pistol', 'knife', 'guns', 'person with knife'] else (0, 255, 0)
                 cv2.rectangle(display_frame, (x1, y1), (x2, y2), color, 2)
                 cv2.putText(display_frame, f"{d['label']} {d['confidence']:.2f}", (x1, y1 - 10),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
 
-            if is_target_match and face_loc:
-                top, right, bottom, left = face_loc
+            if last_is_target_match and last_face_loc:
+                top, right, bottom, left = last_face_loc
                 center = ((left + right) // 2, (top + bottom) // 2)
                 radius = int(max(right - left, bottom - top) * 0.7)
                 color = (0, 0, 255) # RED
@@ -301,19 +292,19 @@ class CameraEngine:
             trigger_alert = False
             
             # Check Activity Alert
-            if detections and (now - self.last_activity_alert > self.activity_cooldown):
+            if last_detections and (now - self.last_activity_alert > self.activity_cooldown):
                 self.last_activity_alert = now
                 trigger_alert = True
-                print(f"DEBUG: Activity detected: {[d['label'] for d in detections]}")
+                print(f"DEBUG: Activity detected: {[d['label'] for d in last_detections]}")
                 
                 # SOUND FOR ACTIVITY (Check if sound is enabled for any of the detected classes)
-                any_sound_enabled = any(self.class_sounds.get(d['label'], True) for d in detections)
+                any_sound_enabled = any(self.class_sounds.get(d['label'], True) for d in last_detections)
                 if any_sound_enabled and (now - self.last_sound_time > self.sound_cooldown):
                     self.last_sound_time = now
                     threading.Thread(target=self._play_alert_sound, daemon=True).start()
             
             # Check Search Alert
-            if is_target_match and (now - self.last_search_alert > self.search_cooldown):
+            if last_is_target_match and (now - self.last_search_alert > self.search_cooldown):
                 self.last_search_alert = now
                 trigger_alert = True
                 print("DEBUG: Target face matched!")
@@ -329,9 +320,9 @@ class CameraEngine:
                 
                 self.alert_queue.put({
                     "timestamp": time.strftime("%H:%M:%S"),
-                    "detections": detections,
+                    "detections": last_detections,
                     "image": img_base64,
-                    "is_person_search_match": is_target_match
+                    "is_person_search_match": last_is_target_match
                 })
             # --- STREAM ---
             if self.frame_queue.full(): self.frame_queue.get()
