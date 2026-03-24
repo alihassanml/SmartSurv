@@ -69,6 +69,9 @@ class ModeUpdate(BaseModel):
 class SoundUpdate(BaseModel):
     enabled: bool
 
+class EmailUpdate(BaseModel):
+    enabled: bool
+
 class ClassSoundsUpdate(BaseModel):
     sounds: Dict[str, bool]
 
@@ -111,9 +114,13 @@ def set_camera_mode(body: ModeUpdate):
 @app.post("/api/camera/sound")
 def set_camera_sound(body: SoundUpdate):
     camera.set_search_sound_enabled(body.enabled)
-    # Also update master switch if needed, but per-class is more granular
     camera.set_sound_enabled(body.enabled)
     return {"status": "success", "sound_enabled": camera.sound_enabled}
+
+@app.post("/api/camera/email")
+def set_camera_email(body: EmailUpdate):
+    camera.set_email_enabled(body.enabled)
+    return {"status": "success", "email_enabled": camera.email_enabled}
 
 @app.post("/api/model/sounds")
 def update_class_sounds(body: ClassSoundsUpdate):

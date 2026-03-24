@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Settings, User, LogOut, Shield, RefreshCw, Sliders,
   Search, Camera, UploadCloud, AlertTriangle, Crosshair,
-  Volume2, X, ChevronDown, Zap, Radio
+  Volume2, X, ChevronDown, Zap, Radio, Mail
 } from 'lucide-react';
 
 interface Detection { label: string; confidence: number; box: number[]; }
@@ -39,6 +39,7 @@ const Dashboard: React.FC = () => {
   const [searchStatus, setSearchStatus] = useState<'idle' | 'uploading' | 'active' | 'error'>(savedSearchStatus || 'idle');
   const [previewUrl, setPreviewUrl] = useState<string | null>(savedPreview);
   const [searchSoundEnabled, setSearchSoundEnabled] = useState(true);
+  const [emailEnabled, setEmailEnabled] = useState(true);
 
   useEffect(() => {
     if (!showSettings) return;
@@ -74,6 +75,17 @@ const Dashboard: React.FC = () => {
       });
       setSearchSoundEnabled(newVal);
     } catch (err) { console.error('Failed to toggle search sound', err); }
+  };
+
+  const toggleEmail = async () => {
+    const newVal = !emailEnabled;
+    try {
+      await fetch(`${API}/api/camera/email`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: newVal }),
+      });
+      setEmailEnabled(newVal);
+    } catch (err) { console.error('Failed to toggle email', err); }
   };
 
   const changeMode = async (mode: 'detection' | 'search' | 'both') => {
@@ -483,6 +495,22 @@ const Dashboard: React.FC = () => {
                       className="relative w-9 h-5 border transition-all duration-300"
                       style={searchSoundEnabled ? { borderColor: '#ff4466', background: 'rgba(255,68,102,0.05)' } : { borderColor: 'rgba(0,255,133,0.15)' }}>
                       <div className={`absolute top-0.5 bottom-0.5 w-3 transition-all duration-300 ${searchSoundEnabled ? 'right-0.5 bg-red-500 shadow-[0_0_8px_#ff4466]' : 'left-0.5 bg-[#333]'}`} />
+                    </button>
+                  </div>
+
+                  {/* Email Toggle */}
+                  <div className="flex items-center justify-between mb-5 p-3 bg-[rgba(0,180,255,0.02)] border border-[rgba(0,180,255,0.08)]">
+                    <div className="flex items-center gap-2.5">
+                      <Mail className={`w-3.5 h-3.5 ${emailEnabled ? 'text-[#00e5ff]' : 'text-[#00ff85]/20'}`} />
+                      <div>
+                        <p className="text-[9px] font-bold tracking-widest text-[#00e5ff]">EMAIL_ALERTS_PROTOCOL</p>
+                        <p className="text-[8px] opacity-30 text-[#00e5ff]/60">Send incident reports to your inbox</p>
+                      </div>
+                    </div>
+                    <button onClick={toggleEmail}
+                      className="relative w-9 h-5 border transition-all duration-300"
+                      style={emailEnabled ? { borderColor: '#00e5ff', background: 'rgba(0,229,255,0.05)' } : { borderColor: 'rgba(0,255,133,0.15)' }}>
+                      <div className={`absolute top-0.5 bottom-0.5 w-3 transition-all duration-300 ${emailEnabled ? 'right-0.5 bg-[#00e5ff] shadow-[0_0_8px_#00e5ff]' : 'left-0.5 bg-[#333]'}`} />
                     </button>
                   </div>
 

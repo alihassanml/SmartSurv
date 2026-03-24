@@ -12,6 +12,13 @@ from PIL import Image
 from ultralytics import YOLO
 from concurrent.futures import ThreadPoolExecutor
 from playsound import playsound
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.image import MIMEImage
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # ── Suppress the noisy "Disabling PyTorch" stderr from transformers ──────────
 with open(os.devnull, 'w') as _devnull, contextlib.redirect_stderr(_devnull):
@@ -87,6 +94,19 @@ class CameraEngine:
         self.search_sound_enabled = True
         self.sound_enabled        = True
 
+        # Email
+        self.email_enabled   = True
+        self.last_email_time = 0.0
+        self.email_sender    = os.getenv("SMTP_EMAIL")
+        self.email_password  = os.getenv("SMTP_PASSWORD")
+        self.smtp_server     = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+        self.smtp_port       = int(os.getenv("SMTP_PORT", "587"))
+
+        # Location Metadata
+        self.camera_id       = os.getenv("CAMERA_ID", "CAM-01-NORTH")
+        self.camera_lat      = os.getenv("CAMERA_LAT", "31.4504")
+        self.camera_lon      = os.getenv("CAMERA_LON", "73.1350")
+
         # Persistent target
         data_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data'))
         os.makedirs(data_dir, exist_ok=True)
@@ -106,6 +126,52 @@ class CameraEngine:
                 playsound(self.sound_path)
         except Exception as e:
             print(f"[Sound] Error: {e}")
+
+    def _send_email_alert(self, frame_buf, detections, is_search_match=False):
+        if not self.email_sender or not self.email_password:
+            print("[Email] Credentials missing in .env")
+            return
+
+        try:
+            msg = MIMEMultipart()
+            subject = "🚨 SMARTSURV: SECURITY ALERT 🚨"
+            if is_search_match:
+                subject = "🎯 SMARTSURV: TARGET PERSON LOCATED 🎯"
+            
+            msg['Subject'] = subject
+            msg['From']    = self.email_sender
+            msg['To']      = self.email_sender # Sending to self for now
+
+            threats = [d['label'] for d in detections]
+            body = f"""
+            <h2>SmartSurv Security Incident Detected</h2>
+            <p><b>Camera ID:</b> {self.camera_id}</p>
+            <p><b>Timestamp:</b> {time.strftime("%Y-%m-%d %H:%M:%S")}</p>
+            <p><b>Detectors:</b> {', '.join(threats) if threats else 'Person Search'}</p>
+            <p><b>Location:</b> <a href="https://www.google.com/maps?q={self.camera_lat},{self.camera_lon}">View on Google Maps</a> ({self.camera_lat}, {self.camera_lon})</p>
+            <p><b>Status:</b> Immediate attention required.</p>
+            <hr>
+            <p><i>This is an automated alert from your SmartSurv Intelligent Surveillance System.</i></p>
+            """
+            msg.attach(MIMEText(body, 'html'))
+
+            image = MIMEImage(frame_buf, name="incident.jpg")
+            msg.attach(image)
+
+            if self.smtp_port == 465:
+                # SSL (Port 465)
+                with smtplib.SMTP_SSL(self.smtp_server, self.smtp_port, timeout=10) as server:
+                    server.login(self.email_sender, self.email_password)
+                    server.send_message(msg)
+            else:
+                # STARTTLS (Port 587)
+                with smtplib.SMTP(self.smtp_server, self.smtp_port, timeout=10) as server:
+                    server.starttls()
+                    server.login(self.email_sender, self.email_password)
+                    server.send_message(msg)
+            print(f"[Email] Alert sent successfully to {self.email_sender}")
+        except Exception as e:
+            print(f"[Email] Failed to send: {e}")
 
     # ── Public API ───────────────────────────────────────────────────────────
 
@@ -137,6 +203,10 @@ class CameraEngine:
 
     def set_sound_enabled(self, enabled: bool):
         self.sound_enabled = enabled
+
+    def set_email_enabled(self, enabled: bool):
+        self.email_enabled = enabled
+        print(f"[Engine] Email alerts: {enabled}")
 
     # ── FaceNet target enrolment ─────────────────────────────────────────────
 
@@ -357,11 +427,28 @@ class CameraEngine:
 
             if trigger_alert:
                 _, buf = cv2.imencode('.jpg', display_frame, [cv2.IMWRITE_JPEG_QUALITY, 50])
+                frame_bytes = buf.tobytes()
+
+                # Email trigger (with 30s cooldown to avoid spam)
+                if self.email_enabled and (now - self.last_email_time > 30):
+                    self.last_email_time = now
+                    threading.Thread(
+                        target=self._send_email_alert, 
+                        args=(frame_bytes, last_detections, last_is_target_match), 
+                        daemon=True
+                    ).start()
+
                 self.alert_queue.put({
                     "timestamp":              time.strftime("%H:%M:%S"),
                     "detections":             last_detections,
                     "image":                  base64.b64encode(buf).decode('utf-8'),
                     "is_person_search_match": last_is_target_match,
+                    "location": {
+                        "id":   self.camera_id,
+                        "lat":  self.camera_lat,
+                        "lon":  self.camera_lon,
+                        "maps": f"https://www.google.com/maps?q={self.camera_lat},{self.camera_lon}"
+                    }
                 })
 
             # ── Push frame to stream queue (non-blocking) ─────────────────
