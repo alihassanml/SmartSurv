@@ -17,6 +17,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 from dotenv import load_dotenv
+import requests
 
 load_dotenv()
 
@@ -102,10 +103,9 @@ class CameraEngine:
         self.smtp_server     = os.getenv("SMTP_SERVER", "smtp.gmail.com")
         self.smtp_port       = int(os.getenv("SMTP_PORT", "587"))
 
-        # Location Metadata
-        self.camera_id       = os.getenv("CAMERA_ID", "CAM-01-NORTH")
-        self.camera_lat      = os.getenv("CAMERA_LAT", "31.4504")
-        self.camera_lon      = os.getenv("CAMERA_LON", "73.1350")
+        # Location Metadata (Auto-Geo or .env)
+        self.camera_id       = os.getenv("CAMERA_ID", "CAM-01-DYNAMIC")
+        self.camera_lat, self.camera_lon = self._auto_localize()
 
         # Persistent target
         data_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data'))
@@ -114,6 +114,25 @@ class CameraEngine:
         self._load_persistent_target()
 
     # ── Internal helpers ─────────────────────────────────────────────────────
+
+    def _auto_localize(self):
+        """Attempts to find real-world location via IP geolocation."""
+        try:
+            print("[Engine] Detecting real-world camera location...")
+            res = requests.get("http://ip-api.com/json/", timeout=5).json()
+            if res.get("status") == "success":
+                city = res.get("city", "Unknown")
+                country = res.get("country", "Unknown")
+                lat = str(res.get("lat"))
+                lon = str(res.get("lon"))
+                self.camera_id = f"CAM-{city.upper()}-{country.upper()}"
+                print(f"[Engine] Geo-Located: {city}, {country} ({lat}, {lon})")
+                return lat, lon
+        except Exception as e:
+            print(f"[Engine] Auto-localization failed: {e}")
+        
+        # Fallback to .env or defaults
+        return os.getenv("CAMERA_LAT", "31.4504"), os.getenv("CAMERA_LON", "73.1350")
 
     def _load_persistent_target(self):
         if os.path.exists(self.persistent_path):

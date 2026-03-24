@@ -4,11 +4,17 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Settings, User, LogOut, Shield, RefreshCw, Sliders,
   Search, Camera, UploadCloud, AlertTriangle, Crosshair,
-  Volume2, X, ChevronDown, Zap, Radio, Mail
+  Volume2, X, ChevronDown, Zap, Radio, Mail, MapPin
 } from 'lucide-react';
 
 interface Detection { label: string; confidence: number; box: number[]; }
-interface Alert { timestamp: string; detections: Detection[]; image: string; is_person_search_match?: boolean; }
+interface Alert { 
+  timestamp: string; 
+  detections: Detection[]; 
+  image: string; 
+  is_person_search_match?: boolean;
+  location?: { id: string; lat: string; lon: string; maps: string; };
+}
 interface ClassThreshold { name: string; threshold: number; sound_enabled: boolean; }
 
 const API = 'http://localhost:8000';
@@ -792,10 +798,24 @@ const Dashboard: React.FC = () => {
                         </div>
                       )}
 
-                      {/* Confidence */}
-                      <div className="flex justify-between text-[8px] opacity-30 font-bold">
-                        <span>AI_REL: {(Math.max(...(alert.detections.map(d => d.confidence) || [0]), 0) * 100).toFixed(1)}%</span>
-                        <span>CHANNEL_00</span>
+                      {/* Confidence & Location */}
+                      <div className="flex justify-between items-center text-[8px] font-bold">
+                        <div className="flex flex-col opacity-30">
+                          <span>AI_REL: {(Math.max(...(alert.detections.map(d => d.confidence) || [0]), 0) * 100).toFixed(1)}%</span>
+                          <span>CHANNEL_00</span>
+                        </div>
+                        
+                        {alert.location && (
+                          <a 
+                            href={alert.location.maps} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1.5 px-2 py-1 bg-[rgba(0,255,133,0.05)] border border-[rgba(0,255,133,0.2)] text-[#00ff85] hover:bg-[#00ff85] hover:text-[#000] transition-all duration-300"
+                          >
+                            <MapPin className="w-3 h-3" />
+                            MAP
+                          </a>
+                        )}
                       </div>
                     </div>
                   </motion.div>
