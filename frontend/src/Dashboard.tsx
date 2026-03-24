@@ -46,6 +46,8 @@ const Dashboard: React.FC = () => {
   const [previewUrl, setPreviewUrl] = useState<string | null>(savedPreview);
   const [searchSoundEnabled, setSearchSoundEnabled] = useState(true);
   const [emailEnabled, setEmailEnabled] = useState(true);
+  const [operatorLatLon, setOperatorLatLon] = useState<{ lat: number; lon: number } | null>(null);
+  const [mapAlert, setMapAlert] = useState<Alert | null>(null);
 
   useEffect(() => {
     if (!showSettings) return;
@@ -56,6 +58,20 @@ const Dashboard: React.FC = () => {
       .catch(() => setClassThresholds([]))
       .finally(() => setThresholdsLoading(false));
   }, [showSettings]);
+
+  useEffect(() => {
+    // Auto-detect operator location
+    const detectLocation = async () => {
+      try {
+        const res = await fetch('http://ip-api.com/json/');
+        const data = await res.json();
+        if (data.status === 'success') {
+          setOperatorLatLon({ lat: data.lat, lon: data.lon });
+        }
+      } catch (err) { console.error('Failed to detect operator location', err); }
+    };
+    detectLocation();
+  }, []);
 
   const handleSoundToggle = async (className: string) => {
     const updated = classThresholds.map(cls =>
@@ -92,6 +108,17 @@ const Dashboard: React.FC = () => {
       });
       setEmailEnabled(newVal);
     } catch (err) { console.error('Failed to toggle email', err); }
+  };
+
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371; // km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return (R * c).toFixed(1);
   };
 
   const changeMode = async (mode: 'detection' | 'search' | 'both') => {
@@ -806,15 +833,13 @@ const Dashboard: React.FC = () => {
                         </div>
                         
                         {alert.location && (
-                          <a 
-                            href={alert.location.maps} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
+                          <button 
+                            onClick={() => setMapAlert(alert)}
                             className="flex items-center gap-1.5 px-2 py-1 bg-[rgba(0,255,133,0.05)] border border-[rgba(0,255,133,0.2)] text-[#00ff85] hover:bg-[#00ff85] hover:text-[#000] transition-all duration-300"
                           >
                             <MapPin className="w-3 h-3" />
                             MAP
-                          </a>
+                          </button>
                         )}
                       </div>
                     </div>
@@ -825,6 +850,84 @@ const Dashboard: React.FC = () => {
           </div>
         </aside>
       </main>
+
+      {/* ─── MAP MODAL ─── */}
+      <AnimatePresence>
+        {mapAlert && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-black/20 backdrop-blur-md flex items-center justify-center p-6"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }}
+              className="w-full max-w-4xl bg-[#0a0b0d] border border-[rgba(0,255,133,0.2)] shadow-[0_0_50px_rgba(0,0,0,0.8)] flex flex-col"
+            >
+              <div className="p-4 border-b border-[rgba(0,255,133,0.1)] flex justify-between items-center bg-[#0d0e12]">
+                <div>
+                  <h3 className="text-[14px] font-bold tracking-[0.2em] text-[#00ff85]">GEOSPATIAL_INTERCEPT</h3>
+                  <p className="text-[10px] opacity-40 uppercase">Threat Location: {mapAlert.location?.id}</p>
+                </div>
+                <button onClick={() => setMapAlert(null)} className="p-2 hover:bg-white/5 transition-all">
+                  <X className="w-5 h-5 text-[#00ff85]" />
+                </button>
+              </div>
+
+              <div className="flex h-[500px]">
+                {/* Embedded Google Map */}
+                <div className="flex-1 bg-black relative">
+                  <iframe 
+                    width="100%" height="100%" frameBorder="0" style={{ border: 0, filter: 'invert(90%) hue-rotate(180deg) brightness(0.8)' }}
+                    src={`https://www.google.com/maps?q=${mapAlert.location?.lat},${mapAlert.location?.lon}&z=14&output=embed`}
+                    allowFullScreen
+                  />
+                  {/* Decorative Scan FX */}
+                  <div className="absolute inset-0 pointer-events-none border-[15px] border-[#00ff85]/5" />
+                </div>
+
+                {/* Tactical Stats */}
+                <div className="w-72 border-l border-[rgba(0,255,133,0.1)] p-5 flex flex-col bg-[#0a0b0d]">
+                  <div className="mb-6">
+                    <p className="text-[9px] font-bold opacity-30 tracking-widest mb-2">TARGET_COORDINATES</p>
+                    <p className="text-[12px] font-mono text-[#00ff85]">{mapAlert.location?.lat}° N, {mapAlert.location?.lon}° E</p>
+                  </div>
+
+                  <div className="mb-6 p-3 bg-[rgba(0,229,255,0.04)] border border-[rgba(0,229,255,0.2)]">
+                    <p className="text-[9px] font-bold text-[#00e5ff] tracking-widest mb-1 leading-tight">INTERCEPT_DISTANCE</p>
+                    {operatorLatLon ? (
+                      <div>
+                        <p className="text-[20px] font-bold text-[#00e5ff]">
+                          {calculateDistance(operatorLatLon.lat, operatorLatLon.lon, parseFloat(mapAlert.location?.lat || '0'), parseFloat(mapAlert.location?.lon || '0'))}
+                          <span className="text-[10px] ml-1">KM</span>
+                        </p>
+                        <p className="text-[8px] opacity-40 mt-1 uppercase italic">Distance from your server to threat camera</p>
+                      </div>
+                    ) : (
+                      <div className="flex gap-1 items-center animate-pulse">
+                        <div className="w-1 h-1 bg-[#00e5ff] rounded-full" />
+                        <div className="w-1 h-1 bg-[#00e5ff] rounded-full" />
+                        <div className="w-1 h-1 bg-[#00e5ff] rounded-full" />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-auto pt-4 border-t border-[rgba(0,255,133,0.1)]">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                      <p className="text-[9px] font-bold text-red-500 uppercase tracking-widest">Priority Alert</p>
+                    </div>
+                    <button 
+                      onClick={() => window.open(mapAlert.location?.maps, '_blank')}
+                      className="w-full py-2 bg-[#00ff85] text-black font-bold text-[10px] hover:bg-[#00cc6a] transition-all"
+                    >
+                      OPEN_IN_MAPS_APP
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <style>{`
         @keyframes biometric-scan { 0%{top:0;opacity:0} 5%{opacity:1} 95%{opacity:1} 100%{top:100%;opacity:0} }
