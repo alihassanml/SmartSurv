@@ -6,4 +6,5 @@ __pycache__
 node_modules
 package-lock.json
 package.json
-backend/__pycache__/*
+backend/__pycache__
+backend/.env

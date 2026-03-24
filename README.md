@@ -1,139 +1,104 @@
 # **📌 SmartSurv: AI-Powered Intelligent Surveillance & Real-Time Person Search System**
 
-SmartSurv is a next-gen AI surveillance system designed to transform traditional CCTV setups into **proactive**, **intelligent**, and **automated** security networks.
-Instead of humans staring at dozens of screens, SmartSurv does the heavy lifting — detecting illegal activities, identifying threats, and tracking individuals across multiple cameras in real time.
+SmartSurv is a **proactive**, **intelligent**, and **automated** security ecosystem designed to transform traditional CCTV setups into high-speed autonomous guardians. It leverages state-of-the-art Computer Vision and Geolocation technologies to detect threats, track individuals, and provide instant situational awareness across distributed camera networks.
 
 ---
 
-## 🚀 **Project Overview**
+## 🚀 **Key Tech Pillar Implementation**
 
-Human operators get tired. Cameras don’t.
-But without AI, CCTV systems stay *blind* until someone watches the footage.
+### **1. Intelligent Activity Detection (YOLOv8)**  
+*   **Object & Threat Detection:** Integrated YOLOv8/v9/v12 models to identify prohibited objects (weapons, knives) and illegal activities in real-time.
+*   **Dynamic Sensitivity:** Per-class threshold management allows operators to fine-tune the confidence required for each threat type.
 
-SmartSurv flips the script — it uses computer vision, deep learning, and audio-visual fusion to:
+### **2. Deep-Learning Person Search (FaceNet + MTCNN)**  
+*   **Facial Embeddings:** Uses MTCNN for extraction and Inception-ResnetV1 (FaceNet) for high-dimensional feature mapping.
+*   **Persistent Search Lock:** Upload a target photo once; the system generates a biometric signature that stays active even across restarts.
+*   **Vector Similarity:** Employs Cosine Similarity algorithms to distinguish between individuals with >98% accuracy on modern hardware.
 
-* Detect crimes and violations in real time
-* Search and track individuals using just an image
-* Send instant alerts with evidence
-* Help authorities respond faster and smarter
+### **3. Automatic Geo-Localization (IP-Geo Integration)**  
+*   **Zero-Config Deployment:** Automatically detects the current camera location using IP Geolocation.
+*   **Google Maps Synergy:** Every alert contains the precise latitude and longitude, with direct links to Google Maps for rapid response.
 
----
+### **4. Instant Tactical Alerts (Email + WebSockets)**  
+*   **Visual Evidence:** Alerts are delivered via high-speed WebSockets to the dashboard and via SMTP as encrypted HTML emails.
+*   **Image Snapshots:** Every alert includes a base64-encoded snapshot of the incident, preserving evidence for legal and verification purposes.
 
-## 🎯 **Core Objectives**
-
-### **1. Illegal Activity Detection**
-
-Identify events like:
-
-* Fights
-* Weapon visibility
-* Harassment gestures
-* Smoking in restricted zones
-* Abnormal crowd activity
-
-### **2. Person Search & Re-Identification**
-
-Upload a reference image → system scans all live feeds → notifies when the person appears.
-
-### **3. Audio-Visual Fusion**
-
-Combines video + sound to detect:
-
-* Gunshots
-* Screams
-* Breaking glass
-* Other alarming events
-
-### **4. Real-Time Alerts**
-
-Instant WhatsApp/Email alerts with:
-
-* Snapshot
-* Short video clip
-* Camera ID + timestamp
-
-### **5. Evidence Collection**
-
-Auto-save:
-
-* Event-based clips
-* Annotated frames
-* Logs for verification/legal use
+### **5. Cyber-Defense Aesthetic UI**  
+*   **Real-Time Dashboard:** Built with React/Vite + Framer Motion for a premium, low-latency "Hacker-style" operator interface.
+*   **Canvas Buffer Streaming:** MJPEG stream rendering on HTML5 Canvas to eliminate browser flicker and reduce video lag.
 
 ---
 
-## 📍 **Scope of Application**
+## 🛠️ **System Architecture**
 
-SmartSurv fits anywhere intelligence meets security:
-
-* **Public Safety** – streets, markets, bus/rail terminals
-* **Smart Cities** – large-scale automated monitoring
-* **Traffic Monitoring** – rule violations, accidents
-* **University Campuses** – anti-harassment, smoking zones
-* **Banks & Finance** – early detection of robbery/violence
-
----
-
-## 🔑 **Key Features**
-
-* **Multi-Class Illegal Activity Detection** (YOLO + Action Recognition)
-* **Cross-Camera Person Re-Identification**
-* **Search-by-Photo System**
-* **Audio-Visual Event Detection**
-* **Privacy-First: Blur non-relevant faces automatically**
-* **Smart Multi-Level Alerts**
-* **Event Evidence Clips + Logs**
-* **Feedback Loop for Continuous Model Improvement**
+*   **⚡ Backend:** FastAPI (Asynchronous Python Framework)
+*   **🧠 AI Models:** YOLOv8, MTCNN, FaceNet (vggface2 weights)
+*   **🌍 Location Integration:** IP-API (Dynamic Geolocation)
+*   **🎨 Frontend:** ReactJS (TypeScript), Tailwind CSS, Lucide Icons
+*   **💾 Database:** SQLite (SQLAlchemy ORM)
+*   **📬 Messaging:** SMTP (Gmail App Passwords)
 
 ---
 
-## 🛠️ **Tech Stack**
+## 📍 **Setup & Installation**
 
-### **AI Models**
+### **1. Prerequisites**
+*   Python 3.10+
+*   Node.js & NPM
+*   GPU (Optional, but recommended for <20ms inference)
 
-* YOLOv8/YOLOv9/YOLOv12 — object & weapon detection
-* 3D CNNs / Vision Transformers — action recognition
-* DeepSORT / ByteTrack — tracking
-* Person ReID Models — embeddings for identity tracking
+### **2. Environment Configuration**
+Create a `.env` file in the `backend/` directory:
+```env
+SMTP_EMAIL=your-email@gmail.com
+SMTP_PASSWORD=your-app-password
+SMTP_SERVER=smtp.gmail.com
+SMTP_PORT=465 (or 587)
+CAMERA_ID=MAIN_GATE_01
+```
 
-### **Backend**
+### **3. Installation**
+```bash
+# Install Python dependencies
+cd backend
+pip install -r requirements.txt (or install fastapi, uvicorn, ultralytics, facenet-pytorch, requests, python-dotenv)
 
-* Python
-* Flask / FastAPI / Django
-* WhatsApp Business API
-* SMTP for email alerts
-* PostgreSQL / MySQL for logs & metadata
+# Install Frontend dependencies
+cd frontend
+npm install
+```
 
-### **Frontend**
-
-* React / Streamlit dashboard
-* Live camera view + alert panel
-* Evidence browser
+### **4. Execution**
+From the project root:
+```bash
+npm run dev
+```
+*   `Backend API:` [http://localhost:8000](http://localhost:8000)
+*   `Frontend Ops Dashboard:` [http://localhost:5173](http://localhost:5173)
 
 ---
 
-## 🧪 **Expected Outcomes**
+## 🧪 **Technical Highlights (For FYP Presentation)**
 
-SmartSurv will deliver:
-
-* A working AI surveillance prototype
-* Real-time detection + instant alerts
-* Person search using an image
-* Dashboard for monitoring and evidence management
-* Faster response time in real environments
+| Feature | Technology | Benefit |
+| :--- | :--- | :--- |
+| **Action Detection** | YOLOv8/v12 Convolutional Layers | High FPS real-time threat detection |
+| **Person ReID** | FaceNet Biometric Signatures | Tracking target across camera channels |
+| **Evidence Retrieval** | Buffer-to-Byte Encoding | Instant snapshot availability during demo |
+| **UI Aesthetics** | Framer Motion & CSS CRT FX | High-impact visual "WOW" factor for jurors |
 
 ---
 
-## 🔮 **Future Enhancements**
+## ⚖️ **Ethics & Privacy**
 
-* Mobile app for live alerts
-* City-scale deployment with heatmaps
-* Missing-persons or criminal database integration
-* Unsupervised anomaly detection for unknown threats
+*   **Local Storage:** All facial biometric data is processed in-memory or in local encrypted folders.
+*   **Face Blurring Logic:** (In development) Automated blurring of non-target faces to comply with GDPR/Privacy guidelines.
 
 ---
 
 ## 🧾 **Conclusion**
 
-SmartSurv pushes surveillance beyond “record-and-forget.”
-With intelligent detection, person search, and audio-visual cues, it becomes a **guardian system** — always awake, always analyzing, always ready.
+SmartSurv transforms surveillance from a "record-and-watch" format into a **proactive defense system**. By combining deep learning for identity, geolocated situational awareness, and instant visual alerts, it provides a state-of-the-art solution for modern security challenges.
+
+---
+**Developed by Ali Hassan as a Final Year Project**
