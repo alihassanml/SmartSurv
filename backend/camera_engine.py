@@ -58,13 +58,16 @@ class CameraEngine:
             pass
 
         self.source = source
-        self.cap = cv2.VideoCapture(source)
-        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 800)
-        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 600)
+        self.cap = None
+        if source != "remote":
+            self.cap = cv2.VideoCapture(source)
+            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 800)
+            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 600)
 
-        self.frame_queue = queue.Queue(maxsize=1)
-        self.alert_queue = queue.Queue()
-        self.running     = False
+        self.frame_queue  = queue.Queue(maxsize=1)
+        self.alert_queue  = queue.Queue()
+        self.remote_queue = queue.Queue(maxsize=1)
+        self.running      = False
         self.thread      = None
 
         # Modes: "detection" | "search" | "both"
@@ -270,8 +273,9 @@ class CameraEngine:
         if not self.running:
             if self.executor is None:
                 self.executor = ThreadPoolExecutor(max_workers=2)
-            if self.cap is None or not self.cap.isOpened():
-                self.cap = cv2.VideoCapture(self.source)
+            if self.source != "remote":
+                if self.cap is None or not self.cap.isOpened():
+                    self.cap = cv2.VideoCapture(self.source)
             self.running = True
             self.thread  = threading.Thread(target=self._run, daemon=True)
             self.thread.start()
@@ -297,10 +301,20 @@ class CameraEngine:
             except Exception: pass
             self.executor = None
 
-    def restart(self):
+    def restart(self, source=None):
+        if source is not None:
+            self.source = source
         self.stop()
         time.sleep(0.3)
         self.start()
+
+    def push_remote_frame(self, frame_bytes: bytes):
+        if self.source != "remote":
+            return
+        if self.remote_queue.full():
+            try: self.remote_queue.get_nowait()
+            except queue.Empty: pass
+        self.remote_queue.put(frame_bytes)
 
     # ── Per-frame inference workers ──────────────────────────────────────────
 
@@ -371,16 +385,32 @@ class CameraEngine:
         while self.running:
             frame_counter += 1
 
-            # ── Flush stale camera buffer ─────────────────────────────────
-            for _ in range(4):
-                self.cap.grab()
+            if self.source == "remote":
+                # Wait for frames from push_remote_frame
+                try:
+                    raw_bytes = self.remote_queue.get(timeout=1.0)
+                    frame = cv2.imdecode(np.frombuffer(raw_bytes, np.uint8), cv2.IMREAD_COLOR)
+                    
+                    if frame_counter % 30 == 0: # Print only every 30 frames to avoid spamming
+                        if frame is not None:
+                            print(f"[Engine] Successfully decoded remote frame ({frame.shape})")
+                        else:
+                            print("[Engine] ERROR: Failed to decode remote frame!")
+                except queue.Empty:
+                    continue
+                if frame is None:
+                    continue
+            else:
+                # ── Flush stale camera buffer ─────────────────────────────────
+                for _ in range(4):
+                    self.cap.grab()
 
-            ret, frame = self.cap.retrieve()
-            if not ret:
-                ret, frame = self.cap.read()
-            if not ret:
-                time.sleep(0.005)
-                continue
+                ret, frame = self.cap.retrieve()
+                if not ret:
+                    ret, frame = self.cap.read()
+                if not ret:
+                    time.sleep(0.005)
+                    continue
 
             frame         = cv2.resize(frame, (800, 600))
             display_frame = frame.copy()

@@ -17,7 +17,7 @@ interface Alert {
 }
 interface ClassThreshold { name: string; threshold: number; sound_enabled: boolean; }
 
-const API = 'http://localhost:8000';
+const API = `http://${window.location.hostname}:8000`;
 
 const Dashboard: React.FC = () => {
   const [alerts, setAlerts] = useState<Alert[]>([]);
@@ -48,6 +48,10 @@ const Dashboard: React.FC = () => {
   const [emailEnabled, setEmailEnabled] = useState(true);
   const [operatorLatLon, setOperatorLatLon] = useState<{ lat: number; lon: number } | null>(null);
   const [mapAlert, setMapAlert] = useState<Alert | null>(null);
+  const [isRemoteSource, setIsRemoteSource] = useState(false);
+  const [showRemoteLink, setShowRemoteLink] = useState(false);
+  const [systemIp, setSystemIp] = useState<string | null>(null);
+  const [isCopied, setIsCopied] = useState(false);
 
   useEffect(() => {
     if (!showSettings) return;
@@ -203,6 +207,39 @@ const Dashboard: React.FC = () => {
       localStorage.setItem('cameraActive', String(newState));
     } catch (error) { console.error('Failed to toggle camera', error); }
   };
+
+  const toggleSource = async () => {
+    const targetSource = isRemoteSource ? "0" : "remote";
+    setIsReconnecting(true);
+    try {
+      const res = await fetch(`${API}/api/camera/source`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source: targetSource }),
+      });
+      if (res.ok) {
+        setIsRemoteSource(!isRemoteSource);
+        setCameraActive(true);
+      }
+    } catch (e) {
+      console.error('Failed to change source', e);
+    } finally {
+      setIsReconnecting(false);
+    }
+  };
+
+  useEffect(() => {
+    fetch(`${API}/api/system/info`)
+      .then(res => res.json())
+      .then(data => setSystemIp(data.local_ip))
+      .catch(err => console.error("Failed to get system IP", err));
+  }, []);
+
+  const displayIp = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') 
+    ? (systemIp || 'localhost') 
+    : window.location.hostname;
+
+  const remoteUrl = `${window.location.protocol}//${displayIp}${window.location.port ? ':' + window.location.port : ''}/remote-camera`;
 
   useEffect(() => {
     const initCam = async () => {
@@ -449,6 +486,28 @@ const Dashboard: React.FC = () => {
             {cameraActive ? 'TERMINATE_FEED' : 'INITIALIZE_FEED'}
           </button>
 
+          {/* Remote Source Toggle */}
+          <button
+            onClick={toggleSource}
+            className="flex items-center gap-2 px-4 py-2 border text-[10px] font-bold tracking-widest uppercase transition-all duration-300"
+            style={isRemoteSource
+              ? { borderColor: '#00e5ff', color: '#00e5ff', background: 'rgba(0,229,255,0.05)' }
+              : { borderColor: 'rgba(0,255,133,0.3)', color: 'rgba(0,255,133,0.5)' }
+            }
+          >
+            <Radio className={`w-3.5 h-3.5 ${isRemoteSource ? 'animate-pulse' : ''}`} />
+            {isRemoteSource ? 'SOURCE: REMOTE' : 'SOURCE: LOCAL'}
+          </button>
+
+          {/* Phone Link Button */}
+          <button
+            onClick={() => setShowRemoteLink(true)}
+            className="flex items-center gap-2 px-3 py-2 border border-[rgba(0,255,133,0.2)] text-[10px] font-bold hover:border-[#00ff85] transition-all"
+          >
+            <Zap className="w-3.5 h-3.5" />
+            CONNECT_PHONE
+          </button>
+
           {/* Settings */}
           <button
             id="settings-btn"
@@ -459,6 +518,61 @@ const Dashboard: React.FC = () => {
           </button>
         </div>
       </header>
+
+      {/* --- REMOTE LINK MODAL --- */}
+      <AnimatePresence>
+        {showRemoteLink && (
+          <>
+            <motion.div 
+               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+               onClick={() => setShowRemoteLink(false)}
+               className="fixed inset-0 bg-black/80 z-[200] backdrop-blur-md"
+            />
+            <motion.div
+               initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+               className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-[#090a0c] border border-[rgba(0,255,133,0.2)] p-8 z-[201] text-center"
+            >
+              <div className="flex justify-center mb-6">
+                 <div className="w-16 h-16 border-2 border-[#00ff85] flex items-center justify-center animate-glow-pulse">
+                    <Zap className="w-8 h-8" />
+                 </div>
+              </div>
+              <h3 className="text-xl font-bold tracking-[0.2em] mb-2 uppercase">Remote Node Link</h3>
+              <p className="text-[10px] opacity-40 mb-8 leading-relaxed">
+                Scan this code or open this URL on your secondary device (phone) to start a remote surveillance uplink.
+              </p>
+              
+              <div className="bg-white p-4 inline-block mb-8">
+                {/* Simplified QR Placeholder - actually just the URL for now as creating a QR in code is complex without libraries */}
+                <div className="text-black text-[10px] font-bold break-all max-w-[200px]">
+                  {remoteUrl}
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <button 
+                  onClick={() => {
+                    navigator.clipboard.writeText(remoteUrl);
+                    setIsCopied(true);
+                    setTimeout(() => setIsCopied(false), 2000);
+                  }}
+                  className={`w-full py-3 font-bold text-[10px] tracking-widest uppercase transition-all ${
+                    isCopied ? 'bg-white text-black' : 'bg-[#00ff85] text-black hover:brightness-110'
+                  }`}
+                >
+                  {isCopied ? 'COPIED!' : 'Copy Link'}
+                </button>
+                <button 
+                  onClick={() => setShowRemoteLink(false)}
+                  className="w-full py-3 border border-[rgba(0,255,133,0.3)] text-[10px] font-bold tracking-widest uppercase hover:bg-[rgba(0,255,133,0.05)] transition-all"
+                >
+                  Close
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* ─── SETTINGS PANEL ─── */}
       <AnimatePresence>

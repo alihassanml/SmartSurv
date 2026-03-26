@@ -12,6 +12,19 @@ from contextlib import asynccontextmanager
 from camera_engine import CameraEngine
 from database import SessionLocal, Base, engine, User
 from auth import verify_password, get_password_hash, create_access_token
+import socket
+
+def get_local_ip():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        # doesn't even have to be reachable
+        s.connect(('10.255.255.255', 1))
+        IP = s.getsockname()[0]
+    except Exception:
+        IP = '127.0.0.1'
+    finally:
+        s.close()
+    return IP
 
 Base.metadata.create_all(bind=engine)
 
@@ -71,6 +84,9 @@ class SoundUpdate(BaseModel):
 
 class EmailUpdate(BaseModel):
     enabled: bool
+
+class SourceUpdate(BaseModel):
+    source: str # e.g. "0" or "remote"
 
 class ClassSoundsUpdate(BaseModel):
     sounds: Dict[str, bool]
@@ -148,6 +164,15 @@ def update_thresholds(body: ThresholdsUpdate):
         camera.restart()
     return {"status": "updated", "thresholds": camera.get_thresholds()}
 
+@app.post("/api/camera/source")
+def set_camera_source(body: SourceUpdate):
+    new_source = body.source
+    if new_source.isdigit():
+        new_source = int(new_source)
+    
+    camera.restart(source=new_source)
+    return {"status": "success", "source": camera.source}
+
 @app.post("/api/person/search")
 async def setup_person_search(file: UploadFile = File(...)):
     import time
@@ -199,6 +224,13 @@ async def video_feed():
             pass
     return StreamingResponse(generate(), media_type="multipart/x-mixed-replace; boundary=frame")
 
+@app.get("/api/system/info")
+def get_system_info():
+    return {
+        "local_ip": get_local_ip(),
+        "port": 8000
+    }
+
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     from fastapi.concurrency import run_in_threadpool
@@ -215,6 +247,27 @@ async def websocket_endpoint(websocket: WebSocket):
         pass
     except Exception:
         pass
+    finally:
+        try: await websocket.close()
+        except: pass
+
+@app.websocket("/ws/remote-input")
+async def remote_input_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    print("[WS] Remote camera connected.")
+    try:
+        while app.state.is_running:
+            # Receive image bytes from mobile device
+            data = await websocket.receive_bytes()
+            if data:
+                # Debug print
+                if app.state.is_running:
+                     print(f"[WS] Received frame: {len(data)} bytes")
+                camera.push_remote_frame(data)
+    except (WebSocketDisconnect, asyncio.CancelledError, RuntimeError):
+        print("[WS] Remote camera disconnected.")
+    except Exception as e:
+        print(f"[WS] Remote input error: {e}")
     finally:
         try: await websocket.close()
         except: pass
