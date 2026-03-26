@@ -1,4 +1,4 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Depends, File, UploadFile
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Depends, File, UploadFile, Query
 from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 import asyncio
 import json
 import os
-from typing import Dict
+from typing import Dict, Optional
 from contextlib import asynccontextmanager
 
 from camera_engine import CameraEngine
@@ -41,6 +41,7 @@ async def lifespan(app: FastAPI):
     # Startup: Initialize camera resources
     print("STARTING_SMARTSURV_CORE...")
     app.state.is_running = True
+    camera.start()
     yield
     # Shutdown: Release resources
     print("SHUTTING_DOWN_RESOURCES...")
@@ -49,7 +50,6 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-# Rest of the implementation...
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -86,7 +86,7 @@ class EmailUpdate(BaseModel):
     enabled: bool
 
 class SourceUpdate(BaseModel):
-    source: str # e.g. "0" or "remote"
+    source: str # e.g. "0", "remote", "hybrid"
 
 class ClassSoundsUpdate(BaseModel):
     sounds: Dict[str, bool]
@@ -127,6 +127,7 @@ def stop_camera():
 def set_camera_mode(body: ModeUpdate):
     camera.set_mode(body.mode)
     return {"status": "success", "mode": camera.mode}
+
 @app.post("/api/camera/sound")
 def set_camera_sound(body: SoundUpdate):
     camera.set_search_sound_enabled(body.enabled)
@@ -160,8 +161,7 @@ def get_model_classes():
 @app.post("/api/model/thresholds")
 def update_thresholds(body: ThresholdsUpdate):
     camera.set_thresholds(body.thresholds)
-    if camera.running:
-        camera.restart()
+    # We don't need to restart anymore if threshold changes, as feeds check it dynamically
     return {"status": "updated", "thresholds": camera.get_thresholds()}
 
 @app.post("/api/camera/source")
@@ -169,9 +169,12 @@ def set_camera_source(body: SourceUpdate):
     new_source = body.source
     if new_source.isdigit():
         new_source = int(new_source)
-    
     camera.restart(source=new_source)
-    return {"status": "success", "source": camera.source}
+    return {"status": "success", "source": camera.source_config}
+
+@app.get("/api/camera/feeds")
+def get_camera_feeds():
+    return {"feeds": camera.get_active_feeds()}
 
 @app.post("/api/person/search")
 async def setup_person_search(file: UploadFile = File(...)):
@@ -206,13 +209,12 @@ def clear_person_search():
     return {"status": "success", "message": "Person search cleared."}
 
 @app.get("/video_feed")
-async def video_feed():
+async def video_feed(id: Optional[str] = Query(None)):
     from fastapi.concurrency import run_in_threadpool
     async def generate():
         try:
             while app.state.is_running:
-                # Use run_in_threadpool to avoid blocking the main event loop
-                frame = await run_in_threadpool(camera.get_frame)
+                frame = await run_in_threadpool(camera.get_frame, id)
                 if frame is None:
                     await asyncio.sleep(0.01)
                     continue
@@ -237,7 +239,6 @@ async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     try:
         while app.state.is_running:
-            # Avoid blocking the event loop
             alerts = await run_in_threadpool(camera.get_alerts)
             if alerts:
                 for alert in alerts:
@@ -252,20 +253,16 @@ async def websocket_endpoint(websocket: WebSocket):
         except: pass
 
 @app.websocket("/ws/remote-input")
-async def remote_input_endpoint(websocket: WebSocket):
+async def remote_input_endpoint(websocket: WebSocket, client_id: str = Query("1")):
     await websocket.accept()
-    print("[WS] Remote camera connected.")
+    print(f"[WS] Remote camera {client_id} connected.")
     try:
         while app.state.is_running:
-            # Receive image bytes from mobile device
             data = await websocket.receive_bytes()
             if data:
-                # Debug print
-                if app.state.is_running:
-                     print(f"[WS] Received frame: {len(data)} bytes")
-                camera.push_remote_frame(data)
+                camera.push_remote_frame(data, client_id)
     except (WebSocketDisconnect, asyncio.CancelledError, RuntimeError):
-        print("[WS] Remote camera disconnected.")
+        print(f"[WS] Remote camera {client_id} disconnected.")
     except Exception as e:
         print(f"[WS] Remote input error: {e}")
     finally:

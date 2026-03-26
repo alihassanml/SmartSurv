@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Camera, Shield, Wifi, WifiOff, Zap } from 'lucide-react';
+import { Shield, Zap } from 'lucide-react';
 
 const RemoteCamera: React.FC = () => {
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -14,12 +14,14 @@ const RemoteCamera: React.FC = () => {
     // Dynamic protocol (wss if page is https)
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     
-    // Get backend host (uses current hostname, which works for both local IP and ngrok)
-    const backendHost = window.location.hostname;
+    // Get client_id from URL
+    const params = new URLSearchParams(window.location.search);
+    const clientId = params.get('client_id') || '1';
     
-    // If on ngrok, backend usually needs its own tunnel or a different port.
-    // For local testing, we stick to port 8000.
-    const wsUrl = `${protocol}//${backendHost}:8000/ws/remote-input`;
+    // Get backend host
+    const backendHost = window.location.hostname;
+    const wsUrl = `${protocol}//${backendHost}:8000/ws/remote-input?client_id=${clientId}`;
+
 
     const startStreaming = async () => {
         setStatus('connecting');

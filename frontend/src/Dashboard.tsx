@@ -19,6 +19,71 @@ interface ClassThreshold { name: string; threshold: number; sound_enabled: boole
 
 const API = `http://${window.location.hostname}:8000`;
 
+const CameraStream: React.FC<{ feedId?: string; active: boolean }> = ({ feedId, active }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const rafRef = useRef<number>(0);
+
+  useEffect(() => {
+    if (!active) {
+       if (rafRef.current) cancelAnimationFrame(rafRef.current);
+       return;
+    }
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    let isActive = true;
+
+    const run = async () => {
+      try {
+        const url = `${API}/video_feed${feedId ? `?id=${feedId}` : ''}`;
+        const res = await fetch(url, { cache: 'no-store' });
+        if (!res.body || !isActive) return;
+        const reader = res.body.getReader();
+        let buffer = new Uint8Array(0);
+
+        while (isActive) {
+          const { done, value } = await reader.read();
+          if (done || !isActive) { if (reader) reader.cancel(); break; }
+
+          const tmp = new Uint8Array(buffer.length + value.length);
+          tmp.set(buffer); tmp.set(value, buffer.length);
+          buffer = tmp;
+
+          let start = -1, end = -1;
+          for (let i = 0; i < buffer.length - 1; i++) {
+            if (buffer[i] === 0xFF && buffer[i + 1] === 0xD8) start = i;
+            if (start >= 0 && buffer[i] === 0xFF && buffer[i + 1] === 0xD9) { end = i + 2; break; }
+          }
+
+          if (start >= 0 && end > start) {
+            const jpeg = buffer.slice(start, end);
+            buffer = buffer.slice(end);
+            const blobUrl = URL.createObjectURL(new Blob([jpeg], { type: 'image/jpeg' }));
+            const img = new Image();
+            img.onload = () => {
+              if (!isActive) { URL.revokeObjectURL(blobUrl); return; }
+              if (canvas.width !== img.naturalWidth) canvas.width = img.naturalWidth;
+              if (canvas.height !== img.naturalHeight) canvas.height = img.naturalHeight;
+              ctx.drawImage(img, 0, 0);
+              URL.revokeObjectURL(blobUrl);
+            };
+            img.src = blobUrl;
+          }
+        }
+      } catch (e) {
+        if (isActive) setTimeout(run, 1000);
+      }
+    };
+
+    run();
+    return () => { isActive = false; };
+  }, [active, feedId]);
+
+  return <canvas ref={canvasRef} className="w-full h-full object-contain" style={{ imageRendering: 'auto' }} />;
+};
+
+
 const Dashboard: React.FC = () => {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [isConnected, setIsConnected] = useState(false);
@@ -27,10 +92,8 @@ const Dashboard: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [isReconnecting, setIsReconnecting] = useState(false);
   const scrollRef  = useRef<HTMLDivElement>(null);
-  const canvasRef  = useRef<HTMLCanvasElement>(null);
-  const rafRef     = useRef<number>(0);
-  const frameRef   = useRef<string | null>(null);
   const navigate   = useNavigate();
+
   const username = localStorage.getItem('username') || 'OPERATOR';
 
   const savedMode = localStorage.getItem('systemMode') as 'detection' | 'search' | 'both' | null;
@@ -48,10 +111,12 @@ const Dashboard: React.FC = () => {
   const [emailEnabled, setEmailEnabled] = useState(true);
   const [operatorLatLon, setOperatorLatLon] = useState<{ lat: number; lon: number } | null>(null);
   const [mapAlert, setMapAlert] = useState<Alert | null>(null);
-  const [isRemoteSource, setIsRemoteSource] = useState(false);
+  const [currentSource, setCurrentSource] = useState<'0' | 'remote' | 'hybrid'>((localStorage.getItem('currentSource') as any) || '0');
+  const [activeFeeds, setActiveFeeds] = useState<string[]>([]);
   const [showRemoteLink, setShowRemoteLink] = useState(false);
   const [systemIp, setSystemIp] = useState<string | null>(null);
   const [isCopied, setIsCopied] = useState(false);
+
 
   useEffect(() => {
     if (!showSettings) return;
@@ -208,25 +273,45 @@ const Dashboard: React.FC = () => {
     } catch (error) { console.error('Failed to toggle camera', error); }
   };
 
-  const toggleSource = async () => {
-    const targetSource = isRemoteSource ? "0" : "remote";
+  const handleSourceChange = async (newSource: '0' | 'remote' | 'hybrid') => {
     setIsReconnecting(true);
     try {
       const res = await fetch(`${API}/api/camera/source`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ source: targetSource }),
+        body: JSON.stringify({ source: newSource }),
       });
       if (res.ok) {
-        setIsRemoteSource(!isRemoteSource);
+        setCurrentSource(newSource);
+        localStorage.setItem('currentSource', newSource);
         setCameraActive(true);
+        // Refresh feeds list immediately
+        const feedsRes = await fetch(`${API}/api/camera/feeds`);
+        const feedsData = await feedsRes.json();
+        setActiveFeeds(feedsData.feeds || []);
       }
+
     } catch (e) {
       console.error('Failed to change source', e);
     } finally {
       setIsReconnecting(false);
     }
   };
+
+
+  useEffect(() => {
+    if (!cameraActive) return;
+    const fetchFeeds = async () => {
+      try {
+        const res = await fetch(`${API}/api/camera/feeds`);
+        const data = await res.json();
+        setActiveFeeds(data.feeds || []);
+      } catch (e) { console.error("Failed to fetch feeds", e); }
+    };
+    fetchFeeds();
+    const interval = setInterval(fetchFeeds, 3000);
+    return () => clearInterval(interval);
+  }, [cameraActive, currentSource]);
 
   useEffect(() => {
     fetch(`${API}/api/system/info`)
@@ -239,7 +324,7 @@ const Dashboard: React.FC = () => {
     ? (systemIp || 'localhost') 
     : window.location.hostname;
 
-  const remoteUrl = `${window.location.protocol}//${displayIp}${window.location.port ? ':' + window.location.port : ''}/remote-camera`;
+  const remoteUrl = `${window.location.protocol}//${displayIp}${window.location.port ? ':' + window.location.port : ''}/remote-camera?client_id=${Math.random().toString(36).substring(7)}`;
 
   useEffect(() => {
     const initCam = async () => {
@@ -277,65 +362,8 @@ const Dashboard: React.FC = () => {
     if (scrollRef.current) scrollRef.current.scrollTop = 0;
   }, [alerts]);
 
-  // ── Smooth canvas-based frame rendering ──────────────────────────────────
-  // Reads the MJPEG stream boundary-by-boundary, decodes each JPEG frame,
-  // and draws it onto a canvas — eliminating the white-flash MJPEG stutter.
-  useEffect(() => {
-    if (!cameraActive) { cancelAnimationFrame(rafRef.current); return; }
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    let active = true;
+  // Grid rendering logic moved to separate component for multi-feed support
 
-    const run = async () => {
-      try {
-        const res = await fetch(`${API}/video_feed`, { cache: 'no-store' });
-        if (!res.body || !active) return;
-        const reader = res.body.getReader();
-        let buffer   = new Uint8Array(0);
-
-        while (active) {
-          const { done, value } = await reader.read();
-          if (done || !active) { reader.cancel(); break; }
-
-          // Append chunk
-          const tmp = new Uint8Array(buffer.length + value.length);
-          tmp.set(buffer); tmp.set(value, buffer.length);
-          buffer = tmp;
-
-          // Find complete JPEG (FF D8 … FF D9) inside the MJPEG boundary stream
-          let start = -1, end = -1;
-          for (let i = 0; i < buffer.length - 1; i++) {
-            if (buffer[i] === 0xFF && buffer[i + 1] === 0xD8) start = i;
-            if (start >= 0 && buffer[i] === 0xFF && buffer[i + 1] === 0xD9) { end = i + 2; break; }
-          }
-
-          if (start >= 0 && end > start) {
-            const jpeg = buffer.slice(start, end);
-            buffer = buffer.slice(end);
-
-            const url = URL.createObjectURL(new Blob([jpeg], { type: 'image/jpeg' }));
-            const img = new Image();
-            img.onload = () => {
-              if (!active) { URL.revokeObjectURL(url); return; }
-              if (canvas.width !== img.naturalWidth)   canvas.width  = img.naturalWidth;
-              if (canvas.height !== img.naturalHeight)  canvas.height = img.naturalHeight;
-              ctx.drawImage(img, 0, 0);
-              URL.revokeObjectURL(url);
-            };
-            img.src = url;
-          }
-        }
-      } catch (_) {
-        // Backend not ready — retry after 600ms
-        if (active) setTimeout(run, 600);
-      }
-    };
-
-    run();
-    return () => { active = false; };
-  }, [cameraActive]);
 
   const modeConfig = {
 
@@ -486,18 +514,30 @@ const Dashboard: React.FC = () => {
             {cameraActive ? 'TERMINATE_FEED' : 'INITIALIZE_FEED'}
           </button>
 
-          {/* Remote Source Toggle */}
-          <button
-            onClick={toggleSource}
-            className="flex items-center gap-2 px-4 py-2 border text-[10px] font-bold tracking-widest uppercase transition-all duration-300"
-            style={isRemoteSource
-              ? { borderColor: '#00e5ff', color: '#00e5ff', background: 'rgba(0,229,255,0.05)' }
-              : { borderColor: 'rgba(0,255,133,0.3)', color: 'rgba(0,255,133,0.5)' }
-            }
-          >
-            <Radio className={`w-3.5 h-3.5 ${isRemoteSource ? 'animate-pulse' : ''}`} />
-            {isRemoteSource ? 'SOURCE: REMOTE' : 'SOURCE: LOCAL'}
-          </button>
+          {/* Source Dropdown */}
+          <div className="relative group">
+            <select
+              value={currentSource}
+              onChange={(e) => handleSourceChange(e.target.value as any)}
+              className="appearance-none bg-[rgba(12,13,16,0.8)] border border-[rgba(0,255,133,0.2)] text-[#00ff85] text-[10px] font-bold tracking-widest px-8 py-2 hover:border-[#00ff85] focus:outline-none transition-all cursor-pointer uppercase min-w-[160px]"
+              style={{
+                color: currentSource === 'hybrid' ? '#00e5ff' : currentSource === 'remote' ? '#ff4466' : '#00ff85',
+                borderColor: currentSource === 'hybrid' ? 'rgba(0,229,255,0.4)' : currentSource === 'remote' ? 'rgba(255,68,102,0.4)' : 'rgba(0,255,133,0.2)'
+              }}
+            >
+              <option value="0">Source: Local</option>
+              <option value="remote">Source: Remote</option>
+              <option value="hybrid">Source: Hybrid</option>
+            </select>
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">
+               <ChevronDown className="w-3 h-3" />
+            </div>
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
+               <Radio className={`w-3.5 h-3.5 ${currentSource !== '0' ? 'animate-pulse' : ''}`} 
+                 style={{ color: currentSource === 'hybrid' ? '#00e5ff' : currentSource === 'remote' ? '#ff4466' : '#00ff85' }} />
+            </div>
+          </div>
+
 
           {/* Phone Link Button */}
           <button
@@ -784,12 +824,27 @@ const Dashboard: React.FC = () => {
               <div key={i} className={`absolute w-8 h-8 ${cls} border-[#00ff85]/30 group-hover:border-[#00ff85]/70 transition-colors duration-500 animate-corner-pulse`} />
             ))}
 
-            {/* Smooth canvas-based video feed */}
-            <canvas
-              ref={canvasRef}
-              className="absolute inset-0 w-full h-full object-contain"
-              style={{ display: cameraActive ? 'block' : 'none', imageRendering: 'auto' }}
-            />
+            {/* Dynamic Video Feeds Grid */}
+            <div className={`absolute inset-0 w-full h-full p-2 grid gap-2 ${
+               activeFeeds.length > 4 ? 'grid-cols-3' : activeFeeds.length > 1 ? 'grid-cols-2' : 'grid-cols-1'
+            }`}>
+              {activeFeeds.length > 0 ? (
+                activeFeeds.map(feedId => (
+                  <div key={feedId} className="relative border border-[rgba(0,255,133,0.1)] bg-black/40 overflow-hidden group/feed">
+                     <CameraStream feedId={feedId} active={cameraActive} />
+                     <div className="absolute top-2 left-2 px-2 py-0.5 bg-black/70 text-[8px] font-bold border border-[rgba(0,255,133,0.2)] tracking-tighter">
+                        FEED_{feedId.toUpperCase()}
+                     </div>
+                     {/* Decorative corner for each feed */}
+                     <div className="absolute top-0 right-0 w-3 h-3 border-t border-r border-[#00ff85]/30" />
+                     <div className="absolute bottom-0 left-0 w-3 h-3 border-b border-l border-[#00ff85]/30" />
+                  </div>
+                ))
+              ) : (
+                cameraActive && <CameraStream active={cameraActive} />
+              )}
+            </div>
+
             {!cameraActive ? (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-[#00ff85]/25">
                 <motion.div animate={{ opacity: [0.3, 0.7, 0.3] }} transition={{ repeat: Infinity, duration: 2 }}>
