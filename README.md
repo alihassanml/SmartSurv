@@ -1,104 +1,97 @@
 # **📌 SmartSurv: AI-Powered Intelligent Surveillance & Real-Time Person Search System**
 
-SmartSurv is a **proactive**, **intelligent**, and **automated** security ecosystem designed to transform traditional CCTV setups into high-speed autonomous guardians. It leverages state-of-the-art Computer Vision and Geolocation technologies to detect threats, track individuals, and provide instant situational awareness across distributed camera networks.
+SmartSurv is a **proactive**, **intelligent**, and **automated** security ecosystem designed to transform traditional CCTV setups into high-speed autonomous guardians. It leverages state-of-the-art Computer Vision, Geolocation, and Distributed Edge Computing to detect threats, track individuals, and provide instant situational awareness across distributed camera networks.
 
 ---
 
-## 🚀 **Key Tech Pillar Implementation**
+## 🛠️ **Dashboard & Control Center Features**
 
-### **1. Intelligent Activity Detection (YOLOv8)**  
-*   **Object & Threat Detection:** Integrated YOLOv8/v9/v12 models to identify prohibited objects (weapons, knives) and illegal activities in real-time.
-*   **Dynamic Sensitivity:** Per-class threshold management allows operators to fine-tune the confidence required for each threat type.
+### **1. Real-Time Security Operations (Ops_Core)**
+*   **Hybrid Monitoring Mode:** Simultaneously process and display multiple live camera feeds: Local Laptop Webcams + Multiple Remote Mobile Devices.
+*   **Dynamic Grid Layout:** The dashboard automatically scales into a responsive grid (1, 2, 4, 6, or 9 camera screens) based on the number of active surveillance nodes.
+*   **MJPEG Canvas Rendering:** Uses a high-performance custom canvas buffer to eliminate video lag and browser flickering, delivering smooth real-time visual monitoring.
 
-### **2. Deep-Learning Person Search (FaceNet + MTCNN)**  
-*   **Facial Embeddings:** Uses MTCNN for extraction and Inception-ResnetV1 (FaceNet) for high-dimensional feature mapping.
-*   **Persistent Search Lock:** Upload a target photo once; the system generates a biometric signature that stays active even across restarts.
-*   **Vector Similarity:** Employs Cosine Similarity algorithms to distinguish between individuals with >98% accuracy on modern hardware.
+### **2. Intelligence Modules (System_Parameters)**
+*   **Activity Detection (YOLOv8/v12):** Detects prohibited objects (weapons, knives) and suspicious actions in real-time.
+*   **Person Search (FaceNet + MTCNN):** Extracts facial biometric signatures from an uploaded photo and performs a real-time "Target-Lock" across all active camera channels.
+*   **Dual-Process Execution:** Run detection, search, or **Both (Hybrid Link)** simultaneously on ogni frame.
 
-### **3. Automatic Geo-Localization (IP-Geo Integration)**  
-*   **Zero-Config Deployment:** Automatically detects the current camera location using IP Geolocation.
-*   **Google Maps Synergy:** Every alert contains the precise latitude and longitude, with direct links to Google Maps for rapid response.
+### **3. Operational Controls & Fine-Tuning**
+*   **Precision Threshold Sliders:** Fine-tune confidence requirements for every detection class (Handgun, Knife, Person, etc.) independently via real-time sliders.
+*   **Selective Audio Alerts:** Toggle alert sounds (drop/ping) for specific detection categories or the target-match person search.
+*   **Remote Source Selection:** Instantly switch between **Local** (laptop), **Remote** (external nodes), or **Hybrid** (all-active) sources via a global dropdown.
+*   **Encrypted Email Protocol:** Toggle automated email reports that include geolocated maps and visual evidence snapshots.
 
-### **4. Instant Tactical Alerts (Email + WebSockets)**  
-*   **Visual Evidence:** Alerts are delivered via high-speed WebSockets to the dashboard and via SMTP as encrypted HTML emails.
-*   **Image Snapshots:** Every alert includes a base64-encoded snapshot of the incident, preserving evidence for legal and verification purposes.
-
-### **5. Cyber-Defense Aesthetic UI**  
-*   **Real-Time Dashboard:** Built with React/Vite + Framer Motion for a premium, low-latency "Hacker-style" operator interface.
-*   **Canvas Buffer Streaming:** MJPEG stream rendering on HTML5 Canvas to eliminate browser flicker and reduce video lag.
-
----
-
-## 🛠️ **System Architecture**
-
-*   **⚡ Backend:** FastAPI (Asynchronous Python Framework)
-*   **🧠 AI Models:** YOLOv8, MTCNN, FaceNet (vggface2 weights)
-*   **🌍 Location Integration:** IP-API (Dynamic Geolocation)
-*   **🎨 Frontend:** ReactJS (TypeScript), Tailwind CSS, Lucide Icons
-*   **💾 Database:** SQLite (SQLAlchemy ORM)
-*   **📬 Messaging:** SMTP (Gmail App Passwords)
+### **4. Distributed Deployment (Edge_Link)**
+*   **Phone-to-Surveillance Uplink:** Turn any smartphone into a wireless security camera node.
+*   **QR-Assisted Connection:** Generate unique remote links with randomized client IDs, allowing multiple mobile devices to join the surveillance network instantly without any setup.
 
 ---
 
-## 📍 **Setup & Installation**
+## 🧠 **Core AI Implementation Pillars**
 
-### **1. Prerequisites**
-*   Python 3.10+
-*   Node.js & NPM
-*   GPU (Optional, but recommended for <20ms inference)
+### **1. Computer Vision Pipeline**
+*   **Detection Engine:** Custom YOLOv8/v12 weights optimized for security-specific object classes.
+*   **Biometric Mapping:** 512-dimensional facial feature extraction using FaceNet (Inception-ResnetV1) with 98%+ accuracy.
+*   **MTCNN Face Extraction:** Automatic face alignment and extraction from video frames for high-quality biometric verification.
 
-### **2. Environment Configuration**
-Create a `.env` file in the `backend/` directory:
+### **2. Geospatial Situational Awareness**
+*   **Auto-Geo Isolation:** Automatic camera location detection using IP-API Geolocation services.
+*   **Tactical Map Integration:** Every detected alert includes precise coordinates and direct links to Google Maps.
+*   **Intercept Distance Calculation:** Real-time distance measurement (KM) between the operator's control center and the threat's camera location.
+
+---
+
+## 🛠️ **System Technical Stack**
+
+*   **⚡ Backend:** FastAPI (Asynchronous Python for sub-20ms inference)
+*   **🧠 AI Models:** YOLO (8/12), MTCNN, FaceNet (vggface2 weights)
+*   **🎨 Frontend:** ReactJS (TypeScript), Framer Motion, Lucide Icons, Tailwind CSS
+*   **📬 Messaging:** SMTP (Gmail App Passwords) for visual evidence delivery
+*   **WebSocket Protocol:** WSS for binary image data and real-time alert streams
+
+---
+
+## 📍 **Quick Setup & Execution**
+
+### **1. Backend Config (.env)**
 ```env
 SMTP_EMAIL=your-email@gmail.com
 SMTP_PASSWORD=your-app-password
-SMTP_SERVER=smtp.gmail.com
-SMTP_PORT=465 (or 587)
-CAMERA_ID=MAIN_GATE_01
+CAMERA_ID=CENTRAL_OPS_01
 ```
 
-### **3. Installation**
+### **2. Startup Commands**
 ```bash
-# Install Python dependencies
+# Start Backend
 cd backend
-pip install -r requirements.txt (or install fastapi, uvicorn, ultralytics, facenet-pytorch, requests, python-dotenv)
+python main.py
 
-# Install Frontend dependencies
+# Start Frontend
 cd frontend
-npm install
-```
-
-### **4. Execution**
-From the project root:
-```bash
 npm run dev
 ```
-*   `Backend API:` [http://localhost:8000](http://localhost:8000)
-*   `Frontend Ops Dashboard:` [http://localhost:5173](http://localhost:5173)
+*   `Dashboard URL:` [http://localhost:5173/dashboard](http://localhost:5173/dashboard)
+*   `Remote Node URL:` [http://localhost:5173/remote-camera](http://localhost:5173/remote-camera)
 
 ---
 
-## 🧪 **Technical Highlights (For FYP Presentation)**
+## 🧪 **FYP Technical Highlights (Presentation Points)**
 
-| Feature | Technology | Benefit |
+| Feature | Technical Implementation | Benefit |
 | :--- | :--- | :--- |
-| **Action Detection** | YOLOv8/v12 Convolutional Layers | High FPS real-time threat detection |
-| **Person ReID** | FaceNet Biometric Signatures | Tracking target across camera channels |
-| **Evidence Retrieval** | Buffer-to-Byte Encoding | Instant snapshot availability during demo |
-| **UI Aesthetics** | Framer Motion & CSS CRT FX | High-impact visual "WOW" factor for jurors |
+| **Distributed Node Control** | WebSocket Binary Buffering | Unlimited remote camera scalability |
+| **Parallel Inference** | Multi-Threaded Model Execution | Real-time Detection + Tracking on all feeds |
+| **Biometric Search** | FaceNet Embedding Vectors | Target tracking across different environments |
+| **Geospatial Tracking** | Haversine Distance Calculation | Accurate threat-to-operator proximity |
+| **Tactical UI** | Canvas-based MJPEG decoder | "War-Room" aesthetic for high situational awareness |
 
 ---
 
-## ⚖️ **Ethics & Privacy**
+## ⚖️ **Ethics & Privacy Protocol**
 
-*   **Local Storage:** All facial biometric data is processed in-memory or in local encrypted folders.
-*   **Face Blurring Logic:** (In development) Automated blurring of non-target faces to comply with GDPR/Privacy guidelines.
-
----
-
-## 🧾 **Conclusion**
-
-SmartSurv transforms surveillance from a "record-and-watch" format into a **proactive defense system**. By combining deep learning for identity, geolocated situational awareness, and instant visual alerts, it provides a state-of-the-art solution for modern security challenges.
+*   **In-Memory Processing:** Facial data is never permanently stored without encryption to ensure GDPR/Local privacy compliance.
+*   **Local Security:** All biometric signatures are generated and processed within the local server environment.
 
 ---
 **Developed by Ali Hassan as a Final Year Project**
