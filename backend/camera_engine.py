@@ -63,6 +63,11 @@ class CameraFeed:
         self.last_face_box = None
         self.pending_det = None
         self.pending_face = None
+        
+        # Activity Heatmap (80x60 grid for performance)
+        self.heatmap = np.zeros((60, 80), dtype=np.float32)
+        self.heatmap_last_decay = time.time()
+
 
     def start(self):
         if self.running: return
@@ -139,9 +144,10 @@ class CameraFeed:
                 if self.engine.executor:
                     try:
                         self.pending_det = self.engine.executor.submit(self.engine._process_detections, frame.copy())
-                        self.pending_face = self.engine.executor.submit(self.engine._process_face_search, frame.copy())
+                        self.pending_face = self.engine.executor.submit(self.engine._process_face_search, frame.copy(), self.feed_id)
                     except (RuntimeError, AttributeError):
                         if not self.running: break
+
 
             # ── Draw overlays ─────────────────────────────────────────────
             for d in self.last_detections:
@@ -157,8 +163,16 @@ class CameraFeed:
                 r = int(max(x2 - x1, y2 - y1) * 0.65)
                 cv2.circle(display_frame, (cx, cy), r, (0, 0, 255), 3)
 
-            # ── Alerts ────────────────────────────────────────────────────
+
+            # ── Update Heatmap ───────────────────────────────────────────
+            self._update_heatmap(self.last_detections)
+            
+            # ── Handle Alerts & Re-ID ────────────────────────────────────
             self.engine._handle_alerts(self.feed_id, display_frame, self.last_detections, self.last_is_target_match)
+
+            # ── Overlay Heatmap (Subtle) ──────────────────────────────────
+            self._apply_heatmap_overlay(display_frame)
+
 
             # ── Push frame to stream queue ────────────────────────────────
             _, buf = cv2.imencode('.jpg', display_frame, [cv2.IMWRITE_JPEG_QUALITY, 65])
@@ -167,6 +181,39 @@ class CameraFeed:
                 except queue.Empty: pass
             try: self.frame_queue.put_nowait(buf.tobytes())
             except queue.Full: pass
+
+    def _update_heatmap(self, detections):
+        # Decay heatmap every 1 second
+        now = time.time()
+        if now - self.heatmap_last_decay > 1.0:
+            self.heatmap *= 0.95 # Decay factor
+            self.heatmap_last_decay = now
+            
+        for d in detections:
+            if d['label'].lower() == 'person':
+                x1, y1, x2, y2 = [int(v) for v in d["box"]]
+                # Map to 80x60 grid
+                gx1, gy1 = max(0, int(x1/10)), max(0, int(y1/10))
+                gx2, gy2 = min(79, int(x2/10)), min(59, int(y2/10))
+                self.heatmap[gy1:gy2, gx1:gx2] += 0.2
+                self.heatmap = np.clip(self.heatmap, 0, 10)
+
+    def _apply_heatmap_overlay(self, frame):
+        # Only show heatmap if enabled in engine (future-proofing)
+        if not self.heatmap.any(): return
+        
+        # Upscale heatmap to frame size
+        hm_colored = cv2.applyColorMap((np.clip(self.heatmap, 0, 1) * 255).astype(np.uint8), cv2.COLORMAP_JET)
+        hm_upscaled = cv2.resize(hm_colored, (800, 600))
+        
+        # Blend with original frame (very subtle 15% opacity)
+        cv2.addWeighted(hm_upscaled, 0.15, frame, 0.85, 0, frame)
+
+    def get_heatmap_data(self):
+        # Return base64 encoded heatmap for frontend overlay toggle
+        _, buf = cv2.imencode('.jpg', (np.clip(self.heatmap, 0, 1) * 255).astype(np.uint8))
+        return base64.b64encode(buf).decode('utf-8')
+
 
 class CameraEngine:
     def __init__(self, model_path='../model/S Model/best.pt', source=0):
@@ -185,7 +232,10 @@ class CameraEngine:
         
         self.class_names = list(self.model.names.values())
         self.class_thresholds = {name: 0.5 for name in self.class_names}
-        self.target_face_embedding = None
+        self.watchlist = {} # name -> embedding
+        self.reid_buffer = [] # list of {"id": str, "embedding": tensor, "last_feed": str, "last_seen": float}
+        self.reid_threshold = 0.75
+
 
         self.sound_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'sound', 'drop.mp3'))
         
@@ -212,11 +262,18 @@ class CameraEngine:
         self.camera_id = os.getenv("CAMERA_ID", "CAM-01-DYNAMIC")
         self.camera_lat, self.camera_lon = self._auto_localize()
 
-        # Persistent target
-        data_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data'))
-        os.makedirs(data_dir, exist_ok=True)
-        self.persistent_path = os.path.join(data_dir, 'persistent_target.jpg')
-        self._load_persistent_target()
+        # Persistent targets
+        self.watchlist_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data', 'watchlist'))
+        os.makedirs(self.watchlist_dir, exist_ok=True)
+        self._load_watchlist()
+
+    def _load_watchlist(self):
+        if not os.path.exists(self.watchlist_dir): return
+        for filename in os.listdir(self.watchlist_dir):
+            if filename.endswith(('.jpg', '.jpeg', '.png')):
+                name = os.path.splitext(filename)[0]
+                self.add_to_watchlist(name, os.path.join(self.watchlist_dir, filename), persist=False)
+
 
     def _auto_localize(self):
         try:
@@ -304,23 +361,74 @@ class CameraEngine:
                     detections.append({"label": label, "confidence": conf, "box": box.xyxy[0].tolist()})
         return detections
 
-    def _process_face_search(self, frame):
-        if self.mode not in ["search", "both"] or self.target_face_embedding is None:
-            return False, None
+    def _process_face_search(self, frame, feed_id):
+        if self.mode not in ["search", "both"]:
+            return None, None
         try:
             pil_frame = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
             boxes, _ = _MTCNN.detect(pil_frame)
-            if boxes is None or len(boxes) == 0: return False, None
+            if boxes is None or len(boxes) == 0: return None, None
             face_tensors = _MTCNN(pil_frame)
-            if face_tensors is None: return False, None
+            if face_tensors is None: return None, None
             if face_tensors.dim() == 3: face_tensors = face_tensors.unsqueeze(0)
             with torch.no_grad():
                 embeddings = _RESNET(face_tensors.to(_DEVICE))
+            
+            # 1. Check Watchlist
             for i, embedding in enumerate(embeddings):
-                sim = torch.nn.functional.cosine_similarity(self.target_face_embedding, embedding.unsqueeze(0)).item()
-                if sim > FACENET_THRESHOLD: return True, [int(b) for b in boxes[i]]
+                best_match = None
+                best_sim = 0
+                for name, target_emb in self.watchlist.items():
+                    sim = torch.nn.functional.cosine_similarity(target_emb, embedding.unsqueeze(0)).item()
+                    if sim > FACENET_THRESHOLD and sim > best_sim:
+                        best_sim = sim
+                        best_match = name
+                
+                if best_match:
+                    return f"TARGET: {best_match}", [int(b) for b in boxes[i]]
+                
+                # 2. Re-ID (If not in watchlist)
+                reid_match = self._process_reid(embedding, feed_id)
+                if reid_match:
+                    return f"RE-ID: {reid_match}", [int(b) for b in boxes[i]]
+                    
         except Exception: pass
-        return False, None
+        return None, None
+
+    def _process_reid(self, embedding, feed_id):
+        now = time.time()
+        # Clean old Re-ID entries (> 10 mins)
+        self.reid_buffer = [e for e in self.reid_buffer if now - e['last_seen'] < 600]
+        
+        best_match = None
+        best_sim = self.reid_threshold
+        
+        for entry in self.reid_buffer:
+            sim = torch.nn.functional.cosine_similarity(entry['embedding'], embedding.unsqueeze(0)).item()
+            if sim > best_sim:
+                best_sim = sim
+                best_match = entry
+        
+        if best_match:
+            # Person found in another camera or earlier
+            prev_feed = best_match['last_feed']
+            best_match['last_seen'] = now
+            best_match['last_feed'] = feed_id
+            if prev_feed != feed_id:
+                return f"SAME_AS_{best_match['id']} (f:{prev_feed})"
+            return None # Same feed, just update
+        else:
+            # New person
+            pid = f"P-{len(self.reid_buffer) + 1:03d}"
+            self.reid_buffer.append({
+                "id": pid,
+                "embedding": embedding.unsqueeze(0),
+                "last_feed": feed_id,
+                "last_seen": now
+            })
+            return None
+
+
 
     # Public API
     def start(self):
@@ -400,23 +508,47 @@ class CameraEngine:
     def get_thresholds(self): return dict(self.class_thresholds)
     def get_class_sounds(self): return dict(self.class_sounds)
 
-    def set_search_target(self, image_path: str, persist: bool = True) -> bool:
+    def add_to_watchlist(self, name: str, image_path: str, persist: bool = True) -> bool:
         try:
-            if persist and image_path != self.persistent_path:
-                shutil.copy(image_path, self.persistent_path)
-                image_path = self.persistent_path
+            dest_path = os.path.join(self.watchlist_dir, f"{name}.jpg")
+            if persist and image_path != dest_path:
+                shutil.copy(image_path, dest_path)
+                image_path = dest_path
+            
             pil_img = Image.open(image_path).convert('RGB')
             face_tensor = _MTCNN(pil_img)
             if face_tensor is None: return False
             if face_tensor.dim() == 4: face_tensor = face_tensor[0]
             with torch.no_grad():
                 embedding = _RESNET(face_tensor.unsqueeze(0).to(_DEVICE))
-            self.target_face_embedding = embedding
+            self.watchlist[name] = embedding
             return True
         except Exception: return False
 
-    def clear_search_target(self):
-        self.target_face_embedding = None
-        if os.path.exists(self.persistent_path):
-            try: os.remove(self.persistent_path)
-            except: pass
+    def remove_from_watchlist(self, name: str):
+        if name in self.watchlist:
+            del self.watchlist[name]
+            p = os.path.join(self.watchlist_dir, f"{name}.jpg")
+            if os.path.exists(p):
+                try: os.remove(p)
+                except: pass
+
+    def get_watchlist_names(self):
+        return list(self.watchlist.keys())
+
+    def get_watchlist_data(self):
+        res = []
+
+        for name in self.watchlist.keys():
+            p = os.path.join(self.watchlist_dir, f"{name}.jpg")
+            if os.path.exists(p):
+                with open(p, "rb") as f:
+                    res.append({
+                        "name": name,
+                        "image": base64.b64encode(f.read()).decode('utf-8')
+                    })
+            else:
+                res.append({"name": name, "image": None})
+        return res
+
+

@@ -6,8 +6,10 @@ from sqlalchemy.orm import Session
 import asyncio
 import json
 import os
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 from contextlib import asynccontextmanager
+import time
+
 
 from camera_engine import CameraEngine
 from database import SessionLocal, Base, engine, User
@@ -48,7 +50,15 @@ async def lifespan(app: FastAPI):
     app.state.is_running = False
     camera.stop()
 
+from fastapi.staticfiles import StaticFiles
+
 app = FastAPI(lifespan=lifespan)
+
+# Mount watchlist directory as static so frontend can show thumbnails
+WATCHLIST_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data', 'watchlist'))
+os.makedirs(WATCHLIST_PATH, exist_ok=True)
+app.mount("/api/watchlist/images", StaticFiles(directory=WATCHLIST_PATH), name="watchlist_images")
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -176,24 +186,24 @@ def set_camera_source(body: SourceUpdate):
 def get_camera_feeds():
     return {"feeds": camera.get_active_feeds()}
 
-@app.post("/api/person/search")
-async def setup_person_search(file: UploadFile = File(...)):
-    import time
+@app.get("/api/watchlist")
+def get_watchlist():
+    return {"watchlist": camera.get_watchlist_names()}
+
+@app.post("/api/watchlist")
+async def add_to_watchlist(name: str = Query(...), file: UploadFile = File(...)):
     timestamp = int(time.time())
-    safe_filename = f"target_{timestamp}_{file.filename.replace(' ', '_')}"
+    safe_filename = f"watchlist_{timestamp}_{file.filename.replace(' ', '_')}"
     file_path = os.path.abspath(os.path.join(TEMP_DIR, safe_filename))
     
     try:
-        await file.seek(0)
+        content = await file.read()
         with open(file_path, "wb") as f:
-            content = await file.read()
             f.write(content)
-            f.flush()
-            os.fsync(f.fileno())
         
-        success = camera.set_search_target(file_path)
+        success = camera.add_to_watchlist(name, file_path)
         if success:
-            return {"status": "success", "message": f"Searching for person: {file.filename}"}
+            return {"status": "success", "message": f"Added {name} to watchlist"}
         else:
             return JSONResponse(status_code=400, content={"status": "error", "message": "Face recognition failed."})
     except Exception as e:
@@ -203,10 +213,17 @@ async def setup_person_search(file: UploadFile = File(...)):
             try: os.remove(file_path)
             except: pass
 
-@app.delete("/api/person/search")
-def clear_person_search():
-    camera.clear_search_target()
-    return {"status": "success", "message": "Person search cleared."}
+@app.delete("/api/watchlist/{name}")
+def delete_from_watchlist(name: str):
+    camera.remove_from_watchlist(name)
+    return {"status": "success", "message": f"Removed {name} from watchlist"}
+
+@app.get("/api/camera/heatmap/{id}")
+def get_camera_heatmap(id: str):
+    if id in camera.feeds:
+        return {"heatmap": camera.feeds[id].get_heatmap_data()}
+    return JSONResponse(status_code=404, content={"message": "Feed not found"})
+
 
 @app.get("/video_feed")
 async def video_feed(id: Optional[str] = Query(None)):

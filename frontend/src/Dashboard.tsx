@@ -4,23 +4,26 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Settings, User, LogOut, Shield, RefreshCw, Sliders,
   Search, Camera, UploadCloud, AlertTriangle, Crosshair,
-  Volume2, X, ChevronDown, Zap, Radio, Mail, MapPin
+  Volume2, X, ChevronDown, Zap, Radio, Mail, MapPin, Target
 } from 'lucide-react';
+
 
 interface Detection { label: string; confidence: number; box: number[]; }
 interface Alert { 
   timestamp: string; 
   detections: Detection[]; 
   image: string; 
-  is_person_search_match?: boolean;
+  is_person_search_match?: boolean | string;
   location?: { id: string; lat: string; lon: string; maps: string; };
 }
+
 interface ClassThreshold { name: string; threshold: number; sound_enabled: boolean; }
 
 const API = `http://${window.location.hostname}:8000`;
 
-const CameraStream: React.FC<{ feedId?: string; active: boolean }> = ({ feedId, active }) => {
+const CameraStream: React.FC<{ feedId?: string; active: boolean; showHeatmap?: boolean }> = ({ feedId, active, showHeatmap }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const heatmapImgRef = useRef<HTMLImageElement>(null);
   const rafRef = useRef<number>(0);
 
   useEffect(() => {
@@ -80,7 +83,40 @@ const CameraStream: React.FC<{ feedId?: string; active: boolean }> = ({ feedId, 
     return () => { isActive = false; };
   }, [active, feedId]);
 
-  return <canvas ref={canvasRef} className="w-full h-full object-contain" style={{ imageRendering: 'auto' }} />;
+  useEffect(() => {
+    if (!active || !showHeatmap) return;
+    let isActive = true;
+    const fetchHeatmap = async () => {
+      try {
+        const url = `${API}/api/camera/heatmap/${feedId || 'camera-0'}`;
+        const res = await fetch(url);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.heatmap && heatmapImgRef.current) {
+          heatmapImgRef.current.src = `data:image/jpeg;base64,${data.heatmap}`;
+        }
+      } catch (e) {
+         // ignore
+      } finally {
+        if (isActive) setTimeout(fetchHeatmap, 1000);
+      }
+    };
+    fetchHeatmap();
+    return () => { isActive = false; };
+  }, [active, showHeatmap, feedId]);
+
+  return (
+    <div className="relative w-full h-full">
+       <canvas ref={canvasRef} className="w-full h-full object-contain" style={{ imageRendering: 'auto' }} />
+       {showHeatmap && (
+          <img 
+             ref={heatmapImgRef} 
+             className="absolute inset-0 w-full h-full object-contain pointer-events-none opacity-50 mix-blend-screen transition-opacity duration-1000" 
+             alt="Heatmap" 
+          />
+       )}
+    </div>
+  );
 };
 
 
@@ -113,9 +149,17 @@ const Dashboard: React.FC = () => {
   const [mapAlert, setMapAlert] = useState<Alert | null>(null);
   const [currentSource, setCurrentSource] = useState<'0' | 'remote' | 'hybrid'>((localStorage.getItem('currentSource') as any) || '0');
   const [activeFeeds, setActiveFeeds] = useState<string[]>([]);
+  const [watchlist, setWatchlist] = useState<string[]>([]);
+  const [isAddingTarget, setIsAddingTarget] = useState(false);
+  const [newTargetName, setNewTargetName] = useState("");
+  const [newTargetPreview, setNewTargetPreview] = useState<string | null>(null);
+  const [showHeatmap, setShowHeatmap] = useState(false);
+
   const [showRemoteLink, setShowRemoteLink] = useState(false);
   const [systemIp, setSystemIp] = useState<string | null>(null);
   const [isCopied, setIsCopied] = useState(false);
+
+
 
 
   useEffect(() => {
@@ -193,7 +237,6 @@ const Dashboard: React.FC = () => {
   const changeMode = async (mode: 'detection' | 'search' | 'both') => {
     if (mode === systemMode) return;
     setIsReconnecting(true);
-    setAlerts([]);
     try {
       await fetch(`${API}/api/camera/mode`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -226,40 +269,53 @@ const Dashboard: React.FC = () => {
     } catch { setSaveStatus('error'); setTimeout(() => setSaveStatus('idle'), 3000); }
   };
 
-  const handleSearchFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const fetchWatchlist = async () => {
+    try {
+      const res = await fetch(`${API}/api/watchlist`);
+      const data = await res.json();
+      setWatchlist(data.watchlist || []);
+    } catch (e) { console.error("Failed to fetch watchlist", e); }
+  };
+
+  useEffect(() => {
+    fetchWatchlist();
+  }, []);
+
+  const handleAddWatchlist = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !newTargetName) return;
+    
+    // Create local preview
     const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64String = reader.result as string;
-      setPreviewUrl(base64String);
-      localStorage.setItem('searchPreview', base64String);
-    };
+    reader.onloadend = () => setNewTargetPreview(reader.result as string);
     reader.readAsDataURL(file);
-    setSearchStatus('uploading');
-    localStorage.setItem('searchStatus', 'uploading');
+
+    setIsReconnecting(true);
     const formData = new FormData();
     formData.append('file', file);
     try {
-      const res = await fetch(`${API}/api/person/search`, { method: 'POST', body: formData });
-      if (!res.ok) throw new Error('Upload failed');
-      setSearchStatus('active');
-      localStorage.setItem('searchStatus', 'active');
-    } catch {
-      setSearchStatus('error');
-      localStorage.setItem('searchStatus', 'error');
-    }
+      const res = await fetch(`${API}/api/watchlist?name=${encodeURIComponent(newTargetName)}`, {
+        method: 'POST',
+        body: formData
+      });
+      if (res.ok) {
+        setNewTargetName("");
+        setNewTargetPreview(null);
+        setIsAddingTarget(false);
+        fetchWatchlist();
+      }
+    } catch (e) { console.error("Failed to add target", e); }
+    finally { setIsReconnecting(false); }
   };
 
-  const clearPersonSearch = async () => {
+
+  const removeTarget = async (name: string) => {
     try {
-      await fetch(`${API}/api/person/search`, { method: 'DELETE' });
-      setPreviewUrl(null);
-      setSearchStatus('idle');
-      localStorage.removeItem('searchPreview');
-      localStorage.removeItem('searchStatus');
-    } catch (e) { console.error('Failed to clear search', e); }
+      await fetch(`${API}/api/watchlist/${encodeURIComponent(name)}`, { method: 'DELETE' });
+      fetchWatchlist();
+    } catch (e) { console.error("Failed to remove target", e); }
   };
+
 
   const handleLogout = () => { localStorage.removeItem('token'); navigate('/'); };
 
@@ -459,6 +515,102 @@ const Dashboard: React.FC = () => {
         )}
       </AnimatePresence>
 
+      {/* ─── WATCHLIST MANAGER (Right Side) ─── */}
+      <AnimatePresence>
+        {isAddingTarget && (
+          <>
+            <motion.div 
+               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+               onClick={() => setIsAddingTarget(false)}
+               className="fixed inset-0 bg-black/80 z-[300] backdrop-blur-md"
+            />
+            <motion.div
+               initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
+               className="fixed top-0 right-0 h-full w-[400px] bg-[#090a0c] border-l border-[#00ff85]/20 p-8 z-[301] shadow-2xl"
+            >
+              <div className="flex justify-between items-center mb-10 border-b border-[#00ff85]/10 pb-6">
+                 <div>
+                   <h3 className="text-xl font-bold tracking-widest text-[#00ff85]">WATCHLIST_DB</h3>
+                   <p className="text-[10px] opacity-40 uppercase font-bold mt-1">Personnel Authorization Management</p>
+                 </div>
+                 <button onClick={() => setIsAddingTarget(false)} className="p-2 hover:bg-white/5 border border-transparent hover:border-[#00ff85]/30">
+                   <X className="w-5 h-5 text-[#00ff85]" />
+                 </button>
+              </div>
+
+              <div className="space-y-8">
+                {/* Add New Target Input */}
+                <div className="space-y-3 bg-[#0c0e12] p-5 border border-[#00ff85]/10">
+                   <p className="text-[9px] font-bold text-[#00ff85]/60 tracking-widest uppercase">Add New Target</p>
+                   <input 
+                      type="text" 
+                      placeholder="ENTER_PERSON_NAME..."
+                      value={newTargetName}
+                      onChange={(e) => setNewTargetName(e.target.value)}
+                      className="w-full bg-black/40 border border-[#00ff85]/20 text-[#00ff85] text-xs px-4 py-3 placeholder:text-[#00ff85]/20 focus:outline-none focus:border-[#00ff85]/50 transition-all font-bold"
+                   />
+                   <label className="block">
+                      {newTargetPreview ? (
+                         <div className="relative w-full aspect-square border border-[#00ff85]/30 mb-3 bg-black/40 overflow-hidden">
+                            <img src={newTargetPreview} className="w-full h-full object-cover grayscale" alt="Preview" />
+                            <div className="absolute inset-0 bg-[#00ff85]/10 animate-pulse" />
+                            <div className="absolute top-0 left-0 w-full h-0.5 bg-[#00ff85] animate-scanner" />
+                            <button 
+                               onClick={(e) => { e.preventDefault(); setNewTargetPreview(null); }}
+                               className="absolute top-2 right-2 p-1 bg-black/60 text-white hover:text-red-500"
+                            >
+                               <X className="w-4 h-4" />
+                            </button>
+                         </div>
+                      ) : (
+                         <div className={`w-full py-8 border-2 border-dashed ${newTargetName ? 'border-[#00ff85]/40 hover:bg-[#00ff85]/5 cursor-pointer text-[#00ff85]' : 'border-white/5 text-white/10 opacity-50 cursor-not-allowed'} font-bold text-[10px] tracking-widest uppercase text-center transition-all flex flex-col items-center gap-2`}>
+                            <UploadCloud className="w-6 h-6" />
+                            {newTargetName ? "Select Biometric Image" : "Enter Name First"}
+                         </div>
+                      )}
+                      <input type="file" className="hidden" onChange={handleAddWatchlist} disabled={!newTargetName} />
+                   </label>
+                </div>
+
+                {/* Current Watchlist */}
+                <div className="space-y-4">
+                  <p className="text-[9px] font-bold text-[#00ff85]/60 tracking-widest uppercase">Active Targets ({watchlist.length})</p>
+                  <div className="space-y-2 overflow-y-auto max-h-[400px] pr-2 custom-scrollbar">
+                    {watchlist.length === 0 ? (
+                      <div className="text-center py-10 opacity-20 text-[10px] italic">NO_TARGETS_ACTIVE</div>
+                    ) : (
+                      watchlist.map(name => (
+                        <div key={name} className="flex justify-between items-center p-2 bg-black/40 border border-white/5 group hover:border-[#00ff85]/30 transition-all">
+                           <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full border border-[#00ff85]/20 overflow-hidden bg-black shrink-0 relative">
+                                 <img 
+                                    src={`${API}/api/watchlist/images/${name}.jpg?t=${Date.now()}`} 
+                                    className="w-full h-full object-cover grayscale" 
+                                    onError={(e) => { e.currentTarget.style.display='none'; }}
+                                    alt="" 
+                                 />
+
+                                 <Search className="absolute inset-0 m-auto w-3 h-3 text-[#00ff85]/20" />
+                              </div>
+                              <span className="text-[10px] font-bold tracking-wider">{name.toUpperCase()}</span>
+                           </div>
+                           <button onClick={() => removeTarget(name)} className="opacity-0 group-hover:opacity-100 p-1.5 hover:text-red-500 transition-all">
+                              <X className="w-4 h-4" />
+                           </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+
+
       {/* ─── HEADER ─── */}
       <header className="relative z-10 flex justify-between items-center px-6 py-3 bg-[rgba(6,6,8,0.95)] border-b border-[rgba(0,255,133,0.1)] backdrop-blur-sm shrink-0">
         {/* Brand + Mode switcher */}
@@ -548,7 +700,18 @@ const Dashboard: React.FC = () => {
             CONNECT_PHONE
           </button>
 
+          {/* Heatmap Toggle */}
+          <button
+            onClick={() => setShowHeatmap(!showHeatmap)}
+            className="flex items-center gap-2 px-3 py-2 border border-[rgba(0,255,133,0.2)] text-[10px] font-bold hover:border-[#00ff85] transition-all"
+            style={showHeatmap ? { borderColor: '#00ff85', color: '#00ff85', background: 'rgba(0,255,133,0.1)' } : {}}
+          >
+            <Sliders className={`w-3.5 h-3.5 ${showHeatmap ? 'animate-pulse' : ''}`} />
+            {showHeatmap ? 'HEATMAP_ON' : 'HEATMAP_OFF'}
+          </button>
+
           {/* Settings */}
+
           <button
             id="settings-btn"
             onClick={() => setShowSettings(true)}
@@ -657,86 +820,30 @@ const Dashboard: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Person Search */}
                 <div className="p-6 border-b border-[rgba(0,255,133,0.08)]">
                   <div className="flex items-center justify-between mb-5">
                     <div className="flex items-center gap-2">
                       <Search className="w-3.5 h-3.5 text-[#00ff85]" />
-                      <span className="text-[10px] font-bold tracking-[0.2em]">PERSON_TARGET_LOCK</span>
+                      <span className="text-[10px] font-bold tracking-[0.2em]">WATCHLIST_STATUS</span>
                     </div>
-                    {searchStatus === 'active' && (
-                      <span className="text-[9px] text-red-400 animate-pulse font-bold">[ SCANNING ]</span>
-                    )}
                   </div>
 
-                  {/* Search Sound toggle */}
-                  <div className="flex items-center justify-between mb-5 p-3 bg-[rgba(0,255,133,0.02)] border border-[rgba(0,255,133,0.08)]">
-                    <div className="flex items-center gap-2.5">
-                      <Volume2 className={`w-3.5 h-3.5 ${searchSoundEnabled ? 'text-red-400' : 'text-[#00ff85]/20'}`} />
-                      <div>
-                        <p className="text-[9px] font-bold tracking-widest">SEARCH_AUDIO_ALERT</p>
-                        <p className="text-[8px] opacity-30">Alert on target match</p>
-                      </div>
-                    </div>
-                    <button onClick={toggleSearchSound}
-                      className="relative w-9 h-5 border transition-all duration-300"
-                      style={searchSoundEnabled ? { borderColor: '#ff4466', background: 'rgba(255,68,102,0.05)' } : { borderColor: 'rgba(0,255,133,0.15)' }}>
-                      <div className={`absolute top-0.5 bottom-0.5 w-3 transition-all duration-300 ${searchSoundEnabled ? 'right-0.5 bg-red-500 shadow-[0_0_8px_#ff4466]' : 'left-0.5 bg-[#333]'}`} />
-                    </button>
-                  </div>
-
-                  {/* Email Toggle */}
-                  <div className="flex items-center justify-between mb-5 p-3 bg-[rgba(0,180,255,0.02)] border border-[rgba(0,180,255,0.08)]">
-                    <div className="flex items-center gap-2.5">
-                      <Mail className={`w-3.5 h-3.5 ${emailEnabled ? 'text-[#00e5ff]' : 'text-[#00ff85]/20'}`} />
-                      <div>
-                        <p className="text-[9px] font-bold tracking-widest text-[#00e5ff]">EMAIL_ALERTS_PROTOCOL</p>
-                        <p className="text-[8px] opacity-30 text-[#00e5ff]/60">Send incident reports to your inbox</p>
-                      </div>
-                    </div>
-                    <button onClick={toggleEmail}
-                      className="relative w-9 h-5 border transition-all duration-300"
-                      style={emailEnabled ? { borderColor: '#00e5ff', background: 'rgba(0,229,255,0.05)' } : { borderColor: 'rgba(0,255,133,0.15)' }}>
-                      <div className={`absolute top-0.5 bottom-0.5 w-3 transition-all duration-300 ${emailEnabled ? 'right-0.5 bg-[#00e5ff] shadow-[0_0_8px_#00e5ff]' : 'left-0.5 bg-[#333]'}`} />
-                    </button>
-                  </div>
-
-                  {searchStatus === 'idle' ? (
-                    <label className="flex flex-col items-center justify-center w-full h-36 border border-dashed border-[rgba(0,255,133,0.15)] hover:bg-[rgba(0,255,133,0.03)] hover:border-[rgba(0,255,133,0.4)] transition-all cursor-pointer group">
-                      <UploadCloud className="w-7 h-7 opacity-20 group-hover:opacity-70 group-hover:scale-110 transition-all duration-300 mb-2" />
-                      <span className="text-[9px] opacity-30 font-bold group-hover:opacity-70 tracking-widest">INJECT_FACIAL_DATA</span>
-                      <input type="file" className="hidden" accept="image/*" onChange={handleSearchFileUpload} />
-                    </label>
-                  ) : (
-                    <div className="border border-[rgba(0,255,133,0.15)] bg-[rgba(0,255,133,0.02)] p-4 relative">
-                      <div className="absolute top-0 left-0 w-5 h-5 border-t border-l border-[#00ff85]" />
-                      <div className="absolute bottom-0 right-0 w-5 h-5 border-b border-r border-[#00ff85]" />
-                      <div className="flex gap-4 relative z-10">
-                        {previewUrl && (
-                          <div className="relative shrink-0">
-                            <img src={previewUrl} alt="Target" className="w-20 h-20 object-cover grayscale brightness-110" />
-                            <div className="absolute inset-0 border border-[rgba(0,255,133,0.3)]" />
-                            <div className="absolute top-0 left-0 w-full h-0.5 bg-[#00ff85]/60 animate-scanner" />
-                          </div>
-                        )}
-                        <div className="flex-1 space-y-2.5">
-                          <div>
-                            <p className="text-[9px] opacity-30 mb-0.5">DATA_SET</p>
-                            <p className="text-[11px] font-bold">TARGET_OMEGA_01</p>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <div className="w-1.5 h-1.5 bg-[#00ff85] rounded-full animate-ping" />
-                            <span className="text-[10px] font-bold">ACTIVE_SCAN</span>
-                          </div>
-                          <button onClick={clearPersonSearch}
-                            className="w-full py-1.5 text-[9px] font-bold border border-red-900/50 text-red-400 hover:bg-red-900/20 transition-all">
-                            PURGE_TARGET
-                          </button>
+                  <div className="border border-[rgba(0,255,133,0.15)] bg-[rgba(0,255,133,0.02)] p-4">
+                    <div className="space-y-3">
+                        <div className="flex justify-between items-center">
+                            <span className="text-[9px] opacity-40 uppercase">Active Targets:</span>
+                            <span className="text-[11px] font-bold text-[#00ff85]">{watchlist.length}</span>
                         </div>
-                      </div>
+                        <button 
+                            onClick={() => { setShowSettings(false); setIsAddingTarget(true); }}
+                            className="w-full py-2 bg-[rgba(0,255,133,0.1)] border border-[rgba(0,255,133,0.3)] text-[9px] font-bold text-[#00ff85] hover:bg-[#00ff85] hover:text-black transition-all"
+                        >
+                            MANAGE_WATCHLIST
+                        </button>
                     </div>
-                  )}
+                  </div>
                 </div>
+
 
                 {/* Thresholds */}
                 <div className="p-6">
@@ -831,7 +938,7 @@ const Dashboard: React.FC = () => {
               {activeFeeds.length > 0 ? (
                 activeFeeds.map(feedId => (
                   <div key={feedId} className="relative border border-[rgba(0,255,133,0.1)] bg-black/40 overflow-hidden group/feed">
-                     <CameraStream feedId={feedId} active={cameraActive} />
+                     <CameraStream feedId={feedId} active={cameraActive} showHeatmap={showHeatmap} />
                      <div className="absolute top-2 left-2 px-2 py-0.5 bg-black/70 text-[8px] font-bold border border-[rgba(0,255,133,0.2)] tracking-tighter">
                         FEED_{feedId.toUpperCase()}
                      </div>
@@ -841,7 +948,7 @@ const Dashboard: React.FC = () => {
                   </div>
                 ))
               ) : (
-                cameraActive && <CameraStream active={cameraActive} />
+                cameraActive && <CameraStream active={cameraActive} showHeatmap={showHeatmap} />
               )}
             </div>
 
@@ -907,8 +1014,13 @@ const Dashboard: React.FC = () => {
           <div className="px-5 py-4 border-b border-[rgba(0,255,133,0.1)] bg-[rgba(6,6,8,0.9)] flex justify-between items-center shrink-0">
             <div>
               <h2 className="text-[11px] font-bold tracking-[0.25em]">ALERTS_BUFFER</h2>
-              <p className="text-[8px] opacity-25 mt-0.5 uppercase">Intercepted Incidents</p>
+              <div className="flex items-center gap-1.5 mt-1">
+                <p className="text-[8px] opacity-25 uppercase">Incidents</p>
+                <div className="h-[2px] w-2 bg-[#00ff85]/20" />
+                <button onClick={() => setIsAddingTarget(true)} className="text-[8px] text-[#00ff85] hover:underline hover:opacity-100 opacity-60 font-bold tracking-widest">OPEN_WATCHLIST ({watchlist.length})</button>
+              </div>
             </div>
+
             <div className="flex items-center gap-2">
               {alerts.length > 0 && (
                 <span className="text-[9px] bg-[rgba(0,255,133,0.1)] border border-[rgba(0,255,133,0.2)] px-1.5 py-0.5 font-bold">
@@ -940,13 +1052,15 @@ const Dashboard: React.FC = () => {
                     }
                   >
                     {/* ID badge */}
-                    <div className="absolute top-0 right-0 px-2 py-0.5 text-[8px] font-bold"
+                    <div className="absolute top-0 right-0 px-2 py-0.5 text-[8px] font-bold flex items-center gap-1.5"
                       style={alert.is_person_search_match
                         ? { background: '#ff4466', color: '#fff' }
                         : { background: 'rgba(0,255,133,0.15)', color: '#00ff85' }
                       }>
+                      {alert.is_person_search_match && <Target className="w-2.5 h-2.5" />}
                       ID_{index.toString().padStart(3, '0')}
                     </div>
+
 
                     {/* Timestamp */}
                     <div className="absolute left-2 top-2 text-[7px] opacity-30 rotate-180 [writing-mode:vertical-lr]">
@@ -990,7 +1104,10 @@ const Dashboard: React.FC = () => {
                       {/* Match confirmation */}
                       {alert.is_person_search_match && (
                         <div className="bg-red-950/20 border border-red-800/40 p-2 mb-2">
-                          <p className="text-[8px] text-red-400 font-bold">MATCH_CONFIRMED — Visual verification required immediately.</p>
+                          <p className="text-[8px] text-red-500 font-bold uppercase tracking-widest mb-1 italic">
+                            {(typeof alert.is_person_search_match === 'string') ? alert.is_person_search_match : "TARGET_LOCATED"}
+                          </p>
+                          <p className="text-[7px] text-red-400 opacity-80 leading-tight">Visual verification required immediately. Threat active in current sector.</p>
                         </div>
                       )}
 
@@ -1000,6 +1117,7 @@ const Dashboard: React.FC = () => {
                           <span>AI_REL: {(Math.max(...(alert.detections.map(d => d.confidence) || [0]), 0) * 100).toFixed(1)}%</span>
                           <span>CHANNEL_00</span>
                         </div>
+
                         
                         {alert.location && (
                           <button 
