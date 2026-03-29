@@ -125,6 +125,7 @@ const Dashboard: React.FC = () => {
   const [isConnected, setIsConnected] = useState(false);
   const savedCamState = localStorage.getItem('cameraActive');
   const [cameraActive, setCameraActive] = useState(savedCamState === 'true');
+  const [isCameraToggling, setIsCameraToggling] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [isReconnecting, setIsReconnecting] = useState(false);
   const scrollRef  = useRef<HTMLDivElement>(null);
@@ -320,6 +321,7 @@ const Dashboard: React.FC = () => {
   const handleLogout = () => { localStorage.removeItem('token'); navigate('/'); };
 
   const toggleCamera = async () => {
+    setIsCameraToggling(true);
     try {
       const endpoint = cameraActive ? '/api/camera/stop' : '/api/camera/start';
       await fetch(`${API}${endpoint}`, { method: 'POST' });
@@ -327,6 +329,7 @@ const Dashboard: React.FC = () => {
       setCameraActive(newState);
       localStorage.setItem('cameraActive', String(newState));
     } catch (error) { console.error('Failed to toggle camera', error); }
+    finally { setIsCameraToggling(false); }
   };
 
   const handleSourceChange = async (newSource: '0' | 'remote' | 'hybrid') => {
@@ -656,14 +659,21 @@ const Dashboard: React.FC = () => {
           <button
             id="camera-toggle-btn"
             onClick={toggleCamera}
-            className="flex items-center gap-2 px-4 py-2 border text-[10px] font-bold tracking-widest uppercase transition-all duration-300"
+            disabled={isCameraToggling}
+            className={`flex items-center gap-2 px-4 py-2 border text-[10px] font-bold tracking-widest uppercase transition-all duration-300 ${isCameraToggling ? 'opacity-50 cursor-not-allowed' : ''}`}
             style={cameraActive
               ? { borderColor: '#00ff85', color: '#00ff85', background: 'rgba(0,255,133,0.05)' }
               : { borderColor: 'rgba(255,68,102,0.5)', color: '#ff4466', background: 'rgba(255,68,102,0.05)' }
             }
           >
-            <Camera className="w-3.5 h-3.5" />
-            {cameraActive ? 'TERMINATE_FEED' : 'INITIALIZE_FEED'}
+            {isCameraToggling ? (
+              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Camera className="w-3.5 h-3.5" />
+            )}
+            {isCameraToggling
+              ? (cameraActive ? 'TURNING_OFF...' : 'TURNING_ON...')
+              : (cameraActive ? 'CAMERA_OFF' : 'CAMERA_ON')}
           </button>
 
           {/* Source Dropdown */}
@@ -959,8 +969,10 @@ const Dashboard: React.FC = () => {
                 </motion.div>
                 <p className="text-[10px] tracking-[0.4em] font-bold">FEED_OFFLINE</p>
                 <button onClick={toggleCamera}
-                  className="mt-2 px-5 py-2 border border-[rgba(0,255,133,0.25)] text-[#00ff85]/50 hover:text-[#00ff85] hover:border-[#00ff85] text-[9px] tracking-widest uppercase transition-all duration-300">
-                  INITIALIZE_FEED
+                  disabled={isCameraToggling}
+                  className={`mt-2 flex items-center gap-2 px-5 py-2 border border-[rgba(0,255,133,0.25)] text-[#00ff85]/50 hover:text-[#00ff85] hover:border-[#00ff85] text-[9px] tracking-widest uppercase transition-all duration-300 ${isCameraToggling ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                  {isCameraToggling && <RefreshCw className="w-3 h-3 animate-spin" />}
+                  {isCameraToggling ? 'TURNING_ON...' : 'CAMERA_ON'}
                 </button>
               </div>
             ) : null}

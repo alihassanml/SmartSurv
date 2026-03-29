@@ -72,9 +72,13 @@ class CameraFeed:
     def start(self):
         if self.running: return
         if self.source != "remote":
-            self.cap = cv2.VideoCapture(self.source)
+            if sys.platform.startswith('win'):
+                self.cap = cv2.VideoCapture(self.source, cv2.CAP_DSHOW)
+            else:
+                self.cap = cv2.VideoCapture(self.source)
             self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 800)
             self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 600)
+            self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
         
         self.running = True
         self.thread = threading.Thread(target=self._run, daemon=True)
@@ -114,11 +118,7 @@ class CameraFeed:
                 if not self.cap or not self.cap.isOpened():
                     time.sleep(0.1)
                     continue
-                # Flush stale buffer
-                for _ in range(4): self.cap.grab()
-                ret, frame = self.cap.retrieve()
-                if not ret:
-                    ret, frame = self.cap.read()
+                ret, frame = self.cap.read()
                 if not ret:
                     time.sleep(0.01)
                     continue
@@ -216,7 +216,7 @@ class CameraFeed:
 
 
 class CameraEngine:
-    def __init__(self, model_path='../model/S Model/best.pt', source=0):
+    def __init__(self, model_path='../model/N Model/best.pt', source=0):
         self.model = YOLO(model_path)
         try:
             if torch.cuda.is_available():
@@ -235,6 +235,7 @@ class CameraEngine:
         self.watchlist = {} # name -> embedding
         self.reid_buffer = [] # list of {"id": str, "embedding": tensor, "last_feed": str, "last_seen": float}
         self.reid_threshold = 0.75
+        self.reid_lock = threading.Lock()
 
 
         self.sound_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'sound', 'drop.mp3'))
@@ -374,15 +375,18 @@ class CameraEngine:
             with torch.no_grad():
                 embeddings = _RESNET(face_tensors.to(_DEVICE))
             
-            # 1. Check Watchlist
-            for i, embedding in enumerate(embeddings):
+            # Using ThreadPoolExecutor for parallel Re-ID / Watchlist matching for multiple faces in the frame
+            def _match_face_task(i, embedding):
                 best_match = None
-                best_sim = 0
-                for name, target_emb in self.watchlist.items():
-                    sim = torch.nn.functional.cosine_similarity(target_emb, embedding.unsqueeze(0)).item()
-                    if sim > FACENET_THRESHOLD and sim > best_sim:
-                        best_sim = sim
-                        best_match = name
+                with self.reid_lock:
+                    if self.watchlist:
+                        wl_keys = list(self.watchlist.keys())
+                        # Vectorized Cosine Similarity
+                        wl_embs = torch.stack(list(self.watchlist.values())).view(len(wl_keys), -1).to(_DEVICE)
+                        sims = torch.nn.functional.cosine_similarity(wl_embs, embedding.unsqueeze(0))
+                        best_sim, best_idx = torch.max(sims, dim=0)
+                        if best_sim.item() > FACENET_THRESHOLD:
+                            best_match = wl_keys[best_idx.item()]
                 
                 if best_match:
                     return f"TARGET: {best_match}", [int(b) for b in boxes[i]]
@@ -391,42 +395,53 @@ class CameraEngine:
                 reid_match = self._process_reid(embedding, feed_id)
                 if reid_match:
                     return f"RE-ID: {reid_match}", [int(b) for b in boxes[i]]
+                return None
+
+            with ThreadPoolExecutor(max_workers=4) as local_executor:
+                futures = [local_executor.submit(_match_face_task, i, emb) for i, emb in enumerate(embeddings)]
+                for f in futures:
+                    res = f.result()
+                    if res: return res[0], res[1]
                     
         except Exception: pass
         return None, None
 
     def _process_reid(self, embedding, feed_id):
         now = time.time()
-        # Clean old Re-ID entries (> 10 mins)
-        self.reid_buffer = [e for e in self.reid_buffer if now - e['last_seen'] < 600]
         
-        best_match = None
-        best_sim = self.reid_threshold
-        
-        for entry in self.reid_buffer:
-            sim = torch.nn.functional.cosine_similarity(entry['embedding'], embedding.unsqueeze(0)).item()
-            if sim > best_sim:
-                best_sim = sim
-                best_match = entry
-        
-        if best_match:
-            # Person found in another camera or earlier
-            prev_feed = best_match['last_feed']
-            best_match['last_seen'] = now
-            best_match['last_feed'] = feed_id
-            if prev_feed != feed_id:
-                return f"SAME_AS_{best_match['id']} (f:{prev_feed})"
-            return None # Same feed, just update
-        else:
-            # New person
-            pid = f"P-{len(self.reid_buffer) + 1:03d}"
-            self.reid_buffer.append({
-                "id": pid,
-                "embedding": embedding.unsqueeze(0),
-                "last_feed": feed_id,
-                "last_seen": now
-            })
-            return None
+        with self.reid_lock:
+            # Clean old Re-ID entries (> 10 mins)
+            self.reid_buffer = [e for e in self.reid_buffer if now - e['last_seen'] < 600]
+            
+            best_match = None
+            
+            if self.reid_buffer:
+                # Vectorized Cosine Similarity
+                rb_embs = torch.stack([e['embedding'] for e in self.reid_buffer]).view(len(self.reid_buffer), -1).to(_DEVICE)
+                sims = torch.nn.functional.cosine_similarity(rb_embs, embedding.unsqueeze(0))
+                best_sim, best_idx = torch.max(sims, dim=0)
+                
+                if best_sim.item() > self.reid_threshold:
+                    best_match = self.reid_buffer[best_idx.item()]
+            
+            if best_match:
+                # Person found in another camera or earlier
+                prev_feed = best_match['last_feed']
+                best_match['last_seen'] = now
+                best_match['last_feed'] = feed_id
+                if prev_feed != feed_id:
+                    return f"SAME_AS_{best_match['id']} (f:{prev_feed})"
+                return None # Same feed, just update
+            else:
+                # New person
+                pid = f"P-{len(self.reid_buffer) + 1:03d}"
+                self.reid_buffer.append({
+                    "id": pid,
+                    "embedding": embedding.unsqueeze(0).to(_DEVICE),
+                    "last_feed": feed_id,
+                    "last_seen": now
+                })
+                return None
 
 
 
@@ -521,17 +536,19 @@ class CameraEngine:
             if face_tensor.dim() == 4: face_tensor = face_tensor[0]
             with torch.no_grad():
                 embedding = _RESNET(face_tensor.unsqueeze(0).to(_DEVICE))
-            self.watchlist[name] = embedding
+            with self.reid_lock:
+                self.watchlist[name] = embedding
             return True
         except Exception: return False
 
     def remove_from_watchlist(self, name: str):
-        if name in self.watchlist:
-            del self.watchlist[name]
-            p = os.path.join(self.watchlist_dir, f"{name}.jpg")
-            if os.path.exists(p):
-                try: os.remove(p)
-                except: pass
+        with self.reid_lock:
+            if name in self.watchlist:
+                del self.watchlist[name]
+        p = os.path.join(self.watchlist_dir, f"{name}.jpg")
+        if os.path.exists(p):
+            try: os.remove(p)
+            except: pass
 
     def get_watchlist_names(self):
         return list(self.watchlist.keys())
