@@ -210,8 +210,15 @@ class CameraFeed:
         cv2.addWeighted(hm_upscaled, 0.15, frame, 0.85, 0, frame)
 
     def get_heatmap_data(self):
-        # Return base64 encoded heatmap for frontend overlay toggle
-        _, buf = cv2.imencode('.jpg', (np.clip(self.heatmap, 0, 1) * 255).astype(np.uint8))
+        # Return base64 encoded heatmap as transparent PNG for frontend overlay
+        intensity = (np.clip(self.heatmap, 0, 1) * 255).astype(np.uint8)
+        hm_colored = cv2.applyColorMap(intensity, cv2.COLORMAP_JET)
+        
+        # Create an alpha channel using the original intensity
+        b, g, r = cv2.split(hm_colored)
+        rgba = cv2.merge([b, g, r, intensity]) # BGR + Alpha
+        
+        _, buf = cv2.imencode('.png', rgba)
         return base64.b64encode(buf).decode('utf-8')
 
 

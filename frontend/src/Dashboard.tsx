@@ -93,7 +93,7 @@ const CameraStream: React.FC<{ feedId?: string; active: boolean; showHeatmap?: b
         if (!res.ok) return;
         const data = await res.json();
         if (data.heatmap && heatmapImgRef.current) {
-          heatmapImgRef.current.src = `data:image/jpeg;base64,${data.heatmap}`;
+          heatmapImgRef.current.src = `data:image/png;base64,${data.heatmap}`;
         }
       } catch (e) {
          // ignore
@@ -111,7 +111,7 @@ const CameraStream: React.FC<{ feedId?: string; active: boolean; showHeatmap?: b
        {showHeatmap && (
           <img 
              ref={heatmapImgRef} 
-             className="absolute inset-0 w-full h-full object-contain pointer-events-none opacity-50 mix-blend-screen transition-opacity duration-1000" 
+             className="absolute inset-0 w-full h-full object-contain pointer-events-none opacity-[0.85] transition-opacity duration-1000" 
              alt="Heatmap" 
           />
        )}
