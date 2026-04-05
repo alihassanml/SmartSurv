@@ -130,6 +130,7 @@ const CameraStream: React.FC<{ feedId?: string; active: boolean; showHeatmap?: b
 const Dashboard: React.FC = () => {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [detectedPersons, setDetectedPersons] = useState<PersonEvent[]>([]);
+  const [selectedPerson, setSelectedPerson] = useState<PersonEvent | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const savedCamState = localStorage.getItem('cameraActive');
   const [cameraActive, setCameraActive] = useState(savedCamState === 'true');
@@ -601,28 +602,32 @@ const Dashboard: React.FC = () => {
                 {/* Current Watchlist */}
                 <div className="space-y-4">
                   <p className="text-[9px] font-bold text-[#00ff85]/60 tracking-widest uppercase">Active Targets ({watchlist.length})</p>
-                  <div className="space-y-2 overflow-y-auto max-h-[400px] pr-2 custom-scrollbar">
+                  <div className="grid grid-cols-2 gap-3 overflow-y-auto max-h-[420px] pr-1 custom-scrollbar">
                     {watchlist.length === 0 ? (
-                      <div className="text-center py-10 opacity-20 text-[10px] italic">NO_TARGETS_ACTIVE</div>
+                      <div className="col-span-2 text-center py-10 opacity-20 text-[10px] italic">NO_TARGETS_ACTIVE</div>
                     ) : (
                       watchlist.map(name => (
-                        <div key={name} className="flex justify-between items-center p-2 bg-black/40 border border-white/5 group hover:border-[#00ff85]/30 transition-all">
-                           <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full border border-[#00ff85]/20 overflow-hidden bg-black shrink-0 relative">
-                                 <img 
-                                    src={`${API}/api/watchlist/images/${name}.jpg?t=${Date.now()}`} 
-                                    className="w-full h-full object-cover grayscale" 
-                                    onError={(e) => { e.currentTarget.style.display='none'; }}
-                                    alt="" 
-                                 />
-
-                                 <Search className="absolute inset-0 m-auto w-3 h-3 text-[#00ff85]/20" />
-                              </div>
-                              <span className="text-[10px] font-bold tracking-wider">{name.toUpperCase()}</span>
-                           </div>
-                           <button onClick={() => removeTarget(name)} className="opacity-0 group-hover:opacity-100 p-1.5 hover:text-red-500 transition-all">
-                              <X className="w-4 h-4" />
-                           </button>
+                        <div key={name} className="relative border border-[#00ff85]/15 bg-black/50 group hover:border-[#00ff85]/50 transition-all overflow-hidden">
+                           <div className="relative w-full aspect-square bg-black overflow-hidden">
+                               <img
+                                  src={`${API}/api/watchlist/images/${name}.jpg?t=${Date.now()}`}
+                                  className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500"
+                                  onError={(e) => { e.currentTarget.style.display='none'; }}
+                                  alt={name}
+                               />
+                               <div className="absolute inset-0 bg-[#00ff85]/0 group-hover:bg-[#00ff85]/5 transition-all duration-300" />
+                               <div className="absolute top-0 left-0 w-full h-[1px] bg-[#00ff85]/40 opacity-0 group-hover:opacity-100 animate-scanner" />
+                               <button
+                                  onClick={() => removeTarget(name)}
+                                  className="absolute top-1 right-1 p-1 bg-black/70 text-[#00ff85]/30 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                               >
+                                  <X className="w-3 h-3" />
+                               </button>
+                            </div>
+                            <div className="px-2 py-1.5 flex items-center justify-between">
+                               <span className="text-[9px] font-bold tracking-wider text-[#00ff85] truncate">{name.toUpperCase()}</span>
+                               <Search className="w-3 h-3 text-[#00ff85]/30 shrink-0" />
+                            </div>
                         </div>
                       ))
                     )}
@@ -1063,7 +1068,8 @@ const Dashboard: React.FC = () => {
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.3 }}
-                    className="relative border border-[rgba(0,255,133,0.12)] bg-[rgba(12,13,16,0.8)] overflow-hidden"
+                    onClick={() => setSelectedPerson(p)}
+                    className="relative border border-[rgba(0,255,133,0.12)] bg-[rgba(12,13,16,0.8)] overflow-hidden cursor-pointer hover:border-[#00ff85]/50 transition-all group/pcard"
                   >
                     {/* Status badge */}
                     <div
@@ -1240,6 +1246,82 @@ const Dashboard: React.FC = () => {
           </div>
         </aside>
       </main>
+
+      {/* ─── PERSON DETAIL MODAL ─── */}
+      <AnimatePresence>
+        {selectedPerson && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={() => setSelectedPerson(null)}
+            className="fixed inset-0 z-[500] bg-black/85 backdrop-blur-lg flex items-center justify-center p-8"
+          >
+            <motion.div
+              initial={{ scale: 0.85, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.85, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative bg-[#090a0c] border border-[rgba(0,255,133,0.25)] shadow-[0_0_80px_rgba(0,255,133,0.08)] w-full max-w-sm overflow-hidden"
+            >
+              {/* Corner brackets */}
+              {['top-0 left-0 border-t-2 border-l-2','top-0 right-0 border-t-2 border-r-2','bottom-0 left-0 border-b-2 border-l-2','bottom-0 right-0 border-b-2 border-r-2'].map((c, i) => (
+                <div key={i} className={`absolute w-6 h-6 ${c} border-[#00ff85]/50 z-10`} />
+              ))}
+
+              {/* Close */}
+              <button
+                onClick={() => setSelectedPerson(null)}
+                className="absolute top-3 right-3 z-20 p-1.5 bg-black/60 border border-[rgba(0,255,133,0.2)] hover:border-[#00ff85] hover:text-[#00ff85] transition-all"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
+              {/* Face image — full width */}
+              <div className="relative w-full aspect-square bg-black overflow-hidden">
+                <img
+                  src={`data:image/jpeg;base64,${selectedPerson.face}`}
+                  alt={selectedPerson.person_id}
+                  className="w-full h-full object-cover"
+                  style={{ imageRendering: 'auto' }}
+                />
+                {/* Scan overlay */}
+                <div className="absolute inset-x-0 top-0 h-[2px] bg-[#00ff85]/60 animate-scanner" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#090a0c] via-transparent to-transparent" />
+                {/* Status */}
+                <div
+                  className="absolute top-3 left-3 px-2.5 py-1 text-[9px] font-bold tracking-widest"
+                  style={selectedPerson.status === 'NEW'
+                    ? { background: '#00ff85', color: '#000' }
+                    : { background: '#00e5ff', color: '#000' }
+                  }
+                >
+                  {selectedPerson.status === 'NEW' ? 'NEW_SUBJECT' : 'REAPPEARED'}
+                </div>
+              </div>
+
+              {/* Info */}
+              <div className="p-5 space-y-4">
+                <div>
+                  <p className="text-[9px] opacity-30 tracking-[0.3em] mb-1">BIOMETRIC_SUBJECT_ID</p>
+                  <p className="text-2xl font-bold tracking-widest text-[#00ff85]">{selectedPerson.person_id}</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-black/40 border border-[rgba(0,255,133,0.1)] p-3">
+                    <p className="text-[8px] opacity-30 tracking-widest mb-1">FEED_SOURCE</p>
+                    <p className="text-[11px] font-bold text-[#00ff85]">{selectedPerson.feed_id.toUpperCase()}</p>
+                  </div>
+                  <div className="bg-black/40 border border-[rgba(0,255,133,0.1)] p-3">
+                    <p className="text-[8px] opacity-30 tracking-widest mb-1">DETECTED_AT</p>
+                    <p className="text-[11px] font-bold text-[#00ff85]">{selectedPerson.timestamp}</p>
+                  </div>
+                </div>
+
+                <p className="text-[8px] text-[#00ff85]/20 leading-relaxed pt-1 border-t border-[rgba(0,255,133,0.06)]">
+                  Subject logged by Re-ID engine. Will re-appear in PERSONS_LOG after a 5-minute cooldown window.
+                </p>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ─── MAP MODAL ─── */}
       <AnimatePresence>
