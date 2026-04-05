@@ -234,6 +234,7 @@ class CameraEngine:
         self.source_config = source # 0, "remote", or "hybrid"
         self.feeds = {} # id -> CameraFeed
         self.alert_queue = queue.Queue()
+        self.person_events_queue = queue.Queue()  # streams detected persons with face crops
         self.running = False
         self.mode = "detection" # "detection" | "search" | "both"
         
@@ -371,7 +372,8 @@ class CameraEngine:
 
     def _process_face_search(self, frame, feed_id):
         if self.mode not in ["search", "both"]:
-            return None, None
+            # Still run Re-ID even in detection-only mode to populate person panel
+            pass
         try:
             pil_frame = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
             boxes, _ = _MTCNN.detect(pil_frame)
@@ -381,25 +383,46 @@ class CameraEngine:
             if face_tensors.dim() == 3: face_tensors = face_tensors.unsqueeze(0)
             with torch.no_grad():
                 embeddings = _RESNET(face_tensors.to(_DEVICE))
-            
-            # Using ThreadPoolExecutor for parallel Re-ID / Watchlist matching for multiple faces in the frame
+
+            def _extract_face_crop(box, frame_bgr):
+                """Crop face from frame and return base64 JPEG."""
+                try:
+                    x1, y1, x2, y2 = [max(0, int(b)) for b in box]
+                    # Add 20% padding around the face
+                    pad_x = int((x2 - x1) * 0.2)
+                    pad_y = int((y2 - y1) * 0.2)
+                    h, w = frame_bgr.shape[:2]
+                    x1 = max(0, x1 - pad_x); y1 = max(0, y1 - pad_y)
+                    x2 = min(w, x2 + pad_x); y2 = min(h, y2 + pad_y)
+                    crop = frame_bgr[y1:y2, x1:x2]
+                    if crop.size == 0: return None
+                    crop_resized = cv2.resize(crop, (80, 80))
+                    _, buf = cv2.imencode('.jpg', crop_resized, [cv2.IMWRITE_JPEG_QUALITY, 70])
+                    return base64.b64encode(buf).decode('utf-8')
+                except Exception:
+                    return None
+
             def _match_face_task(i, embedding):
-                best_match = None
-                with self.reid_lock:
-                    if self.watchlist:
-                        wl_keys = list(self.watchlist.keys())
-                        # Vectorized Cosine Similarity
-                        wl_embs = torch.stack(list(self.watchlist.values())).view(len(wl_keys), -1).to(_DEVICE)
-                        sims = torch.nn.functional.cosine_similarity(wl_embs, embedding.unsqueeze(0))
-                        best_sim, best_idx = torch.max(sims, dim=0)
-                        if best_sim.item() > FACENET_THRESHOLD:
-                            best_match = wl_keys[best_idx.item()]
-                
-                if best_match:
-                    return f"TARGET: {best_match}", [int(b) for b in boxes[i]]
-                
-                # 2. Re-ID (If not in watchlist)
-                reid_match = self._process_reid(embedding, feed_id)
+                face_crop = _extract_face_crop(boxes[i], frame)
+
+                # 1. Watchlist match
+                if self.mode in ["search", "both"]:
+                    best_match = None
+                    with self.reid_lock:
+                        if self.watchlist:
+                            wl_keys = list(self.watchlist.keys())
+                            wl_embs = torch.stack(list(self.watchlist.values())).view(len(wl_keys), -1).to(_DEVICE)
+                            sims = torch.nn.functional.cosine_similarity(wl_embs, embedding.unsqueeze(0))
+                            best_sim, best_idx = torch.max(sims, dim=0)
+                            if best_sim.item() > FACENET_THRESHOLD:
+                                best_match = wl_keys[best_idx.item()]
+                    if best_match:
+                        # Run reid to update buffer / emit event
+                        self._process_reid(embedding, feed_id, face_crop_b64=face_crop)
+                        return f"TARGET: {best_match}", [int(b) for b in boxes[i]]
+
+                # 2. Re-ID — always run so persons panel is populated in any mode
+                reid_match = self._process_reid(embedding, feed_id, face_crop_b64=face_crop)
                 if reid_match:
                     return f"RE-ID: {reid_match}", [int(b) for b in boxes[i]]
                 return None
@@ -409,12 +432,15 @@ class CameraEngine:
                 for f in futures:
                     res = f.result()
                     if res: return res[0], res[1]
-                    
-        except Exception: pass
+
+        except Exception:
+            pass
         return None, None
 
-    def _process_reid(self, embedding, feed_id):
+    def _process_reid(self, embedding, feed_id, face_crop_b64=None):
+        """Track persons across feeds with a 5-minute re-show cooldown."""
         now = time.time()
+        SHOW_COOLDOWN = 300  # 5 minutes in seconds
         
         with self.reid_lock:
             # Clean old Re-ID entries (> 10 mins)
@@ -432,22 +458,46 @@ class CameraEngine:
                     best_match = self.reid_buffer[best_idx.item()]
             
             if best_match:
-                # Person found in another camera or earlier
+                # Person found — check if they should be shown again
                 prev_feed = best_match['last_feed']
+                time_since_shown = now - best_match.get('last_shown', 0)
                 best_match['last_seen'] = now
                 best_match['last_feed'] = feed_id
+                
+                if time_since_shown > SHOW_COOLDOWN and face_crop_b64:
+                    # Reappeared after 5 mins — show them again
+                    best_match['last_shown'] = now
+                    self.person_events_queue.put({
+                        "person_id": best_match['id'],
+                        "feed_id": feed_id,
+                        "face": face_crop_b64,
+                        "timestamp": time.strftime("%H:%M:%S"),
+                        "status": "REAPPEARED",
+                    })
+                
                 if prev_feed != feed_id:
                     return f"SAME_AS_{best_match['id']} (f:{prev_feed})"
-                return None # Same feed, just update
+                return None  # Same feed, just update
             else:
-                # New person
+                # Brand new person
                 pid = f"P-{len(self.reid_buffer) + 1:03d}"
-                self.reid_buffer.append({
+                entry = {
                     "id": pid,
                     "embedding": embedding.unsqueeze(0).to(_DEVICE),
                     "last_feed": feed_id,
-                    "last_seen": now
-                })
+                    "last_seen": now,
+                    "last_shown": now,
+                }
+                self.reid_buffer.append(entry)
+                # Emit new person event
+                if face_crop_b64:
+                    self.person_events_queue.put({
+                        "person_id": pid,
+                        "feed_id": feed_id,
+                        "face": face_crop_b64,
+                        "timestamp": time.strftime("%H:%M:%S"),
+                        "status": "NEW",
+                    })
                 return None
 
 
@@ -517,6 +567,12 @@ class CameraEngine:
     def get_alerts(self):
         res = []
         while not self.alert_queue.empty(): res.append(self.alert_queue.get())
+        return res
+
+    def get_person_events(self):
+        """Return all queued person-detection events (face crops + IDs)."""
+        res = []
+        while not self.person_events_queue.empty(): res.append(self.person_events_queue.get())
         return res
 
     # Global settings setters

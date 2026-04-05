@@ -269,6 +269,26 @@ async def websocket_endpoint(websocket: WebSocket):
         try: await websocket.close()
         except: pass
 
+@app.websocket("/ws/persons")
+async def persons_endpoint(websocket: WebSocket):
+    """Streams person-detection events (face crops + IDs) to the frontend."""
+    from fastapi.concurrency import run_in_threadpool
+    await websocket.accept()
+    try:
+        while app.state.is_running:
+            events = await run_in_threadpool(camera.get_person_events)
+            if events:
+                for event in events:
+                    await websocket.send_text(json.dumps(event))
+            await asyncio.sleep(0.5)
+    except (WebSocketDisconnect, asyncio.CancelledError, RuntimeError):
+        pass
+    except Exception:
+        pass
+    finally:
+        try: await websocket.close()
+        except: pass
+
 @app.websocket("/ws/remote-input")
 async def remote_input_endpoint(websocket: WebSocket, client_id: str = Query("1")):
     await websocket.accept()

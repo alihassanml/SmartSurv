@@ -1,0 +1,17 @@
+fastapi
+uvicorn
+pydantic
+python-multipart
+sqlalchemy
+passlib[bcrypt]
+pyjwt
+opencv-python
+numpy
+pillow
+ultralytics
+torch
+torchvision
+facenet-pytorch
+playsound
+python-dotenv
+requests
