@@ -1,97 +1,97 @@
-# **📌 SmartSurv: AI-Powered Intelligent Surveillance & Real-Time Person Search System**
+# 🛡️ **SmartSurv: Advanced AI-Powered Intelligent Surveillance & Real-Time Biometric Search**
 
-SmartSurv is a **proactive**, **intelligent**, and **automated** security ecosystem designed to transform traditional CCTV setups into high-speed autonomous guardians. It leverages state-of-the-art Computer Vision, Geolocation, and Distributed Edge Computing to detect threats, track individuals, and provide instant situational awareness across distributed camera networks.
-
----
-
-## 🛠️ **Dashboard & Control Center Features**
-
-### **1. Real-Time Security Operations (Ops_Core)**
-*   **Hybrid Monitoring Mode:** Simultaneously process and display multiple live camera feeds: Local Laptop Webcams + Multiple Remote Mobile Devices.
-*   **Dynamic Grid Layout:** The dashboard automatically scales into a responsive grid (1, 2, 4, 6, or 9 camera screens) based on the number of active surveillance nodes.
-*   **MJPEG Canvas Rendering:** Uses a high-performance custom canvas buffer to eliminate video lag and browser flickering, delivering smooth real-time visual monitoring.
-
-### **2. Intelligence Modules (System_Parameters)**
-*   **Activity Detection (YOLOv8/v12):** Detects prohibited objects (weapons, knives) and suspicious actions in real-time.
-*   **Person Search (FaceNet + MTCNN):** Extracts facial biometric signatures from an uploaded photo and performs a real-time "Target-Lock" across all active camera channels.
-*   **Dual-Process Execution:** Run detection, search, or **Both (Hybrid Link)** simultaneously on ogni frame.
-
-### **3. Operational Controls & Fine-Tuning**
-*   **Precision Threshold Sliders:** Fine-tune confidence requirements for every detection class (Handgun, Knife, Person, etc.) independently via real-time sliders.
-*   **Selective Audio Alerts:** Toggle alert sounds (drop/ping) for specific detection categories or the target-match person search.
-*   **Remote Source Selection:** Instantly switch between **Local** (laptop), **Remote** (external nodes), or **Hybrid** (all-active) sources via a global dropdown.
-*   **Encrypted Email Protocol:** Toggle automated email reports that include geolocated maps and visual evidence snapshots.
-
-### **4. Distributed Deployment (Edge_Link)**
-*   **Phone-to-Surveillance Uplink:** Turn any smartphone into a wireless security camera node.
-*   **QR-Assisted Connection:** Generate unique remote links with randomized client IDs, allowing multiple mobile devices to join the surveillance network instantly without any setup.
+**SmartSurv** is a high-performance, autonomous security ecosystem designed to transform legacy CCTV infrastructures into an intelligent, proactive monitoring network. By leveraging **Distributed Edge Computing**, **Real-Time Computer Vision**, and **Geospatial Intelligence**, SmartSurv provides instant situational awareness and threat detection across distributed camera nodes.
 
 ---
 
-## 🧠 **Core AI Implementation Pillars**
+## 📺 **The Mission Control (Dashboard Features)**
 
-### **1. Computer Vision Pipeline**
-*   **Detection Engine:** Custom YOLOv8/v12 weights optimized for security-specific object classes.
-*   **Biometric Mapping:** 512-dimensional facial feature extraction using FaceNet (Inception-ResnetV1) with 98%+ accuracy.
-*   **MTCNN Face Extraction:** Automatic face alignment and extraction from video frames for high-quality biometric verification.
+### **1. Hybrid Monitoring Mode (Ops_Core)**
+*   **Unified Grid Infrastructure:** Process and display multiple live camera feeds simultaneously including **Local Laptop Cameras** and **Remote Mobile Nodes**.
+*   **Low-Latency Canvas Rendering:** Utilizes a custom high-performance canvas buffer for decoding MJPEG streams, eliminating typical browser video lag and memory leaks.
+*   **Dynamic Source Control:** Instantly switch between `Local`, `Remote`, or `Hybrid` surveillance modes via the global operations toggle.
+*   **Remote Web-Link Uplink:** Generate unique encrypted links (linked via WebSockets) to turn any smartphone into a wireless surveillance node without configuration.
 
-### **2. Geospatial Situational Awareness**
-*   **Auto-Geo Isolation:** Automatic camera location detection using IP-API Geolocation services.
-*   **Tactical Map Integration:** Every detected alert includes precise coordinates and direct links to Google Maps.
-*   **Intercept Distance Calculation:** Real-time distance measurement (KM) between the operator's control center and the threat's camera location.
+### **2. Intelligence Deep-Link (AI Models)**
+*   **Object & Activity Detection (YOLOv11):** Specifically trained to detect security-critical activities:
+    *   🚨 **Weapons:** Detects guns, knives, and other prohibited objects.
+    *   🚬 **Smoking:** Identifies unauthorized smoking in restricted zones.
+    *   👊 **Violence:** Monitors for physical altercations and aggressive behavior.
+*   **Biometric Target-Lock (FaceNet + MTCNN):** 
+    *   **Signature Extraction:** Extract 512-dimensional biometric feature vectors from any uploaded target photo.
+    *   **Real-Time Pursuit:** Matches the target's signature across all active camera feeds using high-speed cosine similarity.
+*   **Activity Heatmap Matrix:** Visualizes movement hotspots over a 60x80 decaying intensity grid, allowing operators to see "frequented paths" within the surveillance zone.
+
+### **3. Tactical Operational Controls**
+*   **Precision Sensitivity Sliders:** Indvidually fine-tune the detection confidence thresholds for each class directly from the dashboard.
+*   **Notification Engine:** 
+    *   **Visual Evidence:** Automated SMTP-encrypted emails containing incident timestamps and visual snapshots.
+    *   **Auditory Alerts:** Global sound toggles for specific high-priority detection events.
+    *   **Web-Toasts:** Instant real-time alerts delivered through a dedicated WebSocket monitoring stream.
+
+---
+
+## 🌎 **Geospatial & Situational Awareness**
+
+*   **Auto-Location Isolation:** Cameras automatically detect their coordinates via IP-API geolocation upon startup.
+*   **Interceptor Proximity:** Real-time **Haversine Distance** calculation between the operator's control center and the threat's location.
+*   **Tactical Map Links:** Every incident alert includes a direct coordinate link to Google Maps for rapid response coordination.
 
 ---
 
 ## 🛠️ **System Technical Stack**
 
-*   **⚡ Backend:** FastAPI (Asynchronous Python for sub-20ms inference)
-*   **🧠 AI Models:** YOLO (8/12), MTCNN, FaceNet (vggface2 weights)
-*   **🎨 Frontend:** ReactJS (TypeScript), Framer Motion, Lucide Icons, Tailwind CSS
-*   **📬 Messaging:** SMTP (Gmail App Passwords) for visual evidence delivery
-*   **WebSocket Protocol:** WSS for binary image data and real-time alert streams
+| Layer | Technology | Purpose |
+| :--- | :--- | :--- |
+| **🚀 Backend** | **FastAPI (Asynchronous Python)** | Sub-20ms inference speed and async WebSocket handling. |
+| **🧠 Object AI** | **YOLOv11 (Ultralytics Engine)** | Real-time weapon, smoking, and violence classification. |
+| **🔍 Facial AI** | **FaceNet (InceptionResnetV1) & MTCNN** | 98%+ accurate biometric signature matching. |
+| **🎨 Frontend** | **ReactJS (TypeScript) & Framer Motion** | "War-Room" aesthetic with high-performance animations. |
+| **📡 Protocols** | **WSS (Binary WebSockets) & SMTP** | Real-time binary stream ingestion and secure email delivery. |
+| **🗄️ Database** | **SQLite & SQLAlchemy (ORM)** | Encrypted user management and watchlist persistence. |
 
 ---
 
-## 📍 **Quick Setup & Execution**
+## 🚀 **Quick Setup & Deployment**
 
-### **1. Backend Config (.env)**
+### **1. Configure Environmental Parameters (`.env`)**
+Create a `.env` file in the `backend/` directory:
 ```env
 SMTP_EMAIL=your-email@gmail.com
-SMTP_PASSWORD=your-app-password
-CAMERA_ID=CENTRAL_OPS_01
+SMTP_PASSWORD=your-app-specific-password
+SMTP_SERVER=smtp.gmail.com
+SMTP_PORT=465
+CAMERA_ID=CENTRAL_OPS_NODE_01
 ```
 
-### **2. Startup Commands**
+### **2. Launch Local Environment**
 ```bash
 # Start Backend
 cd backend
+pip install -r requirements.txt
 python main.py
 
 # Start Frontend
 cd frontend
+npm install
 npm run dev
 ```
-*   `Dashboard URL:` [http://localhost:5173/dashboard](http://localhost:5173/dashboard)
-*   `Remote Node URL:` [http://localhost:5173/remote-camera](http://localhost:5173/remote-camera)
 
 ---
 
-## 🧪 **FYP Technical Highlights (Presentation Points)**
+## 🧪 **FYP Innovation Points (Presentation Highlights)**
 
-| Feature | Technical Implementation | Benefit |
-| :--- | :--- | :--- |
-| **Distributed Node Control** | WebSocket Binary Buffering | Unlimited remote camera scalability |
-| **Parallel Inference** | Multi-Threaded Model Execution | Real-time Detection + Tracking on all feeds |
-| **Biometric Search** | FaceNet Embedding Vectors | Target tracking across different environments |
-| **Geospatial Tracking** | Haversine Distance Calculation | Accurate threat-to-operator proximity |
-| **Tactical UI** | Canvas-based MJPEG decoder | "War-Room" aesthetic for high situational awareness |
+*   **Distributed Scalability:** Unlike traditional systems restricted to a DVR, SmartSurv can ingest cameras from anywhere in the world via WebSocket binary tunneling.
+*   **Parallel Inference Engine:** The `CameraEngine` utilizes a `ThreadPoolExecutor` to run YOLO and Biometric Face Matching simultaneously without dropping frame rates.
+*   **Person Re-Identification (Re-ID):** The system maintains an in-memory buffer of detected entities to "remember" people as they move across different camera nodes.
 
 ---
 
-## ⚖️ **Ethics & Privacy Protocol**
+## ⚖️ **Ethics & Privacy Disclosure**
 
-*   **In-Memory Processing:** Facial data is never permanently stored without encryption to ensure GDPR/Local privacy compliance.
-*   **Local Security:** All biometric signatures are generated and processed within the local server environment.
+To ensure compliance with GDPR and local privacy standards:
+*   **Volatile Data:** Facial embeddings used for real-time tracking are never permanently stored without explicit administrative authorization.
+*   **In-Memory Processing:** Raw video streams are processed in-memory and never cached persistently on the server disk unless an incident is triggered.
 
 ---
-**Developed by Ali Hassan as a Final Year Project**
+**Developed by Ali Hassan | Final Year Project**

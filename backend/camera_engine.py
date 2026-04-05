@@ -190,7 +190,7 @@ class CameraFeed:
             self.heatmap_last_decay = now
             
         for d in detections:
-            if d['label'].lower() == 'person':
+            if d['label'].lower() in ['weapons', 'violence']:
                 x1, y1, x2, y2 = [int(v) for v in d["box"]]
                 # Map to 80x60 grid
                 gx1, gy1 = max(0, int(x1/10)), max(0, int(y1/10))
