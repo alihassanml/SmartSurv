@@ -22,6 +22,7 @@ interface PersonEvent {
   face: string;         // base64 JPEG
   timestamp: string;
   status: 'NEW' | 'REAPPEARED';
+  is_focused?: boolean;
 }
 
 interface ClassThreshold { name: string; threshold: number; sound_enabled: boolean; }
@@ -174,6 +175,9 @@ const Dashboard: React.FC = () => {
   // Person-Log toggle (persisted in DB via /api/settings/ui)
   const [personLogEnabled, setPersonLogEnabled] = useState(true);
 
+  const [focusedPersonId, setFocusedPersonId] = useState<string | null>(null);
+  const [focusedPersonVisible, setFocusedPersonVisible] = useState(false);
+
 
 
   useEffect(() => {
@@ -259,6 +263,18 @@ const Dashboard: React.FC = () => {
       });
       setEmailEnabled(newVal);
     } catch (err) { console.error('Failed to toggle email', err); }
+  };
+
+  const handleSetFocus = async (pid: string | null) => {
+    try {
+      await fetch(`${API}/api/camera/focus`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ person_id: pid }),
+      });
+      setFocusedPersonId(pid);
+      if (!pid) setFocusedPersonVisible(false);
+    } catch (err) { console.error('Failed to set focus', err); }
   };
 
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -464,6 +480,14 @@ const Dashboard: React.FC = () => {
     const ws = new WebSocket(`ws://localhost:8000/ws/persons`);
     ws.onmessage = (event) => {
       const data: PersonEvent = JSON.parse(event.data);
+      
+      // Update focused visibility
+      if (focusedPersonId && data.person_id === focusedPersonId) {
+        setFocusedPersonVisible(true);
+        // Auto-reset visibility after 3 seconds if no fresh heartbeat
+        setTimeout(() => setFocusedPersonVisible(false), 3000);
+      }
+
       setDetectedPersons(prev => {
         // Replace if same person_id already in list, else prepend (max 30)
         const filtered = prev.filter(p => p.person_id !== data.person_id);
@@ -471,7 +495,7 @@ const Dashboard: React.FC = () => {
       });
     };
     return () => ws.close();
-  }, [cameraActive]);
+  }, [cameraActive, focusedPersonId]);
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = 0;
@@ -1091,6 +1115,35 @@ const Dashboard: React.FC = () => {
               <div key={i} className={`absolute w-8 h-8 ${cls} border-[#00ff85]/30 group-hover:border-[#00ff85]/70 transition-colors duration-500 animate-corner-pulse`} />
             ))}
 
+            {/* Focus HUD Overlay */}
+            <AnimatePresence>
+              {focusedPersonId && (
+                <motion.div
+                  initial={{ y: -20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: -20, opacity: 0 }}
+                  className="absolute top-4 left-1/2 -translate-x-1/2 z-[20] flex items-center gap-4 bg-black/80 border border-red-500/40 px-6 py-2 backdrop-blur-md"
+                >
+                   <div className="flex items-center gap-2">
+                      <Target className={`w-4 h-4 ${focusedPersonVisible ? 'text-red-500 animate-pulse' : 'text-red-900'}`} />
+                      <span className="text-[10px] font-bold tracking-[0.3em] uppercase">Tactical_Focus: <span className="text-red-500">{focusedPersonId}</span></span>
+                   </div>
+                   <div className="h-4 w-[1px] bg-red-500/20" />
+                   <div className="flex items-center gap-3">
+                      <span className={`text-[9px] font-bold tracking-widest ${focusedPersonVisible ? 'text-green-400' : 'text-red-400'}`}>
+                        {focusedPersonVisible ? 'STATUS: LOCKED_IN_FEED' : 'STATUS: SEARCHING_FEEDS...'}
+                      </span>
+                      <button 
+                        onClick={() => handleSetFocus(null)}
+                        className="hover:text-white transition-colors"
+                      >
+                        <X className="w-3 h-3 ml-2" />
+                      </button>
+                   </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {/* Dynamic Video Feeds Grid */}
             <div className={`absolute inset-0 w-full h-full p-2 grid gap-2 ${
                activeFeeds.length > 4 ? 'grid-cols-3' : activeFeeds.length > 1 ? 'grid-cols-2' : 'grid-cols-1'
@@ -1192,8 +1245,17 @@ const Dashboard: React.FC = () => {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.3 }}
                     onClick={() => setSelectedPerson(p)}
-                    className="relative border border-[rgba(0,255,133,0.12)] bg-[rgba(12,13,16,0.8)] overflow-hidden cursor-pointer hover:border-[#00ff85]/50 transition-all group/pcard"
+                    className={`relative border overflow-hidden cursor-pointer transition-all group/pcard ${
+                      focusedPersonId === p.person_id 
+                        ? 'border-red-500/60 bg-red-900/5 shadow-[0_0_15px_rgba(255,0,0,0.1)]' 
+                        : 'border-[rgba(0,255,133,0.12)] bg-[rgba(12,13,16,0.8)] hover:border-[#00ff85]/50'
+                    }`}
                   >
+                    {focusedPersonId === p.person_id && (
+                      <div className="absolute top-1.5 right-1.5 z-10">
+                        <Target className="w-2.5 h-2.5 text-red-500 animate-pulse" />
+                      </div>
+                    )}
                     {/* Status badge */}
                     <div
                       className="absolute top-0 right-0 px-1.5 py-0.5 text-[7px] font-bold z-10"
@@ -1443,6 +1505,23 @@ const Dashboard: React.FC = () => {
                 <p className="text-[8px] text-[#00ff85]/20 leading-relaxed pt-1 border-t border-[rgba(0,255,133,0.06)]">
                   Subject logged by Re-ID engine. Will re-appear in PERSONS_LOG after a 5-minute cooldown window.
                 </p>
+
+                <div className="pt-2">
+                  <button
+                    onClick={() => {
+                      const isFocused = focusedPersonId === selectedPerson.person_id;
+                      handleSetFocus(isFocused ? null : selectedPerson.person_id);
+                    }}
+                    className={`w-full py-3 border font-bold text-[10px] tracking-[0.2em] transition-all flex items-center justify-center gap-2 ${
+                      focusedPersonId === selectedPerson.person_id
+                        ? 'bg-red-600 border-red-600 text-white shadow-[0_0_15px_rgba(255,0,0,0.4)]'
+                        : 'bg-[rgba(255,255,255,0.02)] border-[rgba(0,255,133,0.3)] text-[#00ff85] hover:bg-[#00ff85] hover:text-black'
+                    }`}
+                  >
+                    <Target className={`w-3.5 h-3.5 ${focusedPersonId === selectedPerson.person_id ? 'animate-pulse' : ''}`} />
+                    {focusedPersonId === selectedPerson.person_id ? 'TERMINATE_FOCUS' : 'ESTABLISH_TACTICAL_FOCUS'}
+                  </button>
+                </div>
               </div>
             </motion.div>
           </motion.div>

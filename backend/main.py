@@ -141,6 +141,9 @@ class SourceUpdate(BaseModel):
 class ClassSoundsUpdate(BaseModel):
     sounds: Dict[str, bool]
 
+class FocusUpdate(BaseModel):
+    person_id: Optional[str] = None
+
 class UiSettingUpdate(BaseModel):
     key: str
     value: bool
@@ -199,6 +202,11 @@ def update_class_sounds(body: ClassSoundsUpdate):
     # Persist to DB
     _db_set("class_sounds", body.sounds)
     return {"status": "updated", "sounds": camera.get_class_sounds()}
+
+@app.post("/api/camera/focus")
+def set_camera_focus(body: FocusUpdate):
+    camera.set_focus(body.person_id)
+    return {"status": "success", "focused_id": camera.focused_person_id}
 
 @app.get("/api/model/classes")
 def get_model_classes():

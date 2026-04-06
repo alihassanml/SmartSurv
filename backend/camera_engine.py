@@ -244,6 +244,7 @@ class CameraEngine:
         self.reid_buffer = [] # list of {"id": str, "embedding": tensor, "last_feed": str, "last_seen": float}
         self.reid_threshold = 0.75
         self.reid_lock = threading.Lock()
+        self.focused_person_id = None # PID currently under active monitoring focus
 
 
         self.sound_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'sound', 'drop.mp3'))
@@ -473,6 +474,7 @@ class CameraEngine:
                         "face": face_crop_b64,
                         "timestamp": time.strftime("%H:%M:%S"),
                         "status": "REAPPEARED",
+                        "is_focused": (best_match['id'] == self.focused_person_id)
                     })
                 
                 if prev_feed != feed_id:
@@ -497,6 +499,7 @@ class CameraEngine:
                         "face": face_crop_b64,
                         "timestamp": time.strftime("%H:%M:%S"),
                         "status": "NEW",
+                        "is_focused": (pid == self.focused_person_id)
                     })
                 return None
 
@@ -630,5 +633,12 @@ class CameraEngine:
             else:
                 res.append({"name": name, "image": None})
         return res
+
+    def set_focus(self, person_id):
+        """Set a specific person ID to be flagged as focused in all streams."""
+        with self.reid_lock:
+            self.focused_person_id = person_id
+            print(f"[Focus] Identity locked: {person_id}")
+            return True
 
 
