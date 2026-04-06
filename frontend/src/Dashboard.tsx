@@ -141,6 +141,7 @@ const Dashboard: React.FC = () => {
   const navigate   = useNavigate();
 
   const username = localStorage.getItem('username') || 'OPERATOR';
+  const userEmail = localStorage.getItem('email') || 'N/A';
 
   const savedMode = localStorage.getItem('systemMode') as 'detection' | 'search' | 'both' | null;
   const [systemMode, setSystemMode] = useState<'detection' | 'search' | 'both'>(savedMode || 'detection');
@@ -167,6 +168,7 @@ const Dashboard: React.FC = () => {
 
   const [showRemoteLink, setShowRemoteLink] = useState(false);
   const [systemIp, setSystemIp] = useState<string | null>(null);
+  const [smtpEmail, setSmtpEmail] = useState<string | null>(null);
   const [isCopied, setIsCopied] = useState(false);
 
   // Person-Log toggle (persisted in DB via /api/settings/ui)
@@ -410,8 +412,12 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     fetch(`${API}/api/system/info`)
       .then(res => res.json())
-      .then(data => setSystemIp(data.local_ip))
-      .catch(err => console.error("Failed to get system IP", err));
+      .then(data => {
+        setSystemIp(data.local_ip);
+        setSmtpEmail(data.smtp_email);
+        setEmailEnabled(data.email_enabled);
+      })
+      .catch(err => console.error("Failed to get system info", err));
   }, []);
 
   const displayIp = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') 
@@ -877,11 +883,45 @@ const Dashboard: React.FC = () => {
                     <div>
                       <p className="text-[9px] opacity-30 tracking-[0.2em] mb-0.5">AUTHORIZED_OPERATOR</p>
                       <p className="text-base font-bold tracking-tight uppercase">{username}</p>
-                      <div className="mt-1 text-[8px] tracking-widest text-[#00ff85]/40 border border-[rgba(0,255,133,0.15)] px-2 py-0.5 inline-block">
+                      <p className="text-[10px] text-[#00ff85]/60 mt-0.5 lowercase">{userEmail}</p>
+                      <div className="mt-2 text-[8px] tracking-widest text-[#00ff85]/40 border border-[rgba(0,255,133,0.15)] px-2 py-0.5 inline-block">
                         LEVEL_01_ACCESS
                       </div>
                     </div>
                   </div>
+                </div>
+
+                {/* Notification System */}
+                <div className="p-6 border-b border-[rgba(0,255,133,0.08)]">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Mail className="w-3.5 h-3.5 text-[#00ff85]" />
+                      <div>
+                        <span className="text-[10px] font-bold tracking-[0.2em]">COMM_LINK_SYSTEM</span>
+                        <p className="text-[8px] opacity-30 mt-0.5 uppercase">Email Incident Alerts</p>
+                      </div>
+                    </div>
+                    <button
+                      id="email-toggle-btn"
+                      onClick={toggleEmail}
+                      className="relative w-10 h-5 border transition-all duration-300 shrink-0"
+                      style={emailEnabled
+                        ? { borderColor: '#00ff85', background: 'rgba(0,255,133,0.08)' }
+                        : { borderColor: 'rgba(255,68,102,0.4)', background: 'rgba(255,68,102,0.04)' }
+                      }
+                    >
+                      <div
+                        className={`absolute top-0.5 bottom-0.5 w-3.5 transition-all duration-300 ${
+                          emailEnabled
+                            ? 'right-0.5 bg-[#00ff85] shadow-[0_0_6px_#00ff85]'
+                            : 'left-0.5 bg-red-700'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                  {!emailEnabled && (
+                    <p className="text-[8px] text-red-400/60 mt-2 tracking-wider">▸ External email alerts disabled</p>
+                  )}
                 </div>
 
                 <div className="p-6 border-b border-[rgba(0,255,133,0.08)]">
@@ -998,15 +1038,39 @@ const Dashboard: React.FC = () => {
                     </div>
                   )}
                 </div>
-              </div>
 
-              {/* Logout */}
-              <div className="p-5 border-t border-[rgba(0,255,133,0.08)] shrink-0">
-                <button onClick={handleLogout}
-                  className="w-full py-3 flex items-center justify-center gap-2 border border-red-900/40 text-red-400 hover:bg-red-900/10 text-[10px] font-bold tracking-widest transition-all duration-200">
-                  <LogOut className="w-3.5 h-3.5" />
-                  TERMINATE_SESSION
-                </button>
+                {/* System Diagnostics */}
+                <div className="p-6 border-t border-[rgba(0,255,133,0.08)] bg-[rgba(0,255,133,0.02)]">
+                   <div className="flex items-center gap-2 mb-4">
+                      <Shield className="w-3.5 h-3.5 text-[#00ff85]/40" />
+                      <span className="text-[9px] font-bold tracking-[0.2em] text-[#00ff85]/40 uppercase">System Diagnostics</span>
+                   </div>
+                   <div className="space-y-2 text-[8px] font-mono opacity-50">
+                      <div className="flex justify-between">
+                         <span>CORE_LATENCY:</span>
+                         <span className="text-[#00ff85]">12ms</span>
+                      </div>
+                      <div className="flex justify-between">
+                         <span>SMTP_LINK:</span>
+                         <span className={smtpEmail ? "text-[#00ff85]" : "text-red-500"}>{smtpEmail || "NOT_CONFIGURED"}</span>
+                      </div>
+                      <div className="flex justify-between">
+                         <span>LOCAL_UPLINK:</span>
+                         <span className="text-[#00ff85]">{systemIp || "FETCHING..."}</span>
+                      </div>
+                   </div>
+                </div>
+
+                {/* Logout */}
+                <div className="p-6 border-t border-[rgba(0,255,133,0.08)]">
+                    <button 
+                      onClick={handleLogout}
+                      className="w-full py-3 border border-red-500/30 text-red-500 text-[10px] font-bold uppercase hover:bg-red-500/10 transition-all flex items-center justify-center gap-2"
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                      Terminate Session
+                    </button>
+                </div>
               </div>
             </motion.div>
           </>

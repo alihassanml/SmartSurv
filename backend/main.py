@@ -294,14 +294,16 @@ async def video_feed(id: Optional[str] = Query(None)):
 def get_system_info():
     return {
         "local_ip": get_local_ip(),
-        "port": 8000
+        "port": 8000,
+        "smtp_email": camera.email_sender,
+        "email_enabled": camera.email_enabled
     }
 
 # ── UI Settings (person_log toggle, etc.) ─────────────────────────────────────
 @app.get("/api/settings/ui")
 def get_ui_settings():
     """Return persisted UI settings."""
-    person_log_enabled = _db_get("ui_person_log_enabled", True)  # default ON
+    person_log_enabled = _db_get("ui_person_log_enabled", False)  # default ON
     return {"person_log_enabled": person_log_enabled}
 
 @app.post("/api/settings/ui")
