@@ -20,6 +20,10 @@
 *   **Biometric Target-Lock (FaceNet + MTCNN):** 
     *   **Signature Extraction:** Extract 512-dimensional biometric feature vectors from any uploaded target photo.
     *   **Real-Time Pursuit:** Matches the target's signature across all active camera feeds using high-speed cosine similarity.
+*   **Advanced Person Tracking (Re-ID Engine):**
+    *   **Persistent Identity Assignment:** Assigns unique, persistent tracking IDs (e.g., `P-001`, `P-002`) to every individual detected in the surveillance zone.
+    *   **Intelligent Cooldown Logic:** Implements a 5-minute re-show cooldown. The system "remembers" individuals and only re-flags them if they reappear after the cooldown period, preventing alert fatigue.
+    *   **Face Crop Extraction:** Automatically extracts and high-resolution crops of faces from detection events for immediate visual verification.
 *   **Activity Heatmap Matrix:** Visualizes movement hotspots over a 60x80 decaying intensity grid, allowing operators to see "frequented paths" within the surveillance zone.
 
 ### **3. Tactical Operational Controls**
@@ -28,6 +32,10 @@
     *   **Visual Evidence:** Automated SMTP-encrypted emails containing incident timestamps and visual snapshots.
     *   **Auditory Alerts:** Global sound toggles for specific high-priority detection events.
     *   **Web-Toasts:** Instant real-time alerts delivered through a dedicated WebSocket monitoring stream.
+*   **Visual Operational Logs:**
+    *   **PERSONS_LOG Panel:** A real-time scrolling feed of all detected individuals featuring face thumbnails, unique IDs, and arrival timestamps.
+    *   **Biometric Detail Modal:** Click any log entry to open a full-screen tactical view of the captured face crop with metadata (Feed ID, Timestamp, Status).
+    *   **Card-Based Watchlist DB:** A redesigned management interface where all biometric targets are displayed as high-fidelity cards with face photos and search-lock status.
 
 ---
 
@@ -47,7 +55,8 @@
 | **🧠 Object AI** | **YOLOv11 (Ultralytics Engine)** | Real-time weapon, smoking, and violence classification. |
 | **🔍 Facial AI** | **FaceNet (InceptionResnetV1) & MTCNN** | 98%+ accurate biometric signature matching. |
 | **🎨 Frontend** | **ReactJS (TypeScript) & Framer Motion** | "War-Room" aesthetic with high-performance animations. |
-| **📡 Protocols** | **WSS (Binary WebSockets) & SMTP** | Real-time binary stream ingestion and secure email delivery. |
+| **📡 Protocols** | **WSS (Binary WebSockets) & SMTP** | Real-time incident alerts and binary streaming. |
+| **🔗 Person Stream** | **WSS (/ws/persons)** | Dedicated high-speed stream for Re-ID events and face thumbnails. |
 | **🗄️ Database** | **SQLite & SQLAlchemy (ORM)** | Encrypted user management and watchlist persistence. |
 
 ---
@@ -83,7 +92,8 @@ npm run dev
 
 *   **Distributed Scalability:** Unlike traditional systems restricted to a DVR, SmartSurv can ingest cameras from anywhere in the world via WebSocket binary tunneling.
 *   **Parallel Inference Engine:** The `CameraEngine` utilizes a `ThreadPoolExecutor` to run YOLO and Biometric Face Matching simultaneously without dropping frame rates.
-*   **Person Re-Identification (Re-ID):** The system maintains an in-memory buffer of detected entities to "remember" people as they move across different camera nodes.
+*   **Person Re-Identification (Re-ID):** The system maintains an in-memory buffer of detected entities with 5-minute re-show cooldown logic to maximize situational awareness without redundancy.
+*   **Unified UI/UX:** A "single-pane-of-glass" dashboard that integrates AI thresholds, real-time video, biometric logs, and geospatial data into one cohesive war-room interface.
 
 ---
 

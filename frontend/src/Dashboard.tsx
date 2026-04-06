@@ -169,6 +169,8 @@ const Dashboard: React.FC = () => {
   const [systemIp, setSystemIp] = useState<string | null>(null);
   const [isCopied, setIsCopied] = useState(false);
 
+  // Person-Log toggle (persisted in DB via /api/settings/ui)
+  const [personLogEnabled, setPersonLogEnabled] = useState(true);
 
 
 
@@ -183,6 +185,18 @@ const Dashboard: React.FC = () => {
   }, [showSettings]);
 
   useEffect(() => {
+    // Load UI settings from backend (person_log toggle, etc.)
+    fetch(`${API}/api/settings/ui`)
+      .then(res => res.json())
+      .then(data => {
+        if (typeof data.person_log_enabled === 'boolean') {
+          setPersonLogEnabled(data.person_log_enabled);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
     // Auto-detect operator location
     const detectLocation = async () => {
       try {
@@ -195,6 +209,18 @@ const Dashboard: React.FC = () => {
     };
     detectLocation();
   }, []);
+
+  const togglePersonLog = async () => {
+    const newVal = !personLogEnabled;
+    setPersonLogEnabled(newVal);
+    try {
+      await fetch(`${API}/api/settings/ui`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: 'ui_person_log_enabled', value: newVal }),
+      });
+    } catch (err) { console.error('Failed to save person log setting', err); }
+  };
 
   const handleSoundToggle = async (className: string) => {
     const updated = classThresholds.map(cls =>
@@ -882,6 +908,38 @@ const Dashboard: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Person Log Toggle */}
+                <div className="p-6 border-b border-[rgba(0,255,133,0.08)]">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <User className="w-3.5 h-3.5 text-[#00ff85]" />
+                      <div>
+                        <span className="text-[10px] font-bold tracking-[0.2em]">PERSON_LOG</span>
+                        <p className="text-[8px] opacity-30 mt-0.5 uppercase">Re-ID sidebar &amp; face crops</p>
+                      </div>
+                    </div>
+                    <button
+                      id="person-log-toggle-btn"
+                      onClick={togglePersonLog}
+                      className="relative w-10 h-5 border transition-all duration-300 shrink-0"
+                      style={personLogEnabled
+                        ? { borderColor: '#00ff85', background: 'rgba(0,255,133,0.08)' }
+                        : { borderColor: 'rgba(255,68,102,0.4)', background: 'rgba(255,68,102,0.04)' }
+                      }
+                    >
+                      <div
+                        className={`absolute top-0.5 bottom-0.5 w-3.5 transition-all duration-300 ${
+                          personLogEnabled
+                            ? 'right-0.5 bg-[#00ff85] shadow-[0_0_6px_#00ff85]'
+                            : 'left-0.5 bg-red-700'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                  {!personLogEnabled && (
+                    <p className="text-[8px] text-red-400/60 mt-2 tracking-wider">▸ Person panel + face images hidden</p>
+                  )}
+                </div>
 
                 {/* Thresholds */}
                 <div className="p-6">
@@ -1047,7 +1105,8 @@ const Dashboard: React.FC = () => {
           </div>
         </section>
 
-        {/* ─── DETECTED PERSONS PANEL ─── */}
+        {/* ─── DETECTED PERSONS PANEL (conditionally shown) ─── */}
+        {personLogEnabled && (
         <section className="w-[220px] bg-[#070809] border-l border-[rgba(0,255,133,0.1)] flex flex-col shrink-0">
           <div className="px-4 py-3 border-b border-[rgba(0,255,133,0.1)] bg-[rgba(6,6,8,0.9)] shrink-0">
             <h2 className="text-[10px] font-bold tracking-[0.25em] text-[#00ff85]">PERSONS_LOG</h2>
@@ -1115,6 +1174,8 @@ const Dashboard: React.FC = () => {
             </div>
           )}
         </section>
+        )}
+
 
         {/* ─── ALERTS SIDEBAR ─── */}
         <aside className="w-[340px] bg-[#070809] border-l border-[rgba(0,255,133,0.1)] flex flex-col shrink-0">
@@ -1247,7 +1308,8 @@ const Dashboard: React.FC = () => {
         </aside>
       </main>
 
-      {/* ─── PERSON DETAIL MODAL ─── */}
+      {/* ─── PERSON DETAIL MODAL (only when personLogEnabled) ─── */}
+      {personLogEnabled && (
       <AnimatePresence>
         {selectedPerson && (
           <motion.div
@@ -1322,6 +1384,7 @@ const Dashboard: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
+      )}
 
       {/* ─── MAP MODAL ─── */}
       <AnimatePresence>

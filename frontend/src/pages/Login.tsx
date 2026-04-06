@@ -24,6 +24,7 @@ const Login: React.FC = () => {
         const data = await response.json();
         localStorage.setItem('token', data.access_token);
         localStorage.setItem('username', username);
+        localStorage.setItem('email', data.email);
         navigate('/dashboard');
       } else {
         const data = await response.json();

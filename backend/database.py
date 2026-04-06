@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String
+from sqlalchemy import create_engine, Column, Integer, String, Text
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
 
@@ -18,5 +18,13 @@ class User(Base):
     username = Column(String, unique=True, index=True)
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
+
+class Setting(Base):
+    """Key-value store for persistent settings (thresholds, sounds, etc.)."""
+    __tablename__ = "settings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    key = Column(String, unique=True, index=True, nullable=False)
+    value = Column(Text, nullable=False)  # JSON-encoded value
 
 Base.metadata.create_all(bind=engine)

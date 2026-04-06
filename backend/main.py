@@ -12,7 +12,7 @@ import time
 
 
 from camera_engine import CameraEngine
-from database import SessionLocal, Base, engine, User
+from database import SessionLocal, Base, engine, User, Setting
 from auth import verify_password, get_password_hash, create_access_token
 import socket
 
@@ -28,6 +28,33 @@ def get_local_ip():
         s.close()
     return IP
 
+# ── DB helpers ────────────────────────────────────────────────────────────────
+def _db_get(key: str, default=None):
+    """Read a JSON-encoded value from the settings table."""
+    db = SessionLocal()
+    try:
+        row = db.query(Setting).filter(Setting.key == key).first()
+        if row:
+            return json.loads(row.value)
+        return default
+    finally:
+        db.close()
+
+def _db_set(key: str, value):
+    """Upsert a JSON-encoded value into the settings table."""
+    db = SessionLocal()
+    try:
+        row = db.query(Setting).filter(Setting.key == key).first()
+        if row:
+            row.value = json.dumps(value)
+        else:
+            row = Setting(key=key, value=json.dumps(value))
+            db.add(row)
+        db.commit()
+    finally:
+        db.close()
+
+
 Base.metadata.create_all(bind=engine)
 
 def get_db():
@@ -40,9 +67,22 @@ def get_db():
 # --- LIFESPAN MANAGEMENT ---
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: Initialize camera resources
+    # Startup: load persisted settings then initialise camera
     print("STARTING_SMARTSURV_CORE...")
     app.state.is_running = True
+
+    # Load persisted thresholds from DB
+    saved_thresholds = _db_get("class_thresholds")
+    if saved_thresholds:
+        camera.set_thresholds(saved_thresholds)
+        print(f"[DB] Loaded {len(saved_thresholds)} thresholds from database.")
+
+    # Load persisted class sounds from DB
+    saved_sounds = _db_get("class_sounds")
+    if saved_sounds:
+        camera.set_class_sounds(saved_sounds)
+        print(f"[DB] Loaded {len(saved_sounds)} class sounds from database.")
+
     camera.start()
     yield
     # Shutdown: Release resources
@@ -101,6 +141,10 @@ class SourceUpdate(BaseModel):
 class ClassSoundsUpdate(BaseModel):
     sounds: Dict[str, bool]
 
+class UiSettingUpdate(BaseModel):
+    key: str
+    value: bool
+
 @app.post("/api/auth/signup")
 def signup(user: UserCreate, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.username == user.username).first()
@@ -120,8 +164,8 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
     if not db_user or not verify_password(user.password, db_user.hashed_password):
         raise HTTPException(status_code=400, detail="Incorrect username or password")
     
-    access_token = create_access_token(data={"sub": db_user.username})
-    return {"access_token": access_token, "token_type": "bearer"}
+    access_token = create_access_token(data={"sub": db_user.username, "email": db_user.email})
+    return {"access_token": access_token, "token_type": "bearer", "email": db_user.email}
 
 @app.post("/api/camera/start")
 def start_camera():
@@ -152,6 +196,8 @@ def set_camera_email(body: EmailUpdate):
 @app.post("/api/model/sounds")
 def update_class_sounds(body: ClassSoundsUpdate):
     camera.set_class_sounds(body.sounds)
+    # Persist to DB
+    _db_set("class_sounds", body.sounds)
     return {"status": "updated", "sounds": camera.get_class_sounds()}
 
 @app.get("/api/model/classes")
@@ -171,7 +217,8 @@ def get_model_classes():
 @app.post("/api/model/thresholds")
 def update_thresholds(body: ThresholdsUpdate):
     camera.set_thresholds(body.thresholds)
-    # We don't need to restart anymore if threshold changes, as feeds check it dynamically
+    # Persist to DB
+    _db_set("class_thresholds", body.thresholds)
     return {"status": "updated", "thresholds": camera.get_thresholds()}
 
 @app.post("/api/camera/source")
@@ -249,6 +296,22 @@ def get_system_info():
         "local_ip": get_local_ip(),
         "port": 8000
     }
+
+# ── UI Settings (person_log toggle, etc.) ─────────────────────────────────────
+@app.get("/api/settings/ui")
+def get_ui_settings():
+    """Return persisted UI settings."""
+    person_log_enabled = _db_get("ui_person_log_enabled", True)  # default ON
+    return {"person_log_enabled": person_log_enabled}
+
+@app.post("/api/settings/ui")
+def update_ui_setting(body: UiSettingUpdate):
+    """Persist a boolean UI toggle."""
+    allowed_keys = {"ui_person_log_enabled"}
+    if body.key not in allowed_keys:
+        raise HTTPException(status_code=400, detail="Unknown setting key")
+    _db_set(body.key, body.value)
+    return {"status": "saved", "key": body.key, "value": body.value}
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
