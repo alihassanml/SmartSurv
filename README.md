@@ -32,6 +32,10 @@
     *   **Visual Evidence:** Automated SMTP-encrypted emails containing incident timestamps and visual snapshots.
     *   **Auditory Alerts:** Global sound toggles for specific high-priority detection events.
     *   **Web-Toasts:** Instant real-time alerts delivered through a dedicated WebSocket monitoring stream.
+    *   **Comm-Link Control:** Global toggle to enable/disable external SMTP notifications directly from the tactical dashboard.
+*   **Operator Identity & Authorization:**
+    *   **Verified Credentials:** Real-time display of the registered operator's email and authorization level (e.g., LEVEL_01_ACCESS).
+    *   **System Diagnostics:** Integrated monitoring of SMTP link status, core processing latency, and local uplink IP addresses.
 *   **Visual Operational Logs:**
     *   **PERSONS_LOG Panel:** A real-time scrolling feed of all detected individuals featuring face thumbnails, unique IDs, and arrival timestamps.
     *   **Biometric Detail Modal:** Click any log entry to open a full-screen tactical view of the captured face crop with metadata (Feed ID, Timestamp, Status).
@@ -93,7 +97,8 @@ npm run dev
 *   **Distributed Scalability:** Unlike traditional systems restricted to a DVR, SmartSurv can ingest cameras from anywhere in the world via WebSocket binary tunneling.
 *   **Parallel Inference Engine:** The `CameraEngine` utilizes a `ThreadPoolExecutor` to run YOLO and Biometric Face Matching simultaneously without dropping frame rates.
 *   **Person Re-Identification (Re-ID):** The system maintains an in-memory buffer of detected entities with 5-minute re-show cooldown logic to maximize situational awareness without redundancy.
-*   **Unified UI/UX:** A "single-pane-of-glass" dashboard that integrates AI thresholds, real-time video, biometric logs, and geospatial data into one cohesive war-room interface.
+*   **Unified UI/UX:** A "single-pane-of-glass" dashboard that integrates AI thresholds, real-time video, biometric logs, identity management, and system diagnostics into one cohesive war-room interface.
+*   **Administrative Transparency:** Real-time feedback on system health, including SMTP connectivity and network uplink status, ensuring the operator is always aware of the system's operational readiness.
 
 ---
 
