@@ -177,6 +177,7 @@ const Dashboard: React.FC = () => {
 
   const [focusedPersonId, setFocusedPersonId] = useState<string | null>(null);
   const [focusedPersonVisible, setFocusedPersonVisible] = useState(false);
+  const [privacyMode, setPrivacyMode] = useState(false);
 
 
 
@@ -275,6 +276,22 @@ const Dashboard: React.FC = () => {
       setFocusedPersonId(pid);
       if (!pid) setFocusedPersonVisible(false);
     } catch (err) { console.error('Failed to set focus', err); }
+  };
+
+  const togglePrivacy = async () => {
+    try {
+      const next = !privacyMode;
+      await fetch(`${API}/api/camera/privacy`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: next }),
+      });
+      setPrivacyMode(next);
+      // Auto-toggle Person Log for Ethical Compliance
+      if (next) {
+        setPersonLogEnabled(false);
+      }
+    } catch (err) { console.error('Failed to toggle privacy', err); }
   };
 
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -424,7 +441,6 @@ const Dashboard: React.FC = () => {
     const interval = setInterval(fetchFeeds, 3000);
     return () => clearInterval(interval);
   }, [cameraActive, currentSource]);
-
   useEffect(() => {
     fetch(`${API}/api/system/info`)
       .then(res => res.json())
@@ -432,6 +448,8 @@ const Dashboard: React.FC = () => {
         setSystemIp(data.local_ip);
         setSmtpEmail(data.smtp_email);
         setEmailEnabled(data.email_enabled);
+        setPrivacyMode(data.privacy_mode);
+        setPersonLogEnabled(data.person_log_enabled);
       })
       .catch(err => console.error("Failed to get system info", err));
   }, []);
@@ -948,6 +966,38 @@ const Dashboard: React.FC = () => {
                   )}
                 </div>
 
+                {/* Privacy Guard System */}
+                <div className="p-6 border-b border-[rgba(0,255,133,0.08)] bg-[rgba(0,180,255,0.02)]">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Shield className="w-3.5 h-3.5 text-[#00e5ff]" />
+                      <div>
+                        <span className="text-[10px] font-bold tracking-[0.2em] text-[#00e5ff]">PRIVACY_GUARD</span>
+                        <p className="text-[8px] opacity-30 mt-0.5 uppercase">Selective Face Redaction</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={togglePrivacy}
+                      className="relative w-10 h-5 border transition-all duration-300 shrink-0"
+                      style={privacyMode
+                        ? { borderColor: '#00e5ff', background: 'rgba(0,229,255,0.08)' }
+                        : { borderColor: 'rgba(255,68,102,0.4)', background: 'rgba(255,68,102,0.04)' }
+                      }
+                    >
+                      <div
+                        className={`absolute top-0.5 bottom-0.5 w-3.5 transition-all duration-300 ${
+                          privacyMode
+                            ? 'right-0.5 bg-[#00e5ff] shadow-[0_0_6px_#00e5ff]'
+                            : 'left-0.5 bg-red-700'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                  {privacyMode && (
+                    <p className="text-[8px] text-[#00e5ff]/60 mt-2 tracking-wider animate-pulse">🎯 Selective decryption active</p>
+                  )}
+                </div>
+
                 <div className="p-6 border-b border-[rgba(0,255,133,0.08)]">
                   <div className="flex items-center justify-between mb-5">
                     <div className="flex items-center gap-2">
@@ -1155,6 +1205,13 @@ const Dashboard: React.FC = () => {
                      <div className="absolute top-2 left-2 px-2 py-0.5 bg-black/70 text-[8px] font-bold border border-[rgba(0,255,133,0.2)] tracking-tighter">
                         FEED_{feedId.toUpperCase()}
                      </div>
+                     
+                     {privacyMode && (
+                        <div className="absolute bottom-2 right-2 px-2 py-0.5 bg-[#00e5ff]/20 text-[#00e5ff] text-[7px] font-bold border border-[#00e5ff]/30 tracking-widest backdrop-blur-sm">
+                           PRIVACY_GUARD_ACTIVE
+                        </div>
+                     )}
+
                      {/* Decorative corner for each feed */}
                      <div className="absolute top-0 right-0 w-3 h-3 border-t border-r border-[#00ff85]/30" />
                      <div className="absolute bottom-0 left-0 w-3 h-3 border-b border-l border-[#00ff85]/30" />

@@ -158,10 +158,40 @@ class CameraFeed:
                             (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
 
             if self.last_is_target_match and self.last_face_box:
-                x1, y1, x2, y2 = self.last_face_box
-                cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
-                r = int(max(x2 - x1, y2 - y1) * 0.65)
-                cv2.circle(display_frame, (cx, cy), r, (0, 0, 255), 3)
+                # Selective decrypt: If it's a list (all faces), we handle it below.
+                # If it's a single box (legacy compatibility), we handle it.
+                if isinstance(self.last_face_box, list) and not isinstance(self.last_face_box[0], int):
+                    # Selective Privacy Handling
+                    for face in self.last_face_box:
+                        x1, y1, x2, y2 = [int(v) for v in face['box']]
+                        is_target = face.get('is_target', False)
+                        is_focused = face.get('is_focused', False)
+                        
+                        if self.engine.privacy_mode and not (is_target or is_focused):
+                            # Anonymize: Gaussian Blur to ensure privacy compliance
+                            face_roi = display_frame[y1:y2, x1:x2]
+                            if face_roi.size > 0:
+                                blur = cv2.GaussianBlur(face_roi, (51, 51), 30)
+                                display_frame[y1:y2, x1:x2] = blur
+                                # Overlay Shield Icon / "REDACTED" text
+                                cv2.putText(display_frame, "PRIVACY_REDACTED", (x1, y1 - 5), 
+                                            cv2.FONT_HERSHEY_SIMPLEX, 0.35, (100, 100, 100), 1)
+                        
+                        # Draw visual marker for match/focus
+                        if is_target or is_focused:
+                            cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
+                            r = int(max(x2 - x1, y2 - y1) * 0.65)
+                            color = (0, 0, 255) if is_target else (0, 255, 255)
+                            cv2.circle(display_frame, (cx, cy), r, color, 2)
+                            tag = "TARGET_Ω" if is_target else f"FOCUS: {face.get('id')}"
+                            cv2.putText(display_frame, tag, (x1, y1 - 10), 
+                                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+                else:
+                    # Fallback for old loop logic
+                    x1, y1, x2, y2 = self.last_face_box
+                    cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
+                    r = int(max(x2 - x1, y2 - y1) * 0.65)
+                    cv2.circle(display_frame, (cx, cy), r, (0, 255, 0), 2)
 
 
             # ── Update Heatmap ───────────────────────────────────────────
@@ -248,6 +278,7 @@ class CameraEngine:
 
 
         self.sound_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'sound', 'drop.mp3'))
+        self.privacy_mode = False # Blurs unauthorized faces in live view
         
         # Cooldowns and settings
         self.last_activity_alert = 0.0
@@ -430,13 +461,31 @@ class CameraEngine:
 
             with ThreadPoolExecutor(max_workers=4) as local_executor:
                 futures = [local_executor.submit(_match_face_task, i, emb) for i, emb in enumerate(embeddings)]
+                all_results = []
+                one_is_match = False
+                
                 for f in futures:
                     res = f.result()
-                    if res: return res[0], res[1]
+                    if res:
+                        label, box = res
+                        pid = label.split(":")[-1].strip()
+                        is_target = "TARGET" in label
+                        is_focused = (pid == self.focused_person_id)
+                        
+                        all_results.append({
+                            "id": pid,
+                            "box": box,
+                            "is_target": is_target,
+                            "is_focused": is_focused
+                        })
+                        if is_target or is_focused: one_is_match = True
+                
+                # If privacy mode is on, return all faces so engine can blur them selectivey
+                return one_is_match, all_results
 
         except Exception:
             pass
-        return None, None
+        return False, []
 
     def _process_reid(self, embedding, feed_id, face_crop_b64=None):
         """Track persons across feeds with a 5-minute re-show cooldown."""
@@ -640,5 +689,10 @@ class CameraEngine:
             self.focused_person_id = person_id
             print(f"[Focus] Identity locked: {person_id}")
             return True
+
+    def set_privacy_mode(self, enabled: bool):
+        self.privacy_mode = enabled
+        print(f"[Privacy] Guard active: {enabled}")
+        return True
 
 

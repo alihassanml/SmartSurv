@@ -144,6 +144,9 @@ class ClassSoundsUpdate(BaseModel):
 class FocusUpdate(BaseModel):
     person_id: Optional[str] = None
 
+class PrivacyUpdate(BaseModel):
+    enabled: bool
+
 class UiSettingUpdate(BaseModel):
     key: str
     value: bool
@@ -207,6 +210,14 @@ def update_class_sounds(body: ClassSoundsUpdate):
 def set_camera_focus(body: FocusUpdate):
     camera.set_focus(body.person_id)
     return {"status": "success", "focused_id": camera.focused_person_id}
+
+@app.post("/api/camera/privacy")
+def set_camera_privacy(body: PrivacyUpdate):
+    camera.set_privacy_mode(body.enabled)
+    # If privacy is ON, ensure Person Log is OFF in DB
+    if body.enabled:
+        _db_set("ui_person_log_enabled", False)
+    return {"status": "success", "privacy_mode": camera.privacy_mode}
 
 @app.get("/api/model/classes")
 def get_model_classes():
@@ -304,7 +315,9 @@ def get_system_info():
         "local_ip": get_local_ip(),
         "port": 8000,
         "smtp_email": camera.email_sender,
-        "email_enabled": camera.email_enabled
+        "email_enabled": camera.email_enabled,
+        "privacy_mode": camera.privacy_mode,
+        "person_log_enabled": _db_get("ui_person_log_enabled", True)
     }
 
 # ── UI Settings (person_log toggle, etc.) ─────────────────────────────────────
