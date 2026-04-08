@@ -149,6 +149,9 @@ class CameraFeed:
                 except Exception: pass
                 self.pending_det = None
 
+            if self.pending_face is not None and self.pending_face.done():
+                try:
+                    self.last_is_target_match, self.last_face_box = self.pending_face.result()
                 except Exception: pass
                 self.pending_face = None
 
