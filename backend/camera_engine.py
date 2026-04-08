@@ -18,6 +18,7 @@ from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 from dotenv import load_dotenv
 import requests
+import open_clip
 
 load_dotenv()
 
@@ -44,6 +45,18 @@ _RESNET = InceptionResnetV1(pretrained='vggface2').eval().to(_DEVICE)
 FACENET_THRESHOLD = 0.70
 print("[FaceNet] Models ready.")
 
+# ─────────────────────────────────────────────────────────────────────────────
+# CLIP Model for Semantic Search
+# ─────────────────────────────────────────────────────────────────────────────
+print(f"[CLIP] Loading ViT-B-32...")
+_CLIP_MODEL, _, _CLIP_PREPROCESS = open_clip.create_model_and_transforms(
+    'ViT-B-32', 
+    pretrained='laion2b_s34b_b79k', 
+    device=_DEVICE
+)
+_CLIP_TOKENIZER = open_clip.get_tokenizer('ViT-B-32')
+print("[CLIP] Model initialized.")
+
 class CameraFeed:
     """Represents a single camera stream and its processing loop."""
     def __init__(self, feed_id, source, engine):
@@ -64,6 +77,7 @@ class CameraFeed:
         self.pending_det = None
         self.pending_face = None
         
+        
         # Activity Heatmap (80x60 grid for performance)
         self.heatmap = np.zeros((60, 80), dtype=np.float32)
         self.heatmap_last_decay = time.time()
@@ -73,12 +87,14 @@ class CameraFeed:
         if self.running: return
         if self.source != "remote":
             if sys.platform.startswith('win'):
-                self.cap = cv2.VideoCapture(self.source, cv2.CAP_DSHOW)
+                # CAP_MSMF (Media Foundation) opens 3-5x faster than CAP_DSHOW on Windows
+                self.cap = cv2.VideoCapture(self.source, cv2.CAP_MSMF)
             else:
                 self.cap = cv2.VideoCapture(self.source)
-            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 800)
-            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 600)
+            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
             self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+            self.cap.set(cv2.CAP_PROP_FPS, 30)
         
         self.running = True
         self.thread = threading.Thread(target=self._run, daemon=True)
@@ -125,7 +141,6 @@ class CameraFeed:
 
             if frame is None: continue
             
-            frame = cv2.resize(frame, (800, 600))
             display_frame = frame.copy()
 
             # ── Collect inference results when ready (NEVER block) ────────
@@ -134,8 +149,6 @@ class CameraFeed:
                 except Exception: pass
                 self.pending_det = None
 
-            if self.pending_face is not None and self.pending_face.done():
-                try: self.last_is_target_match, self.last_face_box = self.pending_face.result()
                 except Exception: pass
                 self.pending_face = None
 
@@ -203,7 +216,6 @@ class CameraFeed:
             # ── Overlay Heatmap (Subtle) ──────────────────────────────────
             self._apply_heatmap_overlay(display_frame)
 
-
             # ── Push frame to stream queue ────────────────────────────────
             _, buf = cv2.imencode('.jpg', display_frame, [cv2.IMWRITE_JPEG_QUALITY, 65])
             if self.frame_queue.full():
@@ -222,9 +234,9 @@ class CameraFeed:
         for d in detections:
             if d['label'].lower() in ['weapons', 'violence']:
                 x1, y1, x2, y2 = [int(v) for v in d["box"]]
-                # Map to 80x60 grid
-                gx1, gy1 = max(0, int(x1/10)), max(0, int(y1/10))
-                gx2, gy2 = min(79, int(x2/10)), min(59, int(y2/10))
+                # Map to 80x60 grid (640/8=80, 480/8=60)
+                gx1, gy1 = max(0, int(x1/8)), max(0, int(y1/8))
+                gx2, gy2 = min(79, int(x2/8)), min(59, int(y2/8))
                 self.heatmap[gy1:gy2, gx1:gx2] += 0.2
                 self.heatmap = np.clip(self.heatmap, 0, 10)
 
@@ -234,7 +246,8 @@ class CameraFeed:
         
         # Upscale heatmap to frame size
         hm_colored = cv2.applyColorMap((np.clip(self.heatmap, 0, 1) * 255).astype(np.uint8), cv2.COLORMAP_JET)
-        hm_upscaled = cv2.resize(hm_colored, (800, 600))
+        h, w = frame.shape[:2]
+        hm_upscaled = cv2.resize(hm_colored, (w, h))
         
         # Blend with original frame (very subtle 15% opacity)
         cv2.addWeighted(hm_upscaled, 0.15, frame, 0.85, 0, frame)
@@ -394,7 +407,8 @@ class CameraEngine:
     def _process_detections(self, frame):
         detections = []
         if self.mode in ["detection", "both"]:
-            results = self.model(frame, verbose=False)
+            # imgsz=416: ultralytics resizes internally & scales boxes back automatically
+            results = self.model(frame, verbose=False, imgsz=416)
             for box in results[0].boxes:
                 label = self.model.names[int(box.cls[0])]
                 conf = float(box.conf[0])
@@ -408,10 +422,14 @@ class CameraEngine:
             pass
         try:
             pil_frame = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-            boxes, _ = _MTCNN.detect(pil_frame)
-            if boxes is None or len(boxes) == 0: return None, None
-            face_tensors = _MTCNN(pil_frame)
-            if face_tensors is None: return None, None
+            # Single MTCNN pass: detect boxes and extract aligned faces at once
+            boxes, probs = _MTCNN.detect(pil_frame)
+            if boxes is None or len(boxes) == 0: return False, []
+            # Extract aligned face crops from pre-detected boxes (no re-detection)
+            face_tensors = _MTCNN.extract(pil_frame, boxes, save_path=None)
+            if face_tensors is None: return False, []
+            if not isinstance(face_tensors, torch.Tensor):
+                face_tensors = torch.stack([t for t in face_tensors if t is not None])
             if face_tensors.dim() == 3: face_tensors = face_tensors.unsqueeze(0)
             with torch.no_grad():
                 embeddings = _RESNET(face_tensors.to(_DEVICE))
@@ -454,40 +472,57 @@ class CameraEngine:
                         return f"TARGET: {best_match}", [int(b) for b in boxes[i]]
 
                 # 2. Re-ID — always run so persons panel is populated in any mode
-                reid_match = self._process_reid(embedding, feed_id, face_crop_b64=face_crop)
+                reid_match = self._process_reid(embedding, feed_id, face_crop_b64=face_crop, frame=frame, box=boxes[i])
                 if reid_match:
                     return f"RE-ID: {reid_match}", [int(b) for b in boxes[i]]
                 return None
 
-            with ThreadPoolExecutor(max_workers=4) as local_executor:
-                futures = [local_executor.submit(_match_face_task, i, emb) for i, emb in enumerate(embeddings)]
-                all_results = []
-                one_is_match = False
-                
-                for f in futures:
-                    res = f.result()
-                    if res:
-                        label, box = res
-                        pid = label.split(":")[-1].strip()
-                        is_target = "TARGET" in label
-                        is_focused = (pid == self.focused_person_id)
-                        
-                        all_results.append({
-                            "id": pid,
-                            "box": box,
-                            "is_target": is_target,
-                            "is_focused": is_focused
-                        })
-                        if is_target or is_focused: one_is_match = True
-                
-                # If privacy mode is on, return all faces so engine can blur them selectivey
-                return one_is_match, all_results
+            all_results = []
+            one_is_match = False
+            # Simple sequential loop — avoids spawning a new thread pool per frame.
+            # Face count is typically 1-3, so loop overhead is negligible.
+            for i, emb in enumerate(embeddings):
+                res = _match_face_task(i, emb)
+                if res:
+                    label, box = res
+                    pid = label.split(":")[-1].strip()
+                    is_target = "TARGET" in label
+                    is_focused = (pid == self.focused_person_id)
+                    all_results.append({
+                        "id": pid,
+                        "box": box,
+                        "is_target": is_target,
+                        "is_focused": is_focused
+                    })
+                    if is_target or is_focused: one_is_match = True
+
+            # Return all faces so engine can blur non-targets in privacy mode
+            return one_is_match, all_results
 
         except Exception:
             pass
         return False, []
 
-    def _process_reid(self, embedding, feed_id, face_crop_b64=None):
+    def _extract_semantic_embedding(self, frame_bgr, box=None):
+        """Extract CLIP embedding for a person crop (High-level traits)."""
+        try:
+            if box:
+                x1, y1, x2, y2 = [max(0, int(b)) for b in box]
+                crop = frame_bgr[y1:y2, x1:x2]
+                if crop.size == 0: return None
+                pil_img = Image.fromarray(cv2.cvtColor(crop, cv2.COLOR_BGR2RGB))
+            else:
+                pil_img = Image.fromarray(cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB))
+            
+            img_input = _CLIP_PREPROCESS(pil_img).unsqueeze(0).to(_DEVICE)
+            with torch.no_grad():
+                emb = _CLIP_MODEL.encode_image(img_input)
+                emb /= emb.norm(dim=-1, keepdim=True)
+            return emb
+        except Exception:
+            return None
+
+    def _process_reid(self, embedding, feed_id, face_crop_b64=None, frame=None, box=None):
         """Track persons across feeds with a 5-minute re-show cooldown."""
         now = time.time()
         SHOW_COOLDOWN = 300  # 5 minutes in seconds
@@ -507,12 +542,21 @@ class CameraEngine:
                 if best_sim.item() > self.reid_threshold:
                     best_match = self.reid_buffer[best_idx.item()]
             
+            # Extract semantic traits only for brand-new persons (expensive CLIP call)
+            semantic_emb = None
+            if frame is not None and box is not None and best_match is None:
+                semantic_emb = self._extract_semantic_embedding(frame, box)
+            
             if best_match:
                 # Person found — check if they should be shown again
                 prev_feed = best_match['last_feed']
                 time_since_shown = now - best_match.get('last_shown', 0)
                 best_match['last_seen'] = now
                 best_match['last_feed'] = feed_id
+                
+                # Update semantic traits if new one is better/available
+                if semantic_emb is not None:
+                    best_match['semantic_emb'] = semantic_emb
                 
                 if time_since_shown > SHOW_COOLDOWN and face_crop_b64:
                     # Reappeared after 5 mins — show them again
@@ -523,7 +567,8 @@ class CameraEngine:
                         "face": face_crop_b64,
                         "timestamp": time.strftime("%H:%M:%S"),
                         "status": "REAPPEARED",
-                        "is_focused": (best_match['id'] == self.focused_person_id)
+                        "is_focused": (best_match['id'] == self.focused_person_id),
+                        "traits": best_match.get('traits_description', 'UNKNOWN_TRAITS')
                     })
                 
                 if prev_feed != feed_id:
@@ -535,6 +580,7 @@ class CameraEngine:
                 entry = {
                     "id": pid,
                     "embedding": embedding.unsqueeze(0).to(_DEVICE),
+                    "semantic_emb": semantic_emb,
                     "last_feed": feed_id,
                     "last_seen": now,
                     "last_shown": now,
@@ -548,16 +594,17 @@ class CameraEngine:
                         "face": face_crop_b64,
                         "timestamp": time.strftime("%H:%M:%S"),
                         "status": "NEW",
-                        "is_focused": (pid == self.focused_person_id)
+                        "is_focused": (pid == self.focused_person_id),
+                        "traits": "ANALYZING..."
                     })
-                return None
+                return pid
 
 
 
     # Public API
     def start(self):
         if self.running: return
-        self.executor = ThreadPoolExecutor(max_workers=4)
+        self.executor = ThreadPoolExecutor(max_workers=6)
         self.running = True
         self._sync_feeds()
 
@@ -638,6 +685,7 @@ class CameraEngine:
     def get_thresholds(self): return dict(self.class_thresholds)
     def get_class_sounds(self): return dict(self.class_sounds)
 
+
     def add_to_watchlist(self, name: str, image_path: str, persist: bool = True) -> bool:
         try:
             dest_path = os.path.join(self.watchlist_dir, f"{name}.jpg")
@@ -694,5 +742,33 @@ class CameraEngine:
         self.privacy_mode = enabled
         print(f"[Privacy] Guard active: {enabled}")
         return True
+
+    def get_semantic_search(self, query_text):
+        """Query the Re-ID buffer using natural language."""
+        if not self.reid_buffer or not query_text: return []
+        
+        try:
+            # Tokenize and encode text
+            text_tokens = _CLIP_TOKENIZER([query_text]).to(_DEVICE)
+            with torch.no_grad():
+                text_emb = _CLIP_MODEL.encode_text(text_tokens)
+                text_emb /= text_emb.norm(dim=-1, keepdim=True)
+            
+            scores = []
+            for entry in self.reid_buffer:
+                if entry.get('semantic_emb') is None: continue
+                # Compute cosine similarity
+                sim = torch.nn.functional.cosine_similarity(text_emb, entry['semantic_emb'])
+                scores.append({
+                    "id": entry['id'],
+                    "score": float(sim.item())
+                })
+            
+            # Sort by highest similarity
+            scores.sort(key=lambda x: x['score'], reverse=True)
+            return scores
+        except Exception as e:
+            print(f"[Search Engine] Error: {e}")
+            return []
 
 

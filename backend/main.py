@@ -321,6 +321,11 @@ def get_system_info():
     }
 
 # ── UI Settings (person_log toggle, etc.) ─────────────────────────────────────
+@app.get("/api/persons/search")
+def search_persons(q: str):
+    results = camera.get_semantic_search(q)
+    return {"status": "success", "results": results}
+
 @app.get("/api/settings/ui")
 def get_ui_settings():
     """Return persisted UI settings."""

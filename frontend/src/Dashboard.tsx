@@ -23,6 +23,7 @@ interface PersonEvent {
   timestamp: string;
   status: 'NEW' | 'REAPPEARED';
   is_focused?: boolean;
+  traits?: string;
 }
 
 interface ClassThreshold { name: string; threshold: number; sound_enabled: boolean; }
@@ -30,66 +31,8 @@ interface ClassThreshold { name: string; threshold: number; sound_enabled: boole
 const API = `http://${window.location.hostname}:8000`;
 
 const CameraStream: React.FC<{ feedId?: string; active: boolean; showHeatmap?: boolean }> = ({ feedId, active, showHeatmap }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const heatmapImgRef = useRef<HTMLImageElement>(null);
-  const rafRef = useRef<number>(0);
-
-  useEffect(() => {
-    if (!active) {
-       if (rafRef.current) cancelAnimationFrame(rafRef.current);
-       return;
-    }
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    let isActive = true;
-
-    const run = async () => {
-      try {
-        const url = `${API}/video_feed${feedId ? `?id=${feedId}` : ''}`;
-        const res = await fetch(url, { cache: 'no-store' });
-        if (!res.body || !isActive) return;
-        const reader = res.body.getReader();
-        let buffer = new Uint8Array(0);
-
-        while (isActive) {
-          const { done, value } = await reader.read();
-          if (done || !isActive) { if (reader) reader.cancel(); break; }
-
-          const tmp = new Uint8Array(buffer.length + value.length);
-          tmp.set(buffer); tmp.set(value, buffer.length);
-          buffer = tmp;
-
-          let start = -1, end = -1;
-          for (let i = 0; i < buffer.length - 1; i++) {
-            if (buffer[i] === 0xFF && buffer[i + 1] === 0xD8) start = i;
-            if (start >= 0 && buffer[i] === 0xFF && buffer[i + 1] === 0xD9) { end = i + 2; break; }
-          }
-
-          if (start >= 0 && end > start) {
-            const jpeg = buffer.slice(start, end);
-            buffer = buffer.slice(end);
-            const blobUrl = URL.createObjectURL(new Blob([jpeg], { type: 'image/jpeg' }));
-            const img = new Image();
-            img.onload = () => {
-              if (!isActive) { URL.revokeObjectURL(blobUrl); return; }
-              if (canvas.width !== img.naturalWidth) canvas.width = img.naturalWidth;
-              if (canvas.height !== img.naturalHeight) canvas.height = img.naturalHeight;
-              ctx.drawImage(img, 0, 0);
-              URL.revokeObjectURL(blobUrl);
-            };
-            img.src = blobUrl;
-          }
-        }
-      } catch (e) {
-        if (isActive) setTimeout(run, 1000);
-      }
-    };
-
-    run();
-    return () => { isActive = false; };
-  }, [active, feedId]);
+  const streamUrl = `${API}/video_feed${feedId ? `?id=${feedId}` : ''}`;
 
   useEffect(() => {
     if (!active || !showHeatmap) return;
@@ -115,12 +58,19 @@ const CameraStream: React.FC<{ feedId?: string; active: boolean; showHeatmap?: b
 
   return (
     <div className="relative w-full h-full">
-       <canvas ref={canvasRef} className="w-full h-full object-contain" style={{ imageRendering: 'auto' }} />
+       {active && (
+         <img
+           src={streamUrl}
+           className="w-full h-full object-contain"
+           style={{ imageRendering: 'auto' }}
+           alt="Camera stream"
+         />
+       )}
        {showHeatmap && (
-          <img 
-             ref={heatmapImgRef} 
-             className="absolute inset-0 w-full h-full object-contain pointer-events-none opacity-[0.85] transition-opacity duration-1000" 
-             alt="Heatmap" 
+          <img
+             ref={heatmapImgRef}
+             className="absolute inset-0 w-full h-full object-contain pointer-events-none opacity-[0.85] transition-opacity duration-1000"
+             alt="Heatmap"
           />
        )}
     </div>
@@ -178,6 +128,11 @@ const Dashboard: React.FC = () => {
   const [focusedPersonId, setFocusedPersonId] = useState<string | null>(null);
   const [focusedPersonVisible, setFocusedPersonVisible] = useState(false);
   const [privacyMode, setPrivacyMode] = useState(false);
+  const [semanticQuery, setSemanticQuery] = useState("");
+  const [semanticResults, setSemanticResults] = useState<{id: string, score: number}[]>([]);
+  const [semanticLoading, setSemanticLoading] = useState(false);
+  const semanticDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
 
 
 
@@ -202,6 +157,8 @@ const Dashboard: React.FC = () => {
       })
       .catch(() => {});
   }, []);
+
+
 
   useEffect(() => {
     // Auto-detect operator location
@@ -292,6 +249,25 @@ const Dashboard: React.FC = () => {
         setPersonLogEnabled(false);
       }
     } catch (err) { console.error('Failed to toggle privacy', err); }
+  };
+
+  const handleSemanticSearch = (val: string) => {
+    setSemanticQuery(val);
+    if (semanticDebounceRef.current) clearTimeout(semanticDebounceRef.current);
+    if (!val.trim()) {
+      setSemanticResults([]);
+      setSemanticLoading(false);
+      return;
+    }
+    setSemanticLoading(true);
+    semanticDebounceRef.current = setTimeout(async () => {
+      try {
+        const resp = await fetch(`${API}/api/persons/search?q=${encodeURIComponent(val)}`);
+        const data = await resp.json();
+        if (data.status === 'success') setSemanticResults(data.results);
+      } catch (err) { console.error(err); }
+      finally { setSemanticLoading(false); }
+    }, 600);
   };
 
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -682,26 +658,26 @@ const Dashboard: React.FC = () => {
                     ) : (
                       watchlist.map(name => (
                         <div key={name} className="relative border border-[#00ff85]/15 bg-black/50 group hover:border-[#00ff85]/50 transition-all overflow-hidden">
-                           <div className="relative w-full aspect-square bg-black overflow-hidden">
-                               <img
-                                  src={`${API}/api/watchlist/images/${name}.jpg?t=${Date.now()}`}
-                                  className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500"
-                                  onError={(e) => { e.currentTarget.style.display='none'; }}
-                                  alt={name}
-                               />
-                               <div className="absolute inset-0 bg-[#00ff85]/0 group-hover:bg-[#00ff85]/5 transition-all duration-300" />
-                               <div className="absolute top-0 left-0 w-full h-[1px] bg-[#00ff85]/40 opacity-0 group-hover:opacity-100 animate-scanner" />
-                               <button
-                                  onClick={() => removeTarget(name)}
-                                  className="absolute top-1 right-1 p-1 bg-black/70 text-[#00ff85]/30 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
-                               >
-                                  <X className="w-3 h-3" />
-                               </button>
-                            </div>
-                            <div className="px-2 py-1.5 flex items-center justify-between">
-                               <span className="text-[9px] font-bold tracking-wider text-[#00ff85] truncate">{name.toUpperCase()}</span>
-                               <Search className="w-3 h-3 text-[#00ff85]/30 shrink-0" />
-                            </div>
+                           <div className="relative w-full aspect-square bg-black overflow-hidden">
+                               <img
+                                  src={`${API}/api/watchlist/images/${name}.jpg?t=${Date.now()}`}
+                                  className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500"
+                                  onError={(e) => { e.currentTarget.style.display='none'; }}
+                                  alt={name}
+                               />
+                               <div className="absolute inset-0 bg-[#00ff85]/0 group-hover:bg-[#00ff85]/5 transition-all duration-300" />
+                               <div className="absolute top-0 left-0 w-full h-[1px] bg-[#00ff85]/40 opacity-0 group-hover:opacity-100 animate-scanner" />
+                               <button
+                                  onClick={() => removeTarget(name)}
+                                  className="absolute top-1 right-1 p-1 bg-black/70 text-[#00ff85]/30 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                               >
+                                  <X className="w-3 h-3" />
+                               </button>
+                            </div>
+                            <div className="px-2 py-1.5 flex items-center justify-between">
+                               <span className="text-[9px] font-bold tracking-wider text-[#00ff85] truncate">{name.toUpperCase()}</span>
+                               <Search className="w-3 h-3 text-[#00ff85]/30 shrink-0" />
+                            </div>
                         </div>
                       ))
                     )}
@@ -1205,7 +1181,7 @@ const Dashboard: React.FC = () => {
                      <div className="absolute top-2 left-2 px-2 py-0.5 bg-black/70 text-[8px] font-bold border border-[rgba(0,255,133,0.2)] tracking-tighter">
                         FEED_{feedId.toUpperCase()}
                      </div>
-                     
+
                      {privacyMode && (
                         <div className="absolute bottom-2 right-2 px-2 py-0.5 bg-[#00e5ff]/20 text-[#00e5ff] text-[7px] font-bold border border-[#00e5ff]/30 tracking-widest backdrop-blur-sm">
                            PRIVACY_GUARD_ACTIVE
@@ -1243,7 +1219,7 @@ const Dashboard: React.FC = () => {
                 <Radio className="w-3 h-3" />
                 LIVE_INTERCEPT
               </div>
-              <div className="text-[9px] text-[#00ff85]/40 pl-0.5">RES 800×600 // 30 FPS</div>
+              <div className="text-[9px] text-[#00ff85]/40 pl-0.5">RES 640×480 // 30 FPS</div>
             </div>
 
             {/* HUD — top-right mode badge */}
@@ -1285,6 +1261,29 @@ const Dashboard: React.FC = () => {
           <div className="px-4 py-3 border-b border-[rgba(0,255,133,0.1)] bg-[rgba(6,6,8,0.9)] shrink-0">
             <h2 className="text-[10px] font-bold tracking-[0.25em] text-[#00ff85]">PERSONS_LOG</h2>
             <p className="text-[8px] opacity-25 uppercase mt-0.5">Re-ID Engine · 5min cooldown</p>
+            
+            {/* Semantic Search Input */}
+            <div className="mt-3 relative group">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-[#00ff85]/30 group-focus-within:text-[#00ff85]" />
+              <input 
+                type="text"
+                placeholder="DESC_SEARCH..."
+                value={semanticQuery}
+                onChange={(e) => handleSemanticSearch(e.target.value)}
+                className="w-full bg-black/40 border border-[#00ff85]/10 focus:border-[#00ff85]/40 pl-8 pr-3 py-1.5 text-[8px] font-bold tracking-widest text-[#00ff85] outline-none transition-all placeholder:text-[#00ff85]/20"
+              />
+              {semanticQuery && (
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                  {semanticLoading ? (
+                    <RefreshCw className="w-2.5 h-2.5 text-[#00ff85] animate-spin" />
+                  ) : (
+                    <button onClick={() => handleSemanticSearch("")} className="opacity-40 hover:opacity-100 transition-opacity">
+                      <X className="w-2.5 h-2.5" />
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto p-2 space-y-2">
@@ -1295,7 +1294,17 @@ const Dashboard: React.FC = () => {
               </div>
             ) : (
               <AnimatePresence initial={false}>
-                {detectedPersons.map((p) => (
+                {(semanticQuery
+                  ? [...detectedPersons].sort((a, b) => {
+                      const sa = semanticResults.find(r => r.id === a.person_id)?.score || 0;
+                      const sb = semanticResults.find(r => r.id === b.person_id)?.score || 0;
+                      return sb - sa;
+                    })
+                  : detectedPersons
+                ).map((p) => {
+                  const matchScore = semanticResults.find(r => r.id === p.person_id)?.score || 0;
+                  const isTopMatch = semanticQuery && matchScore > 0.25;
+                  return (
                   <motion.div
                     key={p.person_id}
                     initial={{ opacity: 0, x: -10 }}
@@ -1304,7 +1313,9 @@ const Dashboard: React.FC = () => {
                     onClick={() => setSelectedPerson(p)}
                     className={`relative border overflow-hidden cursor-pointer transition-all group/pcard ${
                       focusedPersonId === p.person_id 
-                        ? 'border-red-500/60 bg-red-900/5 shadow-[0_0_15px_rgba(255,0,0,0.1)]' 
+                        ? 'border-red-500/60 bg-red-900/5 shadow-[0_0_15px_rgba(255,0,0,0.1)]'
+                        : isTopMatch
+                        ? 'border-[#00e5ff]/60 bg-[#00e5ff]/5 shadow-[0_0_12px_rgba(0,229,255,0.15)]'
                         : 'border-[rgba(0,255,133,0.12)] bg-[rgba(12,13,16,0.8)] hover:border-[#00ff85]/50'
                     }`}
                   >
@@ -1324,6 +1335,13 @@ const Dashboard: React.FC = () => {
                       {p.status}
                     </div>
 
+                    {/* Semantic Match Score */}
+                    {semanticQuery && (
+                      <div className="absolute top-4 right-0 px-1.5 py-0.5 bg-black/80 text-[7px] font-bold z-10 border-l border-b border-[#00ff85]/30">
+                        {Math.round((semanticResults.find(r => r.id === p.person_id)?.score || 0) * 100)}% MATCH
+                      </div>
+                    )}
+
                     {/* Face crop */}
                     <div className="relative w-full aspect-square bg-black overflow-hidden">
                       <img
@@ -1339,9 +1357,13 @@ const Dashboard: React.FC = () => {
                     <div className="px-2 py-1.5">
                       <p className="text-[10px] font-bold text-[#00ff85] tracking-widest">{p.person_id}</p>
                       <p className="text-[7px] opacity-30 mt-0.5">{p.timestamp} · {p.feed_id}</p>
+                      {p.traits && p.traits !== 'ANALYZING...' && (
+                        <p className="text-[7px] text-[#00e5ff]/50 mt-0.5 truncate">{p.traits}</p>
+                      )}
                     </div>
                   </motion.div>
-                ))}
+                  );
+                })}
               </AnimatePresence>
             )}
           </div>

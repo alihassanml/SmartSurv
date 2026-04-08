@@ -15,3 +15,4 @@ facenet-pytorch
 playsound
 python-dotenv
 requests
+open_clip_torch
