@@ -76,6 +76,7 @@ class CameraFeed:
         self.last_face_box = None
         self.pending_det = None
         self.pending_face = None
+        self.latest_frame = None
         
         
         # Activity Heatmap (80x60 grid for performance)
@@ -218,6 +219,9 @@ class CameraFeed:
 
             # ── Overlay Heatmap (Subtle) ──────────────────────────────────
             self._apply_heatmap_overlay(display_frame)
+
+            # ── Update latest raw frame for WebRTC ───────────────────────
+            self.latest_frame = display_frame
 
             # ── Push frame to stream queue ────────────────────────────────
             _, buf = cv2.imencode('.jpg', display_frame, [cv2.IMWRITE_JPEG_QUALITY, 65])
@@ -653,6 +657,14 @@ class CameraEngine:
             self.feeds[fid] = f
             if self.running: f.start()
         self.feeds[fid].push_remote_frame(frame_bytes)
+
+    def get_raw_frame(self, feed_id=None):
+        if not feed_id:
+            if not self.feeds: return None
+            feed_id = list(self.feeds.keys())[0]
+        if feed_id in self.feeds:
+            return self.feeds[feed_id].latest_frame
+        return None
 
     def get_frame(self, feed_id=None):
         if not feed_id:

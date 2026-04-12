@@ -31,9 +31,64 @@ interface ClassThreshold { name: string; threshold: number; sound_enabled: boole
 const API = `http://${window.location.hostname}:8000`;
 
 const CameraStream: React.FC<{ feedId?: string; active: boolean; showHeatmap?: boolean }> = ({ feedId, active, showHeatmap }) => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const pcRef = useRef<RTCPeerConnection | null>(null);
   const heatmapImgRef = useRef<HTMLImageElement>(null);
-  const streamUrl = `${API}/video_feed${feedId ? `?id=${feedId}` : ''}`;
 
+  useEffect(() => {
+    if (!active) {
+      if (pcRef.current) {
+        pcRef.current.close();
+        pcRef.current = null;
+      }
+      return;
+    }
+
+    const startWebRTC = async () => {
+      const pc = new RTCPeerConnection();
+      pcRef.current = pc;
+
+      pc.ontrack = (event) => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = event.streams[0];
+        }
+      };
+
+      // Add dummy transceiver to receive video
+      pc.addTransceiver('video', { direction: 'recvonly' });
+
+      try {
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+
+        const response = await fetch(`${API}/offer`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sdp: pc.localDescription?.sdp,
+            type: pc.localDescription?.type,
+            feed_id: feedId
+          })
+        });
+
+        const answer = await response.json();
+        await pc.setRemoteDescription(new RTCSessionDescription(answer));
+      } catch (err) {
+        console.error("WebRTC Negotiation Failed:", err);
+      }
+    };
+
+    startWebRTC();
+
+    return () => {
+      if (pcRef.current) {
+        pcRef.current.close();
+        pcRef.current = null;
+      }
+    };
+  }, [active, feedId]);
+
+  // Heatmap logic unchanged
   useEffect(() => {
     if (!active || !showHeatmap) return;
     let isActive = true;
@@ -46,33 +101,31 @@ const CameraStream: React.FC<{ feedId?: string; active: boolean; showHeatmap?: b
         if (data.heatmap && heatmapImgRef.current) {
           heatmapImgRef.current.src = `data:image/png;base64,${data.heatmap}`;
         }
-      } catch (e) {
-         // ignore
-      } finally {
-        if (isActive) setTimeout(fetchHeatmap, 1000);
-      }
+      } catch (e) { }
+      finally { if (isActive) setTimeout(fetchHeatmap, 1000); }
     };
     fetchHeatmap();
     return () => { isActive = false; };
   }, [active, showHeatmap, feedId]);
 
   return (
-    <div className="relative w-full h-full">
-       {active && (
-         <img
-           src={streamUrl}
-           className="w-full h-full object-contain"
-           style={{ imageRendering: 'auto' }}
-           alt="Camera stream"
-         />
-       )}
-       {showHeatmap && (
-          <img
-             ref={heatmapImgRef}
-             className="absolute inset-0 w-full h-full object-contain pointer-events-none opacity-[0.85] transition-opacity duration-1000"
-             alt="Heatmap"
-          />
-       )}
+    <div className="relative w-full h-full bg-black">
+      {active && (
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
+          className="w-full h-full object-contain"
+        />
+      )}
+      {showHeatmap && (
+        <img
+          ref={heatmapImgRef}
+          className="absolute inset-0 w-full h-full object-contain pointer-events-none opacity-[0.85] transition-opacity duration-1000"
+          alt="Heatmap"
+        />
+      )}
     </div>
   );
 };
@@ -729,7 +782,7 @@ const Dashboard: React.FC = () => {
           <div className="flex items-center gap-2">
             <div className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-[#00ff85] animate-pulse' : 'bg-red-500'}`} />
             <span className={`text-[10px] font-bold ${isConnected ? 'text-[#00ff85]/70' : 'text-red-500'}`}>
-              {isConnected ? 'UPLINK_STABLE' : 'UPLINK_LOST'}
+              {isConnected ? 'STABLE' : 'LOST'}
             </span>
           </div>
 

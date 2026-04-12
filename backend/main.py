@@ -9,6 +9,10 @@ import os
 from typing import Dict, Optional, List
 from contextlib import asynccontextmanager
 import time
+from aiortc import RTCPeerConnection, RTCSessionDescription
+from webrtc_utils import CameraStreamTrack
+
+pcs = set()
 
 
 from camera_engine import CameraEngine
@@ -85,10 +89,8 @@ async def lifespan(app: FastAPI):
 
     camera.start()
     yield
-    # Shutdown: Release resources
-    print("SHUTTING_DOWN_RESOURCES...")
-    app.state.is_running = False
     camera.stop()
+
 
 from fastapi.staticfiles import StaticFiles
 
@@ -107,6 +109,38 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.on_event("shutdown")
+async def on_shutdown():
+    coros = [pc.close() for pc in pcs]
+    await asyncio.gather(*coros)
+    pcs.clear()
+
+class Offer(BaseModel):
+    sdp: str
+    type: str
+    feed_id: Optional[str] = None
+
+@app.post("/offer")
+async def offer(params: Offer):
+    offer = RTCSessionDescription(sdp=params.sdp, type=params.type)
+    pc = RTCPeerConnection()
+    pcs.add(pc)
+
+    @pc.on("connectionstatechange")
+    async def on_connectionstatechange():
+        if pc.connectionState == "failed" or pc.connectionState == "closed":
+            await pc.close()
+            pcs.discard(pc)
+
+    video_track = CameraStreamTrack(camera, params.feed_id)
+    pc.addTrack(video_track)
+
+    await pc.setRemoteDescription(offer)
+    answer = await pc.createAnswer()
+    await pc.setLocalDescription(answer)
+
+    return JSONResponse(content={"sdp": pc.localDescription.sdp, "type": pc.localDescription.type})
 
 camera = CameraEngine()
 
