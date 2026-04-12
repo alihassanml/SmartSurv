@@ -295,6 +295,7 @@ class CameraEngine:
         self.reid_threshold = 0.75
         self.reid_lock = threading.Lock()
         self.focused_person_id = None # PID currently under active monitoring focus
+        self.loitering_threshold = 60.0 # Time in seconds before a person is considered loitering
 
 
         self.sound_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'sound', 'drop.mp3'))
@@ -561,6 +562,21 @@ class CameraEngine:
                 best_match['last_seen'] = now
                 best_match['last_feed'] = feed_id
                 
+                # ── Loitering Detection ───────────────────────────────────
+                stay_duration = now - best_match['entry_time']
+                if stay_duration > self.loitering_threshold and not best_match.get('loitering_flagged', False):
+                    best_match['loitering_flagged'] = True
+                    # Push a loitering event to the alert queue
+                    self.alert_queue.put({
+                        "feed_id": feed_id,
+                        "timestamp": time.strftime("%H:%M:%S"),
+                        "detections": [{"label": "LOITERING", "confidence": stay_duration, "box": box.tolist() if box is not None else [0,0,0,0]}],
+                        "message": f"BEHAVIORAL_ALERT: {best_match['id']} LOITERING ({int(stay_duration)}s)",
+                        "image": face_crop_b64, # Show the person's face in the alert
+                        "is_behavioral": True,
+                        "location": {"id": f"{self.camera_id}-{feed_id}", "lat": self.camera_lat, "lon": self.camera_lon}
+                    })
+
                 # Update semantic traits if new one is better/available
                 if semantic_emb is not None:
                     best_match['semantic_emb'] = semantic_emb
@@ -591,6 +607,8 @@ class CameraEngine:
                     "last_feed": feed_id,
                     "last_seen": now,
                     "last_shown": now,
+                    "entry_time": now,        # NEW: Timestamp of first encounter
+                    "loitering_flagged": False # NEW: Avoid double alerts
                 }
                 self.reid_buffer.append(entry)
                 # Emit new person event
