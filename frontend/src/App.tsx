@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import LandingPage from './pages/LandingPage';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import VerifyEmail from './pages/VerifyEmail';
 import RemoteCamera from './pages/RemoteCamera';
 import Dashboard from './Dashboard';
 
@@ -22,6 +23,7 @@ const App: React.FC = () => {
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/verify" element={<VerifyEmail />} />
         <Route path="/remote-camera" element={<RemoteCamera />} />
         <Route 
           path="/dashboard" 

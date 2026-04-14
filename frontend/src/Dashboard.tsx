@@ -136,8 +136,7 @@ const Dashboard: React.FC = () => {
   const [detectedPersons, setDetectedPersons] = useState<PersonEvent[]>([]);
   const [selectedPerson, setSelectedPerson] = useState<PersonEvent | null>(null);
   const [isConnected, setIsConnected] = useState(false);
-  const savedCamState = localStorage.getItem('cameraActive');
-  const [cameraActive, setCameraActive] = useState(savedCamState === 'true');
+  const [cameraActive, setCameraActive] = useState(false);
   const [isCameraToggling, setIsCameraToggling] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [isReconnecting, setIsReconnecting] = useState(false);
@@ -491,19 +490,16 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     const initCam = async () => {
-      const pref = localStorage.getItem('cameraActive');
+      // Camera is always OFF on app load — user must turn it on manually
+      localStorage.setItem('cameraActive', 'false');
+      setCameraActive(false);
+      fetch(`${API}/api/camera/stop`, { method: 'POST' }).catch(() => {});
+
       const curMode = localStorage.getItem('systemMode') || 'detection';
       fetch(`${API}/api/camera/mode`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mode: curMode }),
       }).catch(() => {});
-      if (pref === 'true') {
-        try { await fetch(`${API}/api/camera/start`, { method: 'POST' }); setCameraActive(true); }
-        catch (e) { console.error('Could not start camera', e); }
-      } else {
-        fetch(`${API}/api/camera/stop`, { method: 'POST' }).catch(() => {});
-        setCameraActive(false);
-      }
     };
     initCam();
     return () => { fetch(`${API}/api/camera/stop`, { method: 'POST' }).catch(() => {}); };

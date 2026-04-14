@@ -19,6 +19,183 @@ from camera_engine import CameraEngine
 from database import SessionLocal, Base, engine, User, Setting
 from auth import verify_password, get_password_hash, create_access_token
 import socket
+import smtplib
+import random
+import string
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from dotenv import load_dotenv
+
+load_dotenv()
+
+SMTP_EMAIL = os.getenv("SMTP_EMAIL")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
+SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "465"))
+
+def _generate_verification_code(length: int = 6) -> str:
+    return "".join(random.choices(string.digits, k=length))
+
+def _send_verification_email(to_email: str, code: str):
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = "SmartSurv — Verify Your Identity"
+    msg["From"] = f"SmartSurv Security <{SMTP_EMAIL}>"
+    msg["To"] = to_email
+
+    digits_html = "".join(
+        f'<td style="padding:0 6px;"><div style="'
+        f'width:48px;height:64px;background:#0d0f12;border:1.5px solid #00ff85;'
+        f'border-radius:4px;display:flex;align-items:center;justify-content:center;'
+        f'font-size:32px;font-weight:700;color:#00ff85;letter-spacing:0;'
+        f'font-family:Courier New,monospace;line-height:64px;text-align:center;">'
+        f'{d}</div></td>'
+        for d in str(code)
+    )
+
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SmartSurv — Verify Your Identity</title>
+</head>
+<body style="margin:0;padding:0;background:#060608;font-family:'Courier New',Courier,monospace;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#060608;min-height:100vh;">
+    <tr><td align="center" style="padding:40px 16px;">
+
+      <!-- Card -->
+      <table width="520" cellpadding="0" cellspacing="0"
+             style="background:#0c0d10;border:1px solid rgba(0,255,133,0.18);border-radius:2px;max-width:520px;width:100%;">
+
+        <!-- Top accent bar -->
+        <tr><td style="height:3px;background:linear-gradient(90deg,#00ff85,rgba(0,255,133,0.1));border-radius:2px 2px 0 0;"></td></tr>
+
+        <!-- Header -->
+        <tr><td style="padding:36px 40px 28px;border-bottom:1px solid rgba(0,255,133,0.08);">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td>
+                <!-- Shield icon text fallback -->
+                <div style="display:inline-flex;align-items:center;gap:10px;">
+                  <div style="width:36px;height:36px;border:1.5px solid rgba(0,255,133,0.5);
+                              display:inline-block;text-align:center;line-height:34px;
+                              font-size:18px;color:#00ff85;">&#9632;</div>
+                  <span style="font-size:15px;font-weight:700;letter-spacing:.22em;
+                               text-transform:uppercase;color:#00ff85;">SmartSurv</span>
+                </div>
+              </td>
+              <td align="right">
+                <span style="font-size:9px;color:rgba(0,255,133,0.3);letter-spacing:.25em;
+                             text-transform:uppercase;">SECURE&nbsp;MAIL</span>
+              </td>
+            </tr>
+          </table>
+        </td></tr>
+
+        <!-- Body -->
+        <tr><td style="padding:40px 40px 32px;">
+
+          <!-- Status badge -->
+          <div style="margin-bottom:28px;">
+            <span style="display:inline-block;padding:4px 12px;border:1px solid rgba(0,255,133,0.25);
+                         background:rgba(0,255,133,0.04);font-size:9px;letter-spacing:.3em;
+                         text-transform:uppercase;color:rgba(0,255,133,0.5);">
+              IDENTITY&nbsp;VERIFICATION&nbsp;REQUEST
+            </span>
+          </div>
+
+          <h1 style="margin:0 0 12px;font-size:22px;font-weight:700;color:#00ff85;
+                     letter-spacing:.12em;text-transform:uppercase;line-height:1.3;">
+            Verify Your<br/>Operator Account
+          </h1>
+
+          <p style="margin:0 0 32px;font-size:12px;color:rgba(0,255,133,0.45);
+                    line-height:1.8;letter-spacing:.04em;">
+            A verification request was received for your SmartSurv account.<br/>
+            Enter the code below to complete your registration.
+          </p>
+
+          <!-- Code box -->
+          <div style="background:#080a0d;border:1px solid rgba(0,255,133,0.15);
+                      border-radius:4px;padding:32px 24px;margin-bottom:32px;text-align:center;">
+            <p style="margin:0 0 20px;font-size:9px;letter-spacing:.3em;
+                      text-transform:uppercase;color:rgba(0,255,133,0.35);">
+              VERIFICATION&nbsp;CODE
+            </p>
+            <table cellpadding="0" cellspacing="0" style="margin:0 auto;">
+              <tr>{digits_html}</tr>
+            </table>
+            <p style="margin:20px 0 0;font-size:9px;color:rgba(0,255,133,0.25);
+                      letter-spacing:.15em;text-transform:uppercase;">
+              Valid for&nbsp;<span style="color:rgba(0,255,133,0.5);">10 minutes</span>
+            </p>
+          </div>
+
+          <!-- Warning -->
+          <table width="100%" cellpadding="0" cellspacing="0"
+                 style="border:1px solid rgba(255,68,102,0.2);background:rgba(255,68,102,0.04);
+                        border-radius:3px;margin-bottom:28px;">
+            <tr>
+              <td style="padding:14px 16px;">
+                <p style="margin:0;font-size:10px;color:rgba(255,68,102,0.7);
+                          line-height:1.7;letter-spacing:.04em;">
+                  <strong style="color:rgba(255,68,102,0.9);">&#9888; Security Notice:</strong>
+                  Never share this code with anyone. SmartSurv staff will never ask for it.
+                  If you didn&rsquo;t create an account, ignore this email.
+                </p>
+              </td>
+            </tr>
+          </table>
+
+          <p style="margin:0;font-size:10px;color:rgba(0,255,133,0.25);
+                    line-height:1.7;letter-spacing:.03em;">
+            This code was generated automatically. If you didn&rsquo;t sign up,
+            no action is needed &mdash; your email address has not been registered.
+          </p>
+
+        </td></tr>
+
+        <!-- Footer -->
+        <tr><td style="padding:20px 40px 28px;border-top:1px solid rgba(0,255,133,0.06);">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td>
+                <p style="margin:0;font-size:9px;color:rgba(0,255,133,0.2);
+                          letter-spacing:.12em;text-transform:uppercase;">
+                  &copy; SmartSurv Surveillance System
+                </p>
+              </td>
+              <td align="right">
+                <p style="margin:0;font-size:9px;color:rgba(0,255,133,0.15);
+                          letter-spacing:.08em;">
+                  AUTOMATED&nbsp;&bull;&nbsp;DO&nbsp;NOT&nbsp;REPLY
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td></tr>
+
+        <!-- Bottom accent bar -->
+        <tr><td style="height:2px;background:linear-gradient(90deg,rgba(0,255,133,0.05),rgba(0,255,133,0.2),rgba(0,255,133,0.05));"></td></tr>
+
+      </table>
+      <!-- /Card -->
+
+    </td></tr>
+  </table>
+</body>
+</html>"""
+
+    msg.attach(MIMEText(html, "html"))
+    if SMTP_PORT == 465:
+        with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT, timeout=10) as s:
+            s.login(SMTP_EMAIL, SMTP_PASSWORD)
+            s.send_message(msg)
+    else:
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=10) as s:
+            s.starttls()
+            s.login(SMTP_EMAIL, SMTP_PASSWORD)
+            s.send_message(msg)
 
 def get_local_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -87,7 +264,7 @@ async def lifespan(app: FastAPI):
         camera.set_class_sounds(saved_sounds)
         print(f"[DB] Loaded {len(saved_sounds)} class sounds from database.")
 
-    camera.start()
+    # Camera starts OFF — user turns it on from the dashboard
     yield
     camera.stop()
 
@@ -187,23 +364,62 @@ class UiSettingUpdate(BaseModel):
 
 @app.post("/api/auth/signup")
 def signup(user: UserCreate, db: Session = Depends(get_db)):
-    db_user = db.query(User).filter(User.username == user.username).first()
-    if db_user:
+    if db.query(User).filter(User.username == user.username).first():
         raise HTTPException(status_code=400, detail="Username already registered")
-    
+    if db.query(User).filter(User.email == user.email).first():
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    code = _generate_verification_code()
     hashed_password = get_password_hash(user.password)
-    new_user = User(username=user.username, email=user.email, hashed_password=hashed_password)
+    new_user = User(
+        username=user.username,
+        email=user.email,
+        hashed_password=hashed_password,
+        is_verified=False,
+        verification_code=code,
+    )
     db.add(new_user)
     db.commit()
-    db.refresh(new_user)
-    return {"message": "User created successfully"}
+
+    try:
+        _send_verification_email(user.email, code)
+    except Exception as e:
+        print(f"[Email] Failed to send verification email: {e}")
+        db.delete(new_user)
+        db.commit()
+        raise HTTPException(status_code=500, detail="Failed to send verification email. Please try again.")
+
+    return {"message": "Verification code sent to your email. Please verify to complete signup."}
+
+
+class VerifyEmail(BaseModel):
+    email: str
+    code: str
+
+
+@app.post("/api/auth/verify")
+def verify_email(body: VerifyEmail, db: Session = Depends(get_db)):
+    db_user = db.query(User).filter(User.email == body.email).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if db_user.is_verified:
+        return {"message": "Account already verified. You can log in."}
+    if db_user.verification_code != body.code:
+        raise HTTPException(status_code=400, detail="Invalid verification code")
+
+    db_user.is_verified = True
+    db_user.verification_code = None
+    db.commit()
+    return {"message": "Email verified successfully. You can now log in."}
 
 @app.post("/api/auth/login")
 def login(user: UserLogin, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.username == user.username).first()
     if not db_user or not verify_password(user.password, db_user.hashed_password):
         raise HTTPException(status_code=400, detail="Incorrect username or password")
-    
+    if not db_user.is_verified:
+        raise HTTPException(status_code=403, detail="Email not verified. Please check your email for the verification code.")
+
     access_token = create_access_token(data={"sub": db_user.username, "email": db_user.email})
     return {"access_token": access_token, "token_type": "bearer", "email": db_user.email}
 

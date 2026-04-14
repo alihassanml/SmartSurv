@@ -8,3 +8,6 @@ package-lock.json
 package.json
 backend/__pycache__
 backend/.env
+.env
+kaggle.json
+.env.local

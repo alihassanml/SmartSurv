@@ -24,7 +24,7 @@ const Signup: React.FC = () => {
       });
       if (response.ok) {
         setSuccess(true);
-        setTimeout(() => navigate('/login'), 1800);
+        setTimeout(() => navigate('/verify', { state: { email } }), 1200);
       } else {
         const data = await response.json();
         setError(data.detail || 'Signup failed');
@@ -79,8 +79,8 @@ const Signup: React.FC = () => {
           {success && (
             <div className="absolute inset-0 z-20 bg-[rgba(12,13,16,0.97)] flex flex-col items-center justify-center gap-4 animate-fade-in">
               <CheckCircle className="w-12 h-12 text-[#00ff85] animate-glow-pulse" />
-              <p className="text-sm font-bold tracking-widest">IDENTITY_REGISTERED</p>
-              <p className="text-[10px] text-[#00ff85]/40">Redirecting to login...</p>
+              <p className="text-sm font-bold tracking-widest">CODE_TRANSMITTED</p>
+              <p className="text-[10px] text-[#00ff85]/40">Check your email for the verification code...</p>
             </div>
           )}
 

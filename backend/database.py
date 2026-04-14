@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, Text
+from sqlalchemy import create_engine, Column, Integer, String, Text, Boolean
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
 
@@ -18,6 +18,8 @@ class User(Base):
     username = Column(String, unique=True, index=True)
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
+    is_verified = Column(Boolean, default=False, nullable=False)
+    verification_code = Column(String, nullable=True)
 
 class Setting(Base):
     """Key-value store for persistent settings (thresholds, sounds, etc.)."""
@@ -28,3 +30,17 @@ class Setting(Base):
     value = Column(Text, nullable=False)  # JSON-encoded value
 
 Base.metadata.create_all(bind=engine)
+
+# --- SQLite migration: add new columns to existing tables if missing ---
+def _run_migrations():
+    from sqlalchemy import text, inspect
+    with engine.connect() as conn:
+        inspector = inspect(engine)
+        existing_cols = {col["name"] for col in inspector.get_columns("users")}
+        if "is_verified" not in existing_cols:
+            conn.execute(text("ALTER TABLE users ADD COLUMN is_verified BOOLEAN NOT NULL DEFAULT 0"))
+        if "verification_code" not in existing_cols:
+            conn.execute(text("ALTER TABLE users ADD COLUMN verification_code VARCHAR"))
+        conn.commit()
+
+_run_migrations()
