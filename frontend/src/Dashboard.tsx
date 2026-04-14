@@ -774,13 +774,7 @@ const Dashboard: React.FC = () => {
 
         {/* Right controls */}
         <div className="flex items-center gap-4">
-          {/* Connection status */}
-          <div className="flex items-center gap-2">
-            <div className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-[#00ff85] animate-pulse' : 'bg-red-500'}`} />
-            <span className={`text-[10px] font-bold ${isConnected ? 'text-[#00ff85]/70' : 'text-red-500'}`}>
-              {isConnected ? 'STABLE' : 'LOST'}
-            </span>
-          </div>
+          
 
           {/* Camera toggle */}
           <button
