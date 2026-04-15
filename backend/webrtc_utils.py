@@ -16,26 +16,23 @@ class CameraStreamTrack(MediaStreamTrack):
         self.feed_id = feed_id
 
     async def recv(self):
+        import cv2
+        import numpy as np
+
+        # Wait (non-recursively) until a frame is available
+        frame_bgr = None
+        while frame_bgr is None:
+            frame_bgr = self.camera_engine.get_raw_frame(self.feed_id)
+            if frame_bgr is None:
+                await asyncio.sleep(0.02)
+
         pts, time_base = await self.next_timestamp()
 
-        # Get the latest raw frame from the engine
-        frame_bgr = self.camera_engine.get_raw_frame(self.feed_id)
-        
-        if frame_bgr is None:
-            # If no frame yet, yield a black frame or wait
-            await asyncio.sleep(0.01)
-            # Recursively try again (aiortc handles the loop)
-            return await self.recv()
-
-        # Convert BGR to RGB for WebRTC
-        import cv2
+        # Convert BGR → RGB for WebRTC
         frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
-        
-        # Create an av.VideoFrame
         new_frame = VideoFrame.from_ndarray(frame_rgb, format="rgb24")
         new_frame.pts = pts
         new_frame.time_base = time_base
-        
         return new_frame
 
     async def next_timestamp(self):

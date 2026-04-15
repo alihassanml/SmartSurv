@@ -2,136 +2,23 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Settings, User, LogOut, Shield, RefreshCw, Sliders,
-  Search, Camera, UploadCloud, AlertTriangle, Crosshair,
-  Volume2, X, ChevronDown, Zap, Radio, Mail, MapPin, Target
+  Settings, RefreshCw, Camera, Zap,
+  AlertTriangle, Crosshair, X, Radio, Target, BarChart2,
 } from 'lucide-react';
 
-
-interface Detection { label: string; confidence: number; box: number[]; }
-interface Alert { 
-  timestamp: string; 
-  detections: Detection[]; 
-  image: string; 
-  is_person_search_match?: boolean | string;
-  location?: { id: string; lat: string; lon: string; maps: string; };
-}
-interface PersonEvent {
-  person_id: string;
-  feed_id: string;
-  face: string;         // base64 JPEG
-  timestamp: string;
-  status: 'NEW' | 'REAPPEARED';
-  is_focused?: boolean;
-  traits?: string;
-}
-
-interface ClassThreshold { name: string; threshold: number; sound_enabled: boolean; }
-
-const API = `http://${window.location.hostname}:8000`;
-
-const CameraStream: React.FC<{ feedId?: string; active: boolean; showHeatmap?: boolean }> = ({ feedId, active, showHeatmap }) => {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const pcRef = useRef<RTCPeerConnection | null>(null);
-  const heatmapImgRef = useRef<HTMLImageElement>(null);
-
-  useEffect(() => {
-    if (!active) {
-      if (pcRef.current) {
-        pcRef.current.close();
-        pcRef.current = null;
-      }
-      return;
-    }
-
-    const startWebRTC = async () => {
-      const pc = new RTCPeerConnection();
-      pcRef.current = pc;
-
-      pc.ontrack = (event) => {
-        if (videoRef.current) {
-          videoRef.current.srcObject = event.streams[0];
-        }
-      };
-
-      // Add dummy transceiver to receive video
-      pc.addTransceiver('video', { direction: 'recvonly' });
-
-      try {
-        const offer = await pc.createOffer();
-        await pc.setLocalDescription(offer);
-
-        const response = await fetch(`${API}/offer`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sdp: pc.localDescription?.sdp,
-            type: pc.localDescription?.type,
-            feed_id: feedId
-          })
-        });
-
-        const answer = await response.json();
-        await pc.setRemoteDescription(new RTCSessionDescription(answer));
-      } catch (err) {
-        console.error("WebRTC Negotiation Failed:", err);
-      }
-    };
-
-    startWebRTC();
-
-    return () => {
-      if (pcRef.current) {
-        pcRef.current.close();
-        pcRef.current = null;
-      }
-    };
-  }, [active, feedId]);
-
-  // Heatmap logic unchanged
-  useEffect(() => {
-    if (!active || !showHeatmap) return;
-    let isActive = true;
-    const fetchHeatmap = async () => {
-      try {
-        const url = `${API}/api/camera/heatmap/${feedId || 'camera-0'}`;
-        const res = await fetch(url);
-        if (!res.ok) return;
-        const data = await res.json();
-        if (data.heatmap && heatmapImgRef.current) {
-          heatmapImgRef.current.src = `data:image/png;base64,${data.heatmap}`;
-        }
-      } catch (e) { }
-      finally { if (isActive) setTimeout(fetchHeatmap, 1000); }
-    };
-    fetchHeatmap();
-    return () => { isActive = false; };
-  }, [active, showHeatmap, feedId]);
-
-  return (
-    <div className="relative w-full h-full bg-black">
-      {active && (
-        <video
-          ref={videoRef}
-          autoPlay
-          playsInline
-          muted
-          className="w-full h-full object-contain"
-        />
-      )}
-      {showHeatmap && (
-        <img
-          ref={heatmapImgRef}
-          className="absolute inset-0 w-full h-full object-contain pointer-events-none opacity-[0.85] transition-opacity duration-1000"
-          alt="Heatmap"
-        />
-      )}
-    </div>
-  );
-};
-
+import type { Alert, PersonEvent, ClassThreshold } from './types/dashboard';
+import { API } from './types/dashboard';
+import CameraStream from './components/dashboard/CameraStream';
+import AlertsPanel from './components/dashboard/AlertsPanel';
+import PersonsPanel from './components/dashboard/PersonsPanel';
+import SettingsPanel from './components/dashboard/SettingsPanel';
+import WatchlistManager from './components/dashboard/WatchlistManager';
+import DashboardAnalytics from './components/dashboard/DashboardAnalytics';
 
 const Dashboard: React.FC = () => {
+  const navigate = useNavigate();
+
+  // ─── Core state ───
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [detectedPersons, setDetectedPersons] = useState<PersonEvent[]>([]);
   const [selectedPerson, setSelectedPerson] = useState<PersonEvent | null>(null);
@@ -140,8 +27,9 @@ const Dashboard: React.FC = () => {
   const [isCameraToggling, setIsCameraToggling] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [isReconnecting, setIsReconnecting] = useState(false);
-  const scrollRef  = useRef<HTMLDivElement>(null);
-  const navigate   = useNavigate();
+  const [activeView, setActiveView] = useState<'live' | 'analytics'>('live');
+
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const username = localStorage.getItem('username') || 'OPERATOR';
   const userEmail = localStorage.getItem('email') || 'N/A';
@@ -154,40 +42,34 @@ const Dashboard: React.FC = () => {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
   const savedSearchStatus = localStorage.getItem('searchStatus') as 'idle' | 'uploading' | 'active' | 'error' | null;
-  const savedPreview = localStorage.getItem('searchPreview');
-  const [searchStatus, setSearchStatus] = useState<'idle' | 'uploading' | 'active' | 'error'>(savedSearchStatus || 'idle');
-  const [previewUrl, setPreviewUrl] = useState<string | null>(savedPreview);
-  const [searchSoundEnabled, setSearchSoundEnabled] = useState(true);
+  const [searchStatus] = useState<'idle' | 'uploading' | 'active' | 'error'>(savedSearchStatus || 'idle');
   const [emailEnabled, setEmailEnabled] = useState(true);
+  const [voiceEnabled, setVoiceEnabled] = useState(true);
   const [operatorLatLon, setOperatorLatLon] = useState<{ lat: number; lon: number } | null>(null);
   const [mapAlert, setMapAlert] = useState<Alert | null>(null);
-  const [currentSource, setCurrentSource] = useState<'0' | 'remote' | 'hybrid'>((localStorage.getItem('currentSource') as any) || '0');
+  const [currentSource, setCurrentSource] = useState<'0' | 'remote' | 'hybrid'>(
+    (localStorage.getItem('currentSource') as '0' | 'remote' | 'hybrid') || '0'
+  );
   const [activeFeeds, setActiveFeeds] = useState<string[]>([]);
   const [watchlist, setWatchlist] = useState<string[]>([]);
   const [isAddingTarget, setIsAddingTarget] = useState(false);
-  const [newTargetName, setNewTargetName] = useState("");
+  const [newTargetName, setNewTargetName] = useState('');
   const [newTargetPreview, setNewTargetPreview] = useState<string | null>(null);
   const [showHeatmap, setShowHeatmap] = useState(false);
-
   const [showRemoteLink, setShowRemoteLink] = useState(false);
   const [systemIp, setSystemIp] = useState<string | null>(null);
   const [smtpEmail, setSmtpEmail] = useState<string | null>(null);
   const [isCopied, setIsCopied] = useState(false);
-
-  // Person-Log toggle (persisted in DB via /api/settings/ui)
   const [personLogEnabled, setPersonLogEnabled] = useState(true);
-
   const [focusedPersonId, setFocusedPersonId] = useState<string | null>(null);
   const [focusedPersonVisible, setFocusedPersonVisible] = useState(false);
   const [privacyMode, setPrivacyMode] = useState(false);
-  const [semanticQuery, setSemanticQuery] = useState("");
-  const [semanticResults, setSemanticResults] = useState<{id: string, score: number}[]>([]);
+  const [semanticQuery, setSemanticQuery] = useState('');
+  const [semanticResults, setSemanticResults] = useState<{ id: string; score: number }[]>([]);
   const [semanticLoading, setSemanticLoading] = useState(false);
   const semanticDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-
-
-
+  // ─── Load thresholds when settings opens ───
   useEffect(() => {
     if (!showSettings) return;
     setThresholdsLoading(true);
@@ -198,44 +80,150 @@ const Dashboard: React.FC = () => {
       .finally(() => setThresholdsLoading(false));
   }, [showSettings]);
 
+  // ─── UI settings from backend ───
   useEffect(() => {
-    // Load UI settings from backend (person_log toggle, etc.)
     fetch(`${API}/api/settings/ui`)
       .then(res => res.json())
       .then(data => {
-        if (typeof data.person_log_enabled === 'boolean') {
-          setPersonLogEnabled(data.person_log_enabled);
-        }
+        if (typeof data.person_log_enabled === 'boolean') setPersonLogEnabled(data.person_log_enabled);
       })
       .catch(() => {});
   }, []);
 
-
-
+  // ─── Operator location ───
   useEffect(() => {
-    // Auto-detect operator location
-    const detectLocation = async () => {
-      try {
-        const res = await fetch('http://ip-api.com/json/');
-        const data = await res.json();
-        if (data.status === 'success') {
-          setOperatorLatLon({ lat: data.lat, lon: data.lon });
-        }
-      } catch (err) { console.error('Failed to detect operator location', err); }
-    };
-    detectLocation();
+    fetch('http://ip-api.com/json/')
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'success') setOperatorLatLon({ lat: data.lat, lon: data.lon });
+      })
+      .catch(() => {});
   }, []);
 
+  // ─── System info ───
+  useEffect(() => {
+    fetch(`${API}/api/system/info`)
+      .then(res => res.json())
+      .then(data => {
+        setSystemIp(data.local_ip);
+        setSmtpEmail(data.smtp_email);
+        setEmailEnabled(data.email_enabled);
+        setPrivacyMode(data.privacy_mode);
+        setPersonLogEnabled(data.person_log_enabled);
+        if (typeof data.voice_enabled === 'boolean') setVoiceEnabled(data.voice_enabled);
+      })
+      .catch(() => {});
+  }, []);
+
+  // ─── Watchlist ───
+  const fetchWatchlist = async () => {
+    try {
+      const res = await fetch(`${API}/api/watchlist`);
+      const data = await res.json();
+      setWatchlist(data.watchlist || []);
+    } catch (_) {}
+  };
+  useEffect(() => { fetchWatchlist(); }, []);
+
+  // ─── Camera feeds polling ───
+  useEffect(() => {
+    if (!cameraActive) return;
+    const fetchFeeds = async () => {
+      try {
+        const res = await fetch(`${API}/api/camera/feeds`);
+        const data = await res.json();
+        setActiveFeeds(data.feeds || []);
+      } catch (_) {}
+    };
+    fetchFeeds();
+    const interval = setInterval(fetchFeeds, 3000);
+    return () => clearInterval(interval);
+  }, [cameraActive, currentSource]);
+
+  // ─── Init camera ───
+  useEffect(() => {
+    localStorage.setItem('cameraActive', 'false');
+    setCameraActive(false);
+    fetch(`${API}/api/camera/stop`, { method: 'POST' }).catch(() => {});
+    const curMode = localStorage.getItem('systemMode') || 'detection';
+    fetch(`${API}/api/camera/mode`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: curMode }),
+    }).catch(() => {});
+    return () => { fetch(`${API}/api/camera/stop`, { method: 'POST' }).catch(() => {}); };
+  }, []);
+
+  // ─── Alerts WebSocket (with auto-reconnect) ───
+  useEffect(() => {
+    if (isReconnecting) return;
+
+    let ws: WebSocket | null = null;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+    let dead = false; // set true on cleanup so we never reconnect after unmount
+
+    const connect = () => {
+      if (dead) return;
+      ws = new WebSocket(`ws://${window.location.hostname}:8000/ws`);
+
+      ws.onopen = () => setIsConnected(true);
+
+      ws.onclose = () => {
+        setIsConnected(false);
+        // Reconnect after 1 s unless the effect has been cleaned up
+        if (!dead) retryTimer = setTimeout(connect, 1000);
+      };
+
+      ws.onerror = () => ws?.close(); // triggers onclose → retry
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          setAlerts(prev => [data, ...prev].slice(0, 50));
+        } catch (_) {}
+      };
+    };
+
+    connect();
+
+    return () => {
+      dead = true;
+      if (retryTimer) clearTimeout(retryTimer);
+      ws?.close();
+    };
+  }, [systemMode, isReconnecting]);
+
+  // ─── Persons WebSocket ───
+  useEffect(() => {
+    if (!cameraActive) return;
+    const ws = new WebSocket(`ws://localhost:8000/ws/persons`);
+    ws.onmessage = (event) => {
+      const data: PersonEvent = JSON.parse(event.data);
+      if (focusedPersonId && data.person_id === focusedPersonId) {
+        setFocusedPersonVisible(true);
+        setTimeout(() => setFocusedPersonVisible(false), 3000);
+      }
+      setDetectedPersons(prev => {
+        const filtered = prev.filter(p => p.person_id !== data.person_id);
+        return [data, ...filtered].slice(0, 30);
+      });
+    };
+    return () => ws.close();
+  }, [cameraActive, focusedPersonId]);
+
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = 0;
+  }, [alerts]);
+
+  // ─── Handlers ───
   const togglePersonLog = async () => {
     const newVal = !personLogEnabled;
     setPersonLogEnabled(newVal);
     try {
       await fetch(`${API}/api/settings/ui`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ key: 'ui_person_log_enabled', value: newVal }),
       });
-    } catch (err) { console.error('Failed to save person log setting', err); }
+    } catch (_) {}
   };
 
   const handleSoundToggle = async (className: string) => {
@@ -250,18 +238,7 @@ const Dashboard: React.FC = () => {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sounds }),
       });
-    } catch (err) { console.error('Failed to sync sound', err); }
-  };
-
-  const toggleSearchSound = async () => {
-    const newVal = !searchSoundEnabled;
-    try {
-      await fetch(`${API}/api/camera/sound`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enabled: newVal }),
-      });
-      setSearchSoundEnabled(newVal);
-    } catch (err) { console.error('Failed to toggle search sound', err); }
+    } catch (_) {}
   };
 
   const toggleEmail = async () => {
@@ -272,65 +249,76 @@ const Dashboard: React.FC = () => {
         body: JSON.stringify({ enabled: newVal }),
       });
       setEmailEnabled(newVal);
-    } catch (err) { console.error('Failed to toggle email', err); }
+    } catch (_) {}
+  };
+
+  const toggleVoice = async () => {
+    const newVal = !voiceEnabled;
+    try {
+      await fetch(`${API}/api/camera/voice`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: newVal }),
+      });
+      setVoiceEnabled(newVal);
+    } catch (_) {}
+  };
+
+  // Dismiss the speak-once lock for a label so the system will announce it again next time.
+  // Pass label=null to clear ALL locks at once.
+  const dismissSpeech = async (label: string | null = null) => {
+    try {
+      await fetch(`${API}/api/camera/speech/dismiss`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ label }),
+      });
+    } catch (_) {}
   };
 
   const handleSetFocus = async (pid: string | null) => {
     try {
       await fetch(`${API}/api/camera/focus`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ person_id: pid }),
       });
       setFocusedPersonId(pid);
       if (!pid) setFocusedPersonVisible(false);
-    } catch (err) { console.error('Failed to set focus', err); }
+    } catch (_) {}
   };
 
   const togglePrivacy = async () => {
     try {
       const next = !privacyMode;
       await fetch(`${API}/api/camera/privacy`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ enabled: next }),
       });
       setPrivacyMode(next);
-      // Auto-toggle Person Log for Ethical Compliance
-      if (next) {
-        setPersonLogEnabled(false);
-      }
-    } catch (err) { console.error('Failed to toggle privacy', err); }
+      if (next) setPersonLogEnabled(false);
+    } catch (_) {}
   };
 
   const handleSemanticSearch = (val: string) => {
     setSemanticQuery(val);
     if (semanticDebounceRef.current) clearTimeout(semanticDebounceRef.current);
-    if (!val.trim()) {
-      setSemanticResults([]);
-      setSemanticLoading(false);
-      return;
-    }
+    if (!val.trim()) { setSemanticResults([]); setSemanticLoading(false); return; }
     setSemanticLoading(true);
     semanticDebounceRef.current = setTimeout(async () => {
       try {
         const resp = await fetch(`${API}/api/persons/search?q=${encodeURIComponent(val)}`);
         const data = await resp.json();
         if (data.status === 'success') setSemanticResults(data.results);
-      } catch (err) { console.error(err); }
+      } catch (_) {}
       finally { setSemanticLoading(false); }
     }, 600);
   };
 
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-    const R = 6371; // km
+    const R = 6371;
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-              Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return (R * c).toFixed(1);
+    const a = Math.sin(dLat / 2) ** 2 +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+    return (R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))).toFixed(1);
   };
 
   const changeMode = async (mode: 'detection' | 'search' | 'both') => {
@@ -344,7 +332,7 @@ const Dashboard: React.FC = () => {
       await new Promise(resolve => setTimeout(resolve, 1200));
       setSystemMode(mode);
       localStorage.setItem('systemMode', mode);
-    } catch (e) { console.error('Failed to change mode', e); }
+    } catch (_) {}
     finally { setIsReconnecting(false); }
   };
 
@@ -368,53 +356,35 @@ const Dashboard: React.FC = () => {
     } catch { setSaveStatus('error'); setTimeout(() => setSaveStatus('idle'), 3000); }
   };
 
-  const fetchWatchlist = async () => {
-    try {
-      const res = await fetch(`${API}/api/watchlist`);
-      const data = await res.json();
-      setWatchlist(data.watchlist || []);
-    } catch (e) { console.error("Failed to fetch watchlist", e); }
-  };
-
-  useEffect(() => {
-    fetchWatchlist();
-  }, []);
-
   const handleAddWatchlist = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !newTargetName) return;
-    
-    // Create local preview
     const reader = new FileReader();
     reader.onloadend = () => setNewTargetPreview(reader.result as string);
     reader.readAsDataURL(file);
-
     setIsReconnecting(true);
     const formData = new FormData();
     formData.append('file', file);
     try {
       const res = await fetch(`${API}/api/watchlist?name=${encodeURIComponent(newTargetName)}`, {
-        method: 'POST',
-        body: formData
+        method: 'POST', body: formData,
       });
       if (res.ok) {
-        setNewTargetName("");
+        setNewTargetName('');
         setNewTargetPreview(null);
         setIsAddingTarget(false);
         fetchWatchlist();
       }
-    } catch (e) { console.error("Failed to add target", e); }
+    } catch (_) {}
     finally { setIsReconnecting(false); }
   };
-
 
   const removeTarget = async (name: string) => {
     try {
       await fetch(`${API}/api/watchlist/${encodeURIComponent(name)}`, { method: 'DELETE' });
       fetchWatchlist();
-    } catch (e) { console.error("Failed to remove target", e); }
+    } catch (_) {}
   };
-
 
   const handleLogout = () => { localStorage.removeItem('token'); navigate('/'); };
 
@@ -426,7 +396,7 @@ const Dashboard: React.FC = () => {
       const newState = !cameraActive;
       setCameraActive(newState);
       localStorage.setItem('cameraActive', String(newState));
-    } catch (error) { console.error('Failed to toggle camera', error); }
+    } catch (_) {}
     finally { setIsCameraToggling(false); }
   };
 
@@ -434,121 +404,28 @@ const Dashboard: React.FC = () => {
     setIsReconnecting(true);
     try {
       const res = await fetch(`${API}/api/camera/source`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ source: newSource }),
       });
       if (res.ok) {
         setCurrentSource(newSource);
         localStorage.setItem('currentSource', newSource);
         setCameraActive(true);
-        // Refresh feeds list immediately
         const feedsRes = await fetch(`${API}/api/camera/feeds`);
         const feedsData = await feedsRes.json();
         setActiveFeeds(feedsData.feeds || []);
       }
-
-    } catch (e) {
-      console.error('Failed to change source', e);
-    } finally {
-      setIsReconnecting(false);
-    }
+    } catch (_) {}
+    finally { setIsReconnecting(false); }
   };
 
-
-  useEffect(() => {
-    if (!cameraActive) return;
-    const fetchFeeds = async () => {
-      try {
-        const res = await fetch(`${API}/api/camera/feeds`);
-        const data = await res.json();
-        setActiveFeeds(data.feeds || []);
-      } catch (e) { console.error("Failed to fetch feeds", e); }
-    };
-    fetchFeeds();
-    const interval = setInterval(fetchFeeds, 3000);
-    return () => clearInterval(interval);
-  }, [cameraActive, currentSource]);
-  useEffect(() => {
-    fetch(`${API}/api/system/info`)
-      .then(res => res.json())
-      .then(data => {
-        setSystemIp(data.local_ip);
-        setSmtpEmail(data.smtp_email);
-        setEmailEnabled(data.email_enabled);
-        setPrivacyMode(data.privacy_mode);
-        setPersonLogEnabled(data.person_log_enabled);
-      })
-      .catch(err => console.error("Failed to get system info", err));
-  }, []);
-
-  const displayIp = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') 
-    ? (systemIp || 'localhost') 
+  const displayIp = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? (systemIp || 'localhost')
     : window.location.hostname;
 
   const remoteUrl = `${window.location.protocol}//${displayIp}${window.location.port ? ':' + window.location.port : ''}/remote-camera?client_id=${Math.random().toString(36).substring(7)}`;
 
-  useEffect(() => {
-    const initCam = async () => {
-      // Camera is always OFF on app load — user must turn it on manually
-      localStorage.setItem('cameraActive', 'false');
-      setCameraActive(false);
-      fetch(`${API}/api/camera/stop`, { method: 'POST' }).catch(() => {});
-
-      const curMode = localStorage.getItem('systemMode') || 'detection';
-      fetch(`${API}/api/camera/mode`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mode: curMode }),
-      }).catch(() => {});
-    };
-    initCam();
-    return () => { fetch(`${API}/api/camera/stop`, { method: 'POST' }).catch(() => {}); };
-  }, []);
-
-  useEffect(() => {
-    if (isReconnecting) return;
-    const ws = new WebSocket(`ws://localhost:8000/ws`);
-    ws.onopen = () => setIsConnected(true);
-    ws.onclose = () => setIsConnected(false);
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      setAlerts(prev => [data, ...prev].slice(0, 50));
-    };
-    return () => ws.close();
-  }, [systemMode, isReconnecting]);
-
-  // ─── Persons WebSocket — only when camera is active ───
-  useEffect(() => {
-    if (!cameraActive) return;
-    const ws = new WebSocket(`ws://localhost:8000/ws/persons`);
-    ws.onmessage = (event) => {
-      const data: PersonEvent = JSON.parse(event.data);
-      
-      // Update focused visibility
-      if (focusedPersonId && data.person_id === focusedPersonId) {
-        setFocusedPersonVisible(true);
-        // Auto-reset visibility after 3 seconds if no fresh heartbeat
-        setTimeout(() => setFocusedPersonVisible(false), 3000);
-      }
-
-      setDetectedPersons(prev => {
-        // Replace if same person_id already in list, else prepend (max 30)
-        const filtered = prev.filter(p => p.person_id !== data.person_id);
-        return [data, ...filtered].slice(0, 30);
-      });
-    };
-    return () => ws.close();
-  }, [cameraActive, focusedPersonId]);
-
-  useEffect(() => {
-    if (scrollRef.current) scrollRef.current.scrollTop = 0;
-  }, [alerts]);
-
-  // Grid rendering logic moved to separate component for multi-feed support
-
-
   const modeConfig = {
-
     detection: { label: 'ACTIVITY_SCAN',  color: '#00ff85', bg: 'rgba(0,255,133,0.1)',  border: 'rgba(0,255,133,0.4)' },
     search:    { label: 'PERSON_SEARCH',  color: '#ff4466', bg: 'rgba(255,68,102,0.1)', border: 'rgba(255,68,102,0.4)' },
     both:      { label: 'HYBRID_LINK',    color: '#00e5ff', bg: 'rgba(0,229,255,0.1)',  border: 'rgba(0,229,255,0.4)' },
@@ -565,15 +442,10 @@ const Dashboard: React.FC = () => {
             className="fixed inset-0 pointer-events-none z-0 overflow-hidden"
             style={{ background: 'rgba(2,3,4,0.85)' }}
           >
-            {/* Grid */}
             <div className="absolute inset-0 opacity-10"
               style={{ backgroundImage: 'linear-gradient(rgba(0,255,133,0.06) 1px,transparent 1px),linear-gradient(90deg,rgba(0,255,133,0.06) 1px,transparent 1px)', backgroundSize: '80px 80px' }} />
-
-            {/* Scan beam */}
             <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-[#00ff85] to-transparent animate-biometric-scan"
               style={{ boxShadow: '0 0 20px #00ff85, 0 0 40px rgba(0,255,133,0.3)' }} />
-
-            {/* Left telemetry */}
             <div className="absolute left-10 top-1/2 -translate-y-1/2 w-56 space-y-6 opacity-60">
               <div className="space-y-2">
                 <div className="flex justify-between text-[9px] tracking-widest text-[#00ff85]">
@@ -590,13 +462,11 @@ const Dashboard: React.FC = () => {
                 </div>
               </div>
             </div>
-
-            {/* Right data stream */}
             <div className="absolute right-10 top-1/2 -translate-y-1/2 w-56 text-right opacity-40">
               <div className="text-[9px] tracking-widest mb-2">DATA_STREAM_OMEGA</div>
               <div className="space-y-1 text-[8px] font-mono">
                 {[...Array(8)].map((_, i) => (
-                  <div key={i} className="animate-data-stream">{`QUERY_${Math.random().toString(16).slice(2,10).toUpperCase()} >> NO_MATCH`}</div>
+                  <div key={i} className="animate-data-stream">{`QUERY_${Math.random().toString(16).slice(2, 10).toUpperCase()} >> NO_MATCH`}</div>
                 ))}
               </div>
               <div className="mt-4 border border-[rgba(0,255,133,0.2)] p-3 inline-block">
@@ -604,8 +474,6 @@ const Dashboard: React.FC = () => {
                 <div className="text-xl font-bold">0.985</div>
               </div>
             </div>
-
-            {/* Scanline CRT effect */}
             <div className="absolute inset-0 pointer-events-none"
               style={{ background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px)' }} />
           </motion.div>
@@ -641,105 +509,50 @@ const Dashboard: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* ─── WATCHLIST MANAGER (Right Side) ─── */}
-      <AnimatePresence>
-        {isAddingTarget && (
-          <>
-            <motion.div 
-               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-               onClick={() => setIsAddingTarget(false)}
-               className="fixed inset-0 bg-black/80 z-[300] backdrop-blur-md"
-            />
-            <motion.div
-               initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
-               className="fixed top-0 right-0 h-full w-[400px] bg-[#090a0c] border-l border-[#00ff85]/20 p-8 z-[301] shadow-2xl"
-            >
-              <div className="flex justify-between items-center mb-10 border-b border-[#00ff85]/10 pb-6">
-                 <div>
-                   <h3 className="text-xl font-bold tracking-widest text-[#00ff85]">WATCHLIST_DB</h3>
-                   <p className="text-[10px] opacity-40 uppercase font-bold mt-1">Personnel Authorization Management</p>
-                 </div>
-                 <button onClick={() => setIsAddingTarget(false)} className="p-2 hover:bg-white/5 border border-transparent hover:border-[#00ff85]/30">
-                   <X className="w-5 h-5 text-[#00ff85]" />
-                 </button>
-              </div>
+      {/* ─── WATCHLIST MANAGER ─── */}
+      <WatchlistManager
+        isAddingTarget={isAddingTarget}
+        setIsAddingTarget={setIsAddingTarget}
+        newTargetName={newTargetName}
+        setNewTargetName={setNewTargetName}
+        newTargetPreview={newTargetPreview}
+        setNewTargetPreview={setNewTargetPreview}
+        handleAddWatchlist={handleAddWatchlist}
+        watchlist={watchlist}
+        removeTarget={removeTarget}
+      />
 
-              <div className="space-y-8">
-                {/* Add New Target Input */}
-                <div className="space-y-3 bg-[#0c0e12] p-5 border border-[#00ff85]/10">
-                   <p className="text-[9px] font-bold text-[#00ff85]/60 tracking-widest uppercase">Add New Target</p>
-                   <input 
-                      type="text" 
-                      placeholder="ENTER_PERSON_NAME..."
-                      value={newTargetName}
-                      onChange={(e) => setNewTargetName(e.target.value)}
-                      className="w-full bg-black/40 border border-[#00ff85]/20 text-[#00ff85] text-xs px-4 py-3 placeholder:text-[#00ff85]/20 focus:outline-none focus:border-[#00ff85]/50 transition-all font-bold"
-                   />
-                   <label className="block">
-                      {newTargetPreview ? (
-                         <div className="relative w-full aspect-square border border-[#00ff85]/30 mb-3 bg-black/40 overflow-hidden">
-                            <img src={newTargetPreview} className="w-full h-full object-cover grayscale" alt="Preview" />
-                            <div className="absolute inset-0 bg-[#00ff85]/10 animate-pulse" />
-                            <div className="absolute top-0 left-0 w-full h-0.5 bg-[#00ff85] animate-scanner" />
-                            <button 
-                               onClick={(e) => { e.preventDefault(); setNewTargetPreview(null); }}
-                               className="absolute top-2 right-2 p-1 bg-black/60 text-white hover:text-red-500"
-                            >
-                               <X className="w-4 h-4" />
-                            </button>
-                         </div>
-                      ) : (
-                         <div className={`w-full py-8 border-2 border-dashed ${newTargetName ? 'border-[#00ff85]/40 hover:bg-[#00ff85]/5 cursor-pointer text-[#00ff85]' : 'border-white/5 text-white/10 opacity-50 cursor-not-allowed'} font-bold text-[10px] tracking-widest uppercase text-center transition-all flex flex-col items-center gap-2`}>
-                            <UploadCloud className="w-6 h-6" />
-                            {newTargetName ? "Select Biometric Image" : "Enter Name First"}
-                         </div>
-                      )}
-                      <input type="file" className="hidden" onChange={handleAddWatchlist} disabled={!newTargetName} />
-                   </label>
-                </div>
-
-                {/* Current Watchlist */}
-                <div className="space-y-4">
-                  <p className="text-[9px] font-bold text-[#00ff85]/60 tracking-widest uppercase">Active Targets ({watchlist.length})</p>
-                  <div className="grid grid-cols-2 gap-3 overflow-y-auto max-h-[420px] pr-1 custom-scrollbar">
-                    {watchlist.length === 0 ? (
-                      <div className="col-span-2 text-center py-10 opacity-20 text-[10px] italic">NO_TARGETS_ACTIVE</div>
-                    ) : (
-                      watchlist.map(name => (
-                        <div key={name} className="relative border border-[#00ff85]/15 bg-black/50 group hover:border-[#00ff85]/50 transition-all overflow-hidden">
-                           <div className="relative w-full aspect-square bg-black overflow-hidden">
-                               <img
-                                  src={`${API}/api/watchlist/images/${name}.jpg?t=${Date.now()}`}
-                                  className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500"
-                                  onError={(e) => { e.currentTarget.style.display='none'; }}
-                                  alt={name}
-                               />
-                               <div className="absolute inset-0 bg-[#00ff85]/0 group-hover:bg-[#00ff85]/5 transition-all duration-300" />
-                               <div className="absolute top-0 left-0 w-full h-[1px] bg-[#00ff85]/40 opacity-0 group-hover:opacity-100 animate-scanner" />
-                               <button
-                                  onClick={() => removeTarget(name)}
-                                  className="absolute top-1 right-1 p-1 bg-black/70 text-[#00ff85]/30 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
-                               >
-                                  <X className="w-3 h-3" />
-                               </button>
-                            </div>
-                            <div className="px-2 py-1.5 flex items-center justify-between">
-                               <span className="text-[9px] font-bold tracking-wider text-[#00ff85] truncate">{name.toUpperCase()}</span>
-                               <Search className="w-3 h-3 text-[#00ff85]/30 shrink-0" />
-                            </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-
-
+      {/* ─── SETTINGS PANEL ─── */}
+      <SettingsPanel
+        showSettings={showSettings}
+        setShowSettings={setShowSettings}
+        username={username}
+        userEmail={userEmail}
+        emailEnabled={emailEnabled}
+        toggleEmail={toggleEmail}
+        voiceEnabled={voiceEnabled}
+        toggleVoice={toggleVoice}
+        privacyMode={privacyMode}
+        togglePrivacy={togglePrivacy}
+        watchlist={watchlist}
+        setIsAddingTarget={setIsAddingTarget}
+        personLogEnabled={personLogEnabled}
+        togglePersonLog={togglePersonLog}
+        classThresholds={classThresholds}
+        thresholdsLoading={thresholdsLoading}
+        handleThresholdChange={handleThresholdChange}
+        handleSaveThresholds={handleSaveThresholds}
+        saveStatus={saveStatus}
+        handleSoundToggle={handleSoundToggle}
+        smtpEmail={smtpEmail}
+        systemIp={systemIp}
+        handleLogout={handleLogout}
+        showHeatmap={showHeatmap}
+        setShowHeatmap={setShowHeatmap}
+        currentSource={currentSource}
+        handleSourceChange={handleSourceChange}
+        isReconnecting={isReconnecting}
+      />
 
       {/* ─── HEADER ─── */}
       <header className="relative z-10 flex justify-between items-center px-6 py-3 bg-[rgba(6,6,8,0.95)] border-b border-[rgba(0,255,133,0.1)] backdrop-blur-sm shrink-0">
@@ -747,7 +560,9 @@ const Dashboard: React.FC = () => {
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-2.5 cursor-pointer group" onClick={() => navigate('/')}>
             <div className="w-8 h-8 border border-[rgba(0,255,133,0.5)] flex items-center justify-center group-hover:border-[#00ff85] group-hover:shadow-[0_0_12px_rgba(0,255,133,0.3)] transition-all duration-300 animate-glow-pulse">
-              <Shield className="w-4 h-4" />
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+              </svg>
             </div>
             <div>
               <span className="text-sm font-bold tracking-[0.2em] uppercase">SmartSurv</span>
@@ -761,10 +576,12 @@ const Dashboard: React.FC = () => {
               const cfg = modeConfig[mode];
               const active = systemMode === mode;
               return (
-                <button key={mode}
-                  onClick={() => changeMode(mode)}
+                <button key={mode} onClick={() => changeMode(mode)}
                   className="px-3 py-1.5 text-[10px] font-bold tracking-widest uppercase transition-all duration-300"
-                  style={active ? { background: cfg.bg, color: cfg.color, borderBottom: `2px solid ${cfg.color}` } : { color: 'rgba(0,255,133,0.3)' }}>
+                  style={active
+                    ? { background: cfg.bg, color: cfg.color, borderBottom: `2px solid ${cfg.color}` }
+                    : { color: 'rgba(0,255,133,0.3)' }
+                  }>
                   {cfg.label}
                 </button>
               );
@@ -773,8 +590,33 @@ const Dashboard: React.FC = () => {
         </div>
 
         {/* Right controls */}
-        <div className="flex items-center gap-4">
-          
+        <div className="flex items-center gap-3">
+
+          {/* View Toggle: LIVE / ANALYTICS */}
+          <div className="flex items-center bg-[rgba(12,13,16,0.8)] border border-[rgba(0,255,133,0.1)] p-0.5 gap-0.5">
+            <button
+              onClick={() => setActiveView('live')}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold tracking-widest uppercase transition-all duration-300"
+              style={activeView === 'live'
+                ? { background: 'rgba(0,255,133,0.1)', color: '#00ff85', borderBottom: '2px solid #00ff85' }
+                : { color: 'rgba(0,255,133,0.3)' }
+              }
+            >
+              <Radio className="w-3 h-3" />
+              LIVE
+            </button>
+            <button
+              onClick={() => setActiveView('analytics')}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold tracking-widest uppercase transition-all duration-300"
+              style={activeView === 'analytics'
+                ? { background: 'rgba(0,229,255,0.1)', color: '#00e5ff', borderBottom: '2px solid #00e5ff' }
+                : { color: 'rgba(0,255,133,0.3)' }
+              }
+            >
+              <BarChart2 className="w-3 h-3" />
+              ANALYTICS
+            </button>
+          </div>
 
           {/* Camera toggle */}
           <button
@@ -787,42 +629,11 @@ const Dashboard: React.FC = () => {
               : { borderColor: 'rgba(255,68,102,0.5)', color: '#ff4466', background: 'rgba(255,68,102,0.05)' }
             }
           >
-            {isCameraToggling ? (
-              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <Camera className="w-3.5 h-3.5" />
-            )}
-            {isCameraToggling
-              ? (cameraActive ? 'TURNING_OFF...' : 'TURNING_ON...')
-              : (cameraActive ? 'CAMERA_OFF' : 'CAMERA_ON')}
+            {isCameraToggling ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />}
+            {isCameraToggling ? (cameraActive ? 'TURNING_OFF...' : 'TURNING_ON...') : (cameraActive ? 'CAMERA_OFF' : 'CAMERA_ON')}
           </button>
 
-          {/* Source Dropdown */}
-          <div className="relative group">
-            <select
-              value={currentSource}
-              onChange={(e) => handleSourceChange(e.target.value as any)}
-              className="appearance-none bg-[rgba(12,13,16,0.8)] border border-[rgba(0,255,133,0.2)] text-[#00ff85] text-[10px] font-bold tracking-widest px-8 py-2 hover:border-[#00ff85] focus:outline-none transition-all cursor-pointer uppercase min-w-[160px]"
-              style={{
-                color: currentSource === 'hybrid' ? '#00e5ff' : currentSource === 'remote' ? '#ff4466' : '#00ff85',
-                borderColor: currentSource === 'hybrid' ? 'rgba(0,229,255,0.4)' : currentSource === 'remote' ? 'rgba(255,68,102,0.4)' : 'rgba(0,255,133,0.2)'
-              }}
-            >
-              <option value="0">Source: Local</option>
-              <option value="remote">Source: Remote</option>
-              <option value="hybrid">Source: Hybrid</option>
-            </select>
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">
-               <ChevronDown className="w-3 h-3" />
-            </div>
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
-               <Radio className={`w-3.5 h-3.5 ${currentSource !== '0' ? 'animate-pulse' : ''}`} 
-                 style={{ color: currentSource === 'hybrid' ? '#00e5ff' : currentSource === 'remote' ? '#ff4466' : '#00ff85' }} />
-            </div>
-          </div>
-
-
-          {/* Phone Link Button */}
+          {/* Connect Phone */}
           <button
             onClick={() => setShowRemoteLink(true)}
             className="flex items-center gap-2 px-3 py-2 border border-[rgba(0,255,133,0.2)] text-[10px] font-bold hover:border-[#00ff85] transition-all"
@@ -831,18 +642,13 @@ const Dashboard: React.FC = () => {
             CONNECT_PHONE
           </button>
 
-          {/* Heatmap Toggle */}
-          <button
-            onClick={() => setShowHeatmap(!showHeatmap)}
-            className="flex items-center gap-2 px-3 py-2 border border-[rgba(0,255,133,0.2)] text-[10px] font-bold hover:border-[#00ff85] transition-all"
-            style={showHeatmap ? { borderColor: '#00ff85', color: '#00ff85', background: 'rgba(0,255,133,0.1)' } : {}}
-          >
-            <Sliders className={`w-3.5 h-3.5 ${showHeatmap ? 'animate-pulse' : ''}`} />
-            {showHeatmap ? 'HEATMAP_ON' : 'HEATMAP_OFF'}
-          </button>
+          {/* Connection status */}
+          <div className="flex items-center gap-1.5 px-3 py-2 border border-[rgba(0,255,133,0.1)] text-[10px]">
+            <div className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-[#00ff85] animate-pulse' : 'bg-red-500'}`} />
+            <span className="opacity-50">{isConnected ? 'UPLINK' : 'OFFLINE'}</span>
+          </div>
 
           {/* Settings */}
-
           <button
             id="settings-btn"
             onClick={() => setShowSettings(true)}
@@ -853,50 +659,39 @@ const Dashboard: React.FC = () => {
         </div>
       </header>
 
-      {/* --- REMOTE LINK MODAL --- */}
+      {/* ─── REMOTE LINK MODAL ─── */}
       <AnimatePresence>
         {showRemoteLink && (
           <>
-            <motion.div 
-               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-               onClick={() => setShowRemoteLink(false)}
-               className="fixed inset-0 bg-black/80 z-[200] backdrop-blur-md"
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setShowRemoteLink(false)}
+              className="fixed inset-0 bg-black/80 z-[200] backdrop-blur-md"
             />
             <motion.div
-               initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
-               className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-[#090a0c] border border-[rgba(0,255,133,0.2)] p-8 z-[201] text-center"
+              initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-[#090a0c] border border-[rgba(0,255,133,0.2)] p-8 z-[201] text-center"
             >
               <div className="flex justify-center mb-6">
-                 <div className="w-16 h-16 border-2 border-[#00ff85] flex items-center justify-center animate-glow-pulse">
-                    <Zap className="w-8 h-8" />
-                 </div>
+                <div className="w-16 h-16 border-2 border-[#00ff85] flex items-center justify-center animate-glow-pulse">
+                  <Zap className="w-8 h-8" />
+                </div>
               </div>
               <h3 className="text-xl font-bold tracking-[0.2em] mb-2 uppercase">Remote Node Link</h3>
               <p className="text-[10px] opacity-40 mb-8 leading-relaxed">
-                Scan this code or open this URL on your secondary device (phone) to start a remote surveillance uplink.
+                Scan this code or open this URL on your secondary device to start a remote surveillance uplink.
               </p>
-              
               <div className="bg-white p-4 inline-block mb-8">
-                {/* Simplified QR Placeholder - actually just the URL for now as creating a QR in code is complex without libraries */}
-                <div className="text-black text-[10px] font-bold break-all max-w-[200px]">
-                  {remoteUrl}
-                </div>
+                <div className="text-black text-[10px] font-bold break-all max-w-[200px]">{remoteUrl}</div>
               </div>
-
               <div className="space-y-3">
-                <button 
-                  onClick={() => {
-                    navigator.clipboard.writeText(remoteUrl);
-                    setIsCopied(true);
-                    setTimeout(() => setIsCopied(false), 2000);
-                  }}
-                  className={`w-full py-3 font-bold text-[10px] tracking-widest uppercase transition-all ${
-                    isCopied ? 'bg-white text-black' : 'bg-[#00ff85] text-black hover:brightness-110'
-                  }`}
+                <button
+                  onClick={() => { navigator.clipboard.writeText(remoteUrl); setIsCopied(true); setTimeout(() => setIsCopied(false), 2000); }}
+                  className={`w-full py-3 font-bold text-[10px] tracking-widest uppercase transition-all ${isCopied ? 'bg-white text-black' : 'bg-[#00ff85] text-black hover:brightness-110'}`}
                 >
                   {isCopied ? 'COPIED!' : 'Copy Link'}
                 </button>
-                <button 
+                <button
                   onClick={() => setShowRemoteLink(false)}
                   className="w-full py-3 border border-[rgba(0,255,133,0.3)] text-[10px] font-bold tracking-widest uppercase hover:bg-[rgba(0,255,133,0.05)] transition-all"
                 >
@@ -908,757 +703,260 @@ const Dashboard: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* ─── SETTINGS PANEL ─── */}
-      <AnimatePresence>
-        {showSettings && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              onClick={() => setShowSettings(false)}
-              className="fixed inset-0 bg-black/70 z-40 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 28, stiffness: 260 }}
-              className="fixed top-0 right-0 h-full w-[440px] bg-[#090a0c] border-l border-[rgba(0,255,133,0.12)] z-50 flex flex-col shadow-[−20px_0_60px_rgba(0,0,0,0.8)]"
-            >
-              {/* Panel Header */}
-              <div className="flex justify-between items-center p-6 border-b border-[rgba(0,255,133,0.1)] shrink-0">
-                <div className="flex items-center gap-3">
-                  <div className="w-2 h-2 bg-[#00ff85]" />
-                  <span className="text-xs font-bold tracking-[0.25em]">SYSTEM_PARAMETERS</span>
-                </div>
-                <button onClick={() => setShowSettings(false)}
-                  className="p-1.5 hover:bg-[rgba(0,255,133,0.06)] border border-transparent hover:border-[rgba(0,255,133,0.2)] transition-all duration-200">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              <div className="flex-1 overflow-y-auto">
-                {/* User Profile */}
-                <div className="p-6 border-b border-[rgba(0,255,133,0.08)]">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 border-2 border-[rgba(0,255,133,0.4)] flex items-center justify-center bg-[rgba(0,255,133,0.05)]">
-                      <User className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <p className="text-[9px] opacity-30 tracking-[0.2em] mb-0.5">AUTHORIZED_OPERATOR</p>
-                      <p className="text-base font-bold tracking-tight uppercase">{username}</p>
-                      <p className="text-[10px] text-[#00ff85]/60 mt-0.5 lowercase">{userEmail}</p>
-                      <div className="mt-2 text-[8px] tracking-widest text-[#00ff85]/40 border border-[rgba(0,255,133,0.15)] px-2 py-0.5 inline-block">
-                        LEVEL_01_ACCESS
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Notification System */}
-                <div className="p-6 border-b border-[rgba(0,255,133,0.08)]">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Mail className="w-3.5 h-3.5 text-[#00ff85]" />
-                      <div>
-                        <span className="text-[10px] font-bold tracking-[0.2em]">COMM_LINK_SYSTEM</span>
-                        <p className="text-[8px] opacity-30 mt-0.5 uppercase">Email Incident Alerts</p>
-                      </div>
-                    </div>
-                    <button
-                      id="email-toggle-btn"
-                      onClick={toggleEmail}
-                      className="relative w-10 h-5 border transition-all duration-300 shrink-0"
-                      style={emailEnabled
-                        ? { borderColor: '#00ff85', background: 'rgba(0,255,133,0.08)' }
-                        : { borderColor: 'rgba(255,68,102,0.4)', background: 'rgba(255,68,102,0.04)' }
-                      }
-                    >
-                      <div
-                        className={`absolute top-0.5 bottom-0.5 w-3.5 transition-all duration-300 ${
-                          emailEnabled
-                            ? 'right-0.5 bg-[#00ff85] shadow-[0_0_6px_#00ff85]'
-                            : 'left-0.5 bg-red-700'
-                        }`}
-                      />
-                    </button>
-                  </div>
-                  {!emailEnabled && (
-                    <p className="text-[8px] text-red-400/60 mt-2 tracking-wider">▸ External email alerts disabled</p>
-                  )}
-                </div>
-
-                {/* Privacy Guard System */}
-                <div className="p-6 border-b border-[rgba(0,255,133,0.08)] bg-[rgba(0,180,255,0.02)]">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Shield className="w-3.5 h-3.5 text-[#00e5ff]" />
-                      <div>
-                        <span className="text-[10px] font-bold tracking-[0.2em] text-[#00e5ff]">PRIVACY_GUARD</span>
-                        <p className="text-[8px] opacity-30 mt-0.5 uppercase">Selective Face Redaction</p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={togglePrivacy}
-                      className="relative w-10 h-5 border transition-all duration-300 shrink-0"
-                      style={privacyMode
-                        ? { borderColor: '#00e5ff', background: 'rgba(0,229,255,0.08)' }
-                        : { borderColor: 'rgba(255,68,102,0.4)', background: 'rgba(255,68,102,0.04)' }
-                      }
-                    >
-                      <div
-                        className={`absolute top-0.5 bottom-0.5 w-3.5 transition-all duration-300 ${
-                          privacyMode
-                            ? 'right-0.5 bg-[#00e5ff] shadow-[0_0_6px_#00e5ff]'
-                            : 'left-0.5 bg-red-700'
-                        }`}
-                      />
-                    </button>
-                  </div>
-                  {privacyMode && (
-                    <p className="text-[8px] text-[#00e5ff]/60 mt-2 tracking-wider animate-pulse">🎯 Selective decryption active</p>
-                  )}
-                </div>
-
-                <div className="p-6 border-b border-[rgba(0,255,133,0.08)]">
-                  <div className="flex items-center justify-between mb-5">
-                    <div className="flex items-center gap-2">
-                      <Search className="w-3.5 h-3.5 text-[#00ff85]" />
-                      <span className="text-[10px] font-bold tracking-[0.2em]">WATCHLIST_STATUS</span>
-                    </div>
-                  </div>
-
-                  <div className="border border-[rgba(0,255,133,0.15)] bg-[rgba(0,255,133,0.02)] p-4">
-                    <div className="space-y-3">
-                        <div className="flex justify-between items-center">
-                            <span className="text-[9px] opacity-40 uppercase">Active Targets:</span>
-                            <span className="text-[11px] font-bold text-[#00ff85]">{watchlist.length}</span>
-                        </div>
-                        <button 
-                            onClick={() => { setShowSettings(false); setIsAddingTarget(true); }}
-                            className="w-full py-2 bg-[rgba(0,255,133,0.1)] border border-[rgba(0,255,133,0.3)] text-[9px] font-bold text-[#00ff85] hover:bg-[#00ff85] hover:text-black transition-all"
-                        >
-                            MANAGE_WATCHLIST
-                        </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Person Log Toggle */}
-                <div className="p-6 border-b border-[rgba(0,255,133,0.08)]">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <User className="w-3.5 h-3.5 text-[#00ff85]" />
-                      <div>
-                        <span className="text-[10px] font-bold tracking-[0.2em]">PERSON_LOG</span>
-                        <p className="text-[8px] opacity-30 mt-0.5 uppercase">Re-ID sidebar &amp; face crops</p>
-                      </div>
-                    </div>
-                    <button
-                      id="person-log-toggle-btn"
-                      onClick={togglePersonLog}
-                      className="relative w-10 h-5 border transition-all duration-300 shrink-0"
-                      style={personLogEnabled
-                        ? { borderColor: '#00ff85', background: 'rgba(0,255,133,0.08)' }
-                        : { borderColor: 'rgba(255,68,102,0.4)', background: 'rgba(255,68,102,0.04)' }
-                      }
-                    >
-                      <div
-                        className={`absolute top-0.5 bottom-0.5 w-3.5 transition-all duration-300 ${
-                          personLogEnabled
-                            ? 'right-0.5 bg-[#00ff85] shadow-[0_0_6px_#00ff85]'
-                            : 'left-0.5 bg-red-700'
-                        }`}
-                      />
-                    </button>
-                  </div>
-                  {!personLogEnabled && (
-                    <p className="text-[8px] text-red-400/60 mt-2 tracking-wider">▸ Person panel + face images hidden</p>
-                  )}
-                </div>
-
-                {/* Thresholds */}
-                <div className="p-6">
-                  <div className="flex items-center gap-2 mb-6">
-                    <Sliders className="w-3.5 h-3.5 text-[#00e5ff]" />
-                    <span className="text-[10px] font-bold tracking-[0.2em]">ACTIVITY_CONFIDENCE</span>
-                  </div>
-
-                  {thresholdsLoading ? (
-                    <div className="flex items-center gap-2 py-8 opacity-30 text-[10px] justify-center">
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                      FETCHING_CLASSES...
-                    </div>
-                  ) : (
-                    <div className="space-y-6">
-                      {classThresholds.map(cls => (
-                        <div key={cls.name} className="group border-b border-[rgba(0,255,133,0.06)] pb-6 last:border-0">
-                          {/* Sound toggle */}
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-2">
-                              <Volume2 className={`w-3 h-3 ${cls.sound_enabled ? 'text-[#00e5ff]' : 'text-red-600/50'}`} />
-                              <span className="text-[8px] opacity-40 uppercase">Audio: {cls.name}</span>
-                            </div>
-                            <button onClick={() => handleSoundToggle(cls.name)}
-                              className="relative w-8 h-4 border transition-all duration-300"
-                              style={cls.sound_enabled ? { borderColor: '#00e5ff', background: 'rgba(0,229,255,0.05)' } : { borderColor: 'rgba(255,68,102,0.3)' }}>
-                              <div className={`absolute top-0.5 bottom-0.5 w-2.5 transition-all duration-300 ${cls.sound_enabled ? 'right-0.5 bg-[#00e5ff] shadow-[0_0_6px_#00e5ff]' : 'left-0.5 bg-red-800'}`} />
-                            </button>
-                          </div>
-                          {/* Slider */}
-                          <div className="flex justify-between items-end mb-2">
-                            <span className="text-[9px] font-bold opacity-30 group-hover:opacity-70 transition-opacity uppercase">{cls.name}</span>
-                            <span className="text-sm font-bold tabular-nums text-[#00e5ff]">
-                              {(cls.threshold * 100).toFixed(0)}<span className="text-[9px] opacity-40 ml-0.5">%</span>
-                            </span>
-                          </div>
-                          <input type="range" min={0} max={1} step={0.01} value={cls.threshold}
-                            onChange={e => handleThresholdChange(cls.name, parseFloat(e.target.value))}
-                            className="w-full appearance-none h-0.5 rounded-none outline-none cursor-pointer range-hacker"
-                            style={{ background: `linear-gradient(to right, #00e5ff 0%, #00e5ff ${cls.threshold * 100}%, rgba(0,229,255,0.1) ${cls.threshold * 100}%, rgba(0,229,255,0.1) 100%)` }}
-                          />
-                        </div>
-                      ))}
-
-                      <button onClick={handleSaveThresholds} disabled={saveStatus === 'saving'}
-                        className="w-full py-3 border-2 font-bold text-[10px] tracking-[0.2em] uppercase transition-all flex items-center justify-center gap-2"
-                        style={saveStatus === 'saved'
-                          ? { background: '#00e5ff', color: '#000', borderColor: '#00e5ff' }
-                          : saveStatus === 'error'
-                          ? { background: '#ff4466', color: '#fff', borderColor: '#ff4466' }
-                          : { background: 'transparent', color: '#00e5ff', borderColor: '#00e5ff' }
-                        }>
-                        <RefreshCw className={`w-3.5 h-3.5 ${saveStatus === 'saving' ? 'animate-spin' : ''}`} />
-                        {saveStatus === 'saving' ? 'UPLOADING...' : saveStatus === 'saved' ? '✓ SYNCED' : 'SYNC_THRESHOLDS'}
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {/* System Diagnostics */}
-                <div className="p-6 border-t border-[rgba(0,255,133,0.08)] bg-[rgba(0,255,133,0.02)]">
-                   <div className="flex items-center gap-2 mb-4">
-                      <Shield className="w-3.5 h-3.5 text-[#00ff85]/40" />
-                      <span className="text-[9px] font-bold tracking-[0.2em] text-[#00ff85]/40 uppercase">System Diagnostics</span>
-                   </div>
-                   <div className="space-y-2 text-[8px] font-mono opacity-50">
-                      <div className="flex justify-between">
-                         <span>CORE_LATENCY:</span>
-                         <span className="text-[#00ff85]">12ms</span>
-                      </div>
-                      <div className="flex justify-between">
-                         <span>SMTP_LINK:</span>
-                         <span className={smtpEmail ? "text-[#00ff85]" : "text-red-500"}>{smtpEmail || "NOT_CONFIGURED"}</span>
-                      </div>
-                      <div className="flex justify-between">
-                         <span>LOCAL_UPLINK:</span>
-                         <span className="text-[#00ff85]">{systemIp || "FETCHING..."}</span>
-                      </div>
-                   </div>
-                </div>
-
-                {/* Logout */}
-                <div className="p-6 border-t border-[rgba(0,255,133,0.08)]">
-                    <button 
-                      onClick={handleLogout}
-                      className="w-full py-3 border border-red-500/30 text-red-500 text-[10px] font-bold uppercase hover:bg-red-500/10 transition-all flex items-center justify-center gap-2"
-                    >
-                      <LogOut className="w-3.5 h-3.5" />
-                      Terminate Session
-                    </button>
-                </div>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-
       {/* ─── MAIN CONTENT ─── */}
       <main className="flex flex-1 overflow-hidden relative z-10">
-
-        {/* ─── VIDEO FEED SECTION ─── */}
-        <section className="flex-1 flex flex-col p-4 gap-4 overflow-hidden">
-
-          {/* Feed Container */}
-          <div className="flex-1 relative border border-[rgba(0,255,133,0.12)] bg-[#080a0c] overflow-hidden group">
-
-            {/* Corner brackets */}
-            {['top-0 left-0 border-t-2 border-l-2','top-0 right-0 border-t-2 border-r-2','bottom-0 left-0 border-b-2 border-l-2','bottom-0 right-0 border-b-2 border-r-2'].map((cls, i) => (
-              <div key={i} className={`absolute w-8 h-8 ${cls} border-[#00ff85]/30 group-hover:border-[#00ff85]/70 transition-colors duration-500 animate-corner-pulse`} />
-            ))}
-
-            {/* Focus HUD Overlay */}
-            <AnimatePresence>
-              {focusedPersonId && (
-                <motion.div
-                  initial={{ y: -20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  exit={{ y: -20, opacity: 0 }}
-                  className="absolute top-4 left-1/2 -translate-x-1/2 z-[20] flex items-center gap-4 bg-black/80 border border-red-500/40 px-6 py-2 backdrop-blur-md"
-                >
-                   <div className="flex items-center gap-2">
-                      <Target className={`w-4 h-4 ${focusedPersonVisible ? 'text-red-500 animate-pulse' : 'text-red-900'}`} />
-                      <span className="text-[10px] font-bold tracking-[0.3em] uppercase">Tactical_Focus: <span className="text-red-500">{focusedPersonId}</span></span>
-                   </div>
-                   <div className="h-4 w-[1px] bg-red-500/20" />
-                   <div className="flex items-center gap-3">
-                      <span className={`text-[9px] font-bold tracking-widest ${focusedPersonVisible ? 'text-green-400' : 'text-red-400'}`}>
-                        {focusedPersonVisible ? 'STATUS: LOCKED_IN_FEED' : 'STATUS: SEARCHING_FEEDS...'}
-                      </span>
-                      <button 
-                        onClick={() => handleSetFocus(null)}
-                        className="hover:text-white transition-colors"
-                      >
-                        <X className="w-3 h-3 ml-2" />
-                      </button>
-                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Dynamic Video Feeds Grid */}
-            <div className={`absolute inset-0 w-full h-full p-2 grid gap-2 ${
-               activeFeeds.length > 4 ? 'grid-cols-3' : activeFeeds.length > 1 ? 'grid-cols-2' : 'grid-cols-1'
-            }`}>
-              {activeFeeds.length > 0 ? (
-                activeFeeds.map(feedId => (
-                  <div key={feedId} className="relative border border-[rgba(0,255,133,0.1)] bg-black/40 overflow-hidden group/feed">
-                     <CameraStream feedId={feedId} active={cameraActive} showHeatmap={showHeatmap} />
-                     <div className="absolute top-2 left-2 px-2 py-0.5 bg-black/70 text-[8px] font-bold border border-[rgba(0,255,133,0.2)] tracking-tighter">
-                        FEED_{feedId.toUpperCase()}
-                     </div>
-
-                     {privacyMode && (
-                        <div className="absolute bottom-2 right-2 px-2 py-0.5 bg-[#00e5ff]/20 text-[#00e5ff] text-[7px] font-bold border border-[#00e5ff]/30 tracking-widest backdrop-blur-sm">
-                           PRIVACY_GUARD_ACTIVE
-                        </div>
-                     )}
-
-                     {/* Decorative corner for each feed */}
-                     <div className="absolute top-0 right-0 w-3 h-3 border-t border-r border-[#00ff85]/30" />
-                     <div className="absolute bottom-0 left-0 w-3 h-3 border-b border-l border-[#00ff85]/30" />
-                  </div>
-                ))
-              ) : (
-                cameraActive && <CameraStream active={cameraActive} showHeatmap={showHeatmap} />
-              )}
-            </div>
-
-            {!cameraActive ? (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-[#00ff85]/25">
-                <motion.div animate={{ opacity: [0.3, 0.7, 0.3] }} transition={{ repeat: Infinity, duration: 2 }}>
-                  <Camera className="w-14 h-14" />
-                </motion.div>
-                <p className="text-[10px] tracking-[0.4em] font-bold">FEED_OFFLINE</p>
-                <button onClick={toggleCamera}
-                  disabled={isCameraToggling}
-                  className={`mt-2 flex items-center gap-2 px-5 py-2 border border-[rgba(0,255,133,0.25)] text-[#00ff85]/50 hover:text-[#00ff85] hover:border-[#00ff85] text-[9px] tracking-widest uppercase transition-all duration-300 ${isCameraToggling ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                  {isCameraToggling && <RefreshCw className="w-3 h-3 animate-spin" />}
-                  {isCameraToggling ? 'TURNING_ON...' : 'CAMERA_ON'}
-                </button>
-              </div>
-            ) : null}
-
-            {/* HUD — top-left */}
-            <div className="absolute top-4 left-4 flex flex-col gap-1.5 z-10">
-              <div className="flex items-center gap-2 bg-[rgba(0,255,133,0.9)] text-[#060608] px-2.5 py-1 text-[10px] font-bold">
-                <Radio className="w-3 h-3" />
-                LIVE_INTERCEPT
-              </div>
-              <div className="text-[9px] text-[#00ff85]/40 pl-0.5">RES 640×480 // 30 FPS</div>
-            </div>
-
-            {/* HUD — top-right mode badge */}
-            <div className="absolute top-4 right-4 z-10">
-              <AnimatePresence mode="wait">
-                <motion.div key={systemMode}
-                  initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold"
-                  style={{
-                    color: modeConfig[systemMode].color,
-                    border: `1px solid ${modeConfig[systemMode].border}`,
-                    background: modeConfig[systemMode].bg,
-                  }}>
-                  {systemMode === 'detection' && <AlertTriangle className="w-3 h-3" />}
-                  {systemMode === 'search' && <Crosshair className="w-3 h-3 animate-spin" style={{ animationDuration: '3s' }} />}
-                  {systemMode === 'both' && <Zap className="w-3 h-3" />}
-                  {modeConfig[systemMode].label}
-                </motion.div>
-              </AnimatePresence>
-            </div>
-
-            {/* Grid overlay when scanning */}
-            {cameraActive && (systemMode === 'search' || systemMode === 'both') && searchStatus === 'active' && (
-              <div className="absolute inset-0 pointer-events-none">
-                {[1/4, 2/4, 3/4].map((pos, i) => (
-                  <React.Fragment key={i}>
-                    <div className="absolute top-0 bottom-0 w-px bg-[rgba(0,255,133,0.08)]" style={{ left: `${pos * 100}%` }} />
-                    <div className="absolute left-0 right-0 h-px bg-[rgba(0,255,133,0.08)]" style={{ top: `${pos * 100}%` }} />
-                  </React.Fragment>
-                ))}
-              </div>
-            )}
-          </div>
-        </section>
-
-        {/* ─── DETECTED PERSONS PANEL (conditionally shown) ─── */}
-        {personLogEnabled && (
-        <section className="w-[220px] bg-[#070809] border-l border-[rgba(0,255,133,0.1)] flex flex-col shrink-0">
-          <div className="px-4 py-3 border-b border-[rgba(0,255,133,0.1)] bg-[rgba(6,6,8,0.9)] shrink-0">
-            <h2 className="text-[10px] font-bold tracking-[0.25em] text-[#00ff85]">PERSONS_LOG</h2>
-            <p className="text-[8px] opacity-25 uppercase mt-0.5">Re-ID Engine · 5min cooldown</p>
-            
-            {/* Semantic Search Input */}
-            <div className="mt-3 relative group">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-[#00ff85]/30 group-focus-within:text-[#00ff85]" />
-              <input 
-                type="text"
-                placeholder="DESC_SEARCH..."
-                value={semanticQuery}
-                onChange={(e) => handleSemanticSearch(e.target.value)}
-                className="w-full bg-black/40 border border-[#00ff85]/10 focus:border-[#00ff85]/40 pl-8 pr-3 py-1.5 text-[8px] font-bold tracking-widest text-[#00ff85] outline-none transition-all placeholder:text-[#00ff85]/20"
+        <AnimatePresence mode="wait">
+          {activeView === 'analytics' ? (
+            <motion.div
+              key="analytics"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.25 }}
+              className="flex flex-1 overflow-hidden"
+            >
+              <DashboardAnalytics
+                alerts={alerts}
+                detectedPersons={detectedPersons}
+                isConnected={isConnected}
+                systemMode={systemMode}
               />
-              {semanticQuery && (
-                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                  {semanticLoading ? (
-                    <RefreshCw className="w-2.5 h-2.5 text-[#00ff85] animate-spin" />
-                  ) : (
-                    <button onClick={() => handleSemanticSearch("")} className="opacity-40 hover:opacity-100 transition-opacity">
-                      <X className="w-2.5 h-2.5" />
-                    </button>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="live"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.25 }}
+              className="flex flex-1 overflow-hidden"
+            >
+              {/* ─── VIDEO FEED SECTION ─── */}
+              <section className="flex-1 flex flex-col p-4 gap-4 overflow-hidden">
+                <div className="flex-1 relative border border-[rgba(0,255,133,0.12)] bg-[#080a0c] overflow-hidden group">
+
+                  {/* Corner brackets */}
+                  {['top-0 left-0 border-t-2 border-l-2', 'top-0 right-0 border-t-2 border-r-2', 'bottom-0 left-0 border-b-2 border-l-2', 'bottom-0 right-0 border-b-2 border-r-2'].map((cls, i) => (
+                    <div key={i} className={`absolute w-8 h-8 ${cls} border-[#00ff85]/30 group-hover:border-[#00ff85]/70 transition-colors duration-500 animate-corner-pulse`} />
+                  ))}
+
+                  {/* Focus HUD */}
+                  <AnimatePresence>
+                    {focusedPersonId && (
+                      <motion.div
+                        initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -20, opacity: 0 }}
+                        className="absolute top-4 left-1/2 -translate-x-1/2 z-[20] flex items-center gap-4 bg-black/80 border border-red-500/40 px-6 py-2 backdrop-blur-md"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Target className={`w-4 h-4 ${focusedPersonVisible ? 'text-red-500 animate-pulse' : 'text-red-900'}`} />
+                          <span className="text-[10px] font-bold tracking-[0.3em] uppercase">Tactical_Focus: <span className="text-red-500">{focusedPersonId}</span></span>
+                        </div>
+                        <div className="h-4 w-[1px] bg-red-500/20" />
+                        <div className="flex items-center gap-3">
+                          <span className={`text-[9px] font-bold tracking-widest ${focusedPersonVisible ? 'text-green-400' : 'text-red-400'}`}>
+                            {focusedPersonVisible ? 'STATUS: LOCKED_IN_FEED' : 'STATUS: SEARCHING_FEEDS...'}
+                          </span>
+                          <button onClick={() => handleSetFocus(null)} className="hover:text-white transition-colors">
+                            <X className="w-3 h-3 ml-2" />
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {/* Video grid */}
+                  <div className={`absolute inset-0 w-full h-full p-2 grid gap-2 ${activeFeeds.length > 4 ? 'grid-cols-3' : activeFeeds.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                    {activeFeeds.length > 0 ? (
+                      activeFeeds.map(feedId => (
+                        <div key={feedId} className="relative border border-[rgba(0,255,133,0.1)] bg-black/40 overflow-hidden group/feed">
+                          <CameraStream feedId={feedId} active={cameraActive} showHeatmap={showHeatmap} />
+                          <div className="absolute top-2 left-2 px-2 py-0.5 bg-black/70 text-[8px] font-bold border border-[rgba(0,255,133,0.2)] tracking-tighter">
+                            FEED_{feedId.toUpperCase()}
+                          </div>
+                          {privacyMode && (
+                            <div className="absolute bottom-2 right-2 px-2 py-0.5 bg-[#00e5ff]/20 text-[#00e5ff] text-[7px] font-bold border border-[#00e5ff]/30 tracking-widest backdrop-blur-sm">
+                              PRIVACY_GUARD_ACTIVE
+                            </div>
+                          )}
+                          <div className="absolute top-0 right-0 w-3 h-3 border-t border-r border-[#00ff85]/30" />
+                          <div className="absolute bottom-0 left-0 w-3 h-3 border-b border-l border-[#00ff85]/30" />
+                        </div>
+                      ))
+                    ) : (
+                      cameraActive && <CameraStream active={cameraActive} showHeatmap={showHeatmap} />
+                    )}
+                  </div>
+
+                  {!cameraActive && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-[#00ff85]/25">
+                      <motion.div animate={{ opacity: [0.3, 0.7, 0.3] }} transition={{ repeat: Infinity, duration: 2 }}>
+                        <Camera className="w-14 h-14" />
+                      </motion.div>
+                      <p className="text-[10px] tracking-[0.4em] font-bold">FEED_OFFLINE</p>
+                      <button
+                        onClick={toggleCamera} disabled={isCameraToggling}
+                        className={`mt-2 flex items-center gap-2 px-5 py-2 border border-[rgba(0,255,133,0.25)] text-[#00ff85]/50 hover:text-[#00ff85] hover:border-[#00ff85] text-[9px] tracking-widest uppercase transition-all duration-300 ${isCameraToggling ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      >
+                        {isCameraToggling && <RefreshCw className="w-3 h-3 animate-spin" />}
+                        {isCameraToggling ? 'TURNING_ON...' : 'CAMERA_ON'}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* HUD — top-left */}
+                  <div className="absolute top-4 left-4 flex flex-col gap-1.5 z-10">
+                    <div className="flex items-center gap-2 bg-[rgba(0,255,133,0.9)] text-[#060608] px-2.5 py-1 text-[10px] font-bold">
+                      <Radio className="w-3 h-3" />
+                      LIVE_INTERCEPT
+                    </div>
+                    <div className="text-[9px] text-[#00ff85]/40 pl-0.5">RES 640×480 // 30 FPS</div>
+                  </div>
+
+                  {/* HUD — top-right mode badge */}
+                  <div className="absolute top-4 right-4 z-10">
+                    <AnimatePresence mode="wait">
+                      <motion.div key={systemMode}
+                        initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold"
+                        style={{ color: modeConfig[systemMode].color, border: `1px solid ${modeConfig[systemMode].border}`, background: modeConfig[systemMode].bg }}
+                      >
+                        {systemMode === 'detection' && <AlertTriangle className="w-3 h-3" />}
+                        {systemMode === 'search' && <Crosshair className="w-3 h-3 animate-spin" style={{ animationDuration: '3s' }} />}
+                        {systemMode === 'both' && <Zap className="w-3 h-3" />}
+                        {modeConfig[systemMode].label}
+                      </motion.div>
+                    </AnimatePresence>
+                  </div>
+
+                  {/* Grid overlay when scanning */}
+                  {cameraActive && (systemMode === 'search' || systemMode === 'both') && searchStatus === 'active' && (
+                    <div className="absolute inset-0 pointer-events-none">
+                      {[1 / 4, 2 / 4, 3 / 4].map((pos, i) => (
+                        <React.Fragment key={i}>
+                          <div className="absolute top-0 bottom-0 w-px bg-[rgba(0,255,133,0.08)]" style={{ left: `${pos * 100}%` }} />
+                          <div className="absolute left-0 right-0 h-px bg-[rgba(0,255,133,0.08)]" style={{ top: `${pos * 100}%` }} />
+                        </React.Fragment>
+                      ))}
+                    </div>
                   )}
                 </div>
+              </section>
+
+              {/* ─── PERSONS PANEL ─── */}
+              {personLogEnabled && (
+                <PersonsPanel
+                  detectedPersons={detectedPersons}
+                  setSelectedPerson={setSelectedPerson}
+                  semanticQuery={semanticQuery}
+                  semanticResults={semanticResults}
+                  semanticLoading={semanticLoading}
+                  handleSemanticSearch={handleSemanticSearch}
+                  focusedPersonId={focusedPersonId}
+                  setDetectedPersons={setDetectedPersons}
+                />
               )}
-            </div>
-          </div>
 
-          <div className="flex-1 overflow-y-auto p-2 space-y-2">
-            {detectedPersons.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center gap-2 opacity-15">
-                <User className="w-8 h-8" />
-                <span className="text-[8px] tracking-[0.3em]">NO_PERSONS_LOG</span>
-              </div>
-            ) : (
-              <AnimatePresence initial={false}>
-                {(semanticQuery
-                  ? [...detectedPersons].sort((a, b) => {
-                      const sa = semanticResults.find(r => r.id === a.person_id)?.score || 0;
-                      const sb = semanticResults.find(r => r.id === b.person_id)?.score || 0;
-                      return sb - sa;
-                    })
-                  : detectedPersons
-                ).map((p) => {
-                  const matchScore = semanticResults.find(r => r.id === p.person_id)?.score || 0;
-                  const isTopMatch = semanticQuery && matchScore > 0.25;
-                  return (
-                  <motion.div
-                    key={p.person_id}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.3 }}
-                    onClick={() => setSelectedPerson(p)}
-                    className={`relative border overflow-hidden cursor-pointer transition-all group/pcard ${
-                      focusedPersonId === p.person_id 
-                        ? 'border-red-500/60 bg-red-900/5 shadow-[0_0_15px_rgba(255,0,0,0.1)]'
-                        : isTopMatch
-                        ? 'border-[#00e5ff]/60 bg-[#00e5ff]/5 shadow-[0_0_12px_rgba(0,229,255,0.15)]'
-                        : 'border-[rgba(0,255,133,0.12)] bg-[rgba(12,13,16,0.8)] hover:border-[#00ff85]/50'
-                    }`}
-                  >
-                    {focusedPersonId === p.person_id && (
-                      <div className="absolute top-1.5 right-1.5 z-10">
-                        <Target className="w-2.5 h-2.5 text-red-500 animate-pulse" />
-                      </div>
-                    )}
-                    {/* Status badge */}
-                    <div
-                      className="absolute top-0 right-0 px-1.5 py-0.5 text-[7px] font-bold z-10"
-                      style={p.status === 'NEW'
-                        ? { background: '#00ff85', color: '#000' }
-                        : { background: '#00e5ff', color: '#000' }
-                      }
-                    >
-                      {p.status}
-                    </div>
-
-                    {/* Semantic Match Score */}
-                    {semanticQuery && (
-                      <div className="absolute top-4 right-0 px-1.5 py-0.5 bg-black/80 text-[7px] font-bold z-10 border-l border-b border-[#00ff85]/30">
-                        {Math.round((semanticResults.find(r => r.id === p.person_id)?.score || 0) * 100)}% MATCH
-                      </div>
-                    )}
-
-                    {/* Face crop */}
-                    <div className="relative w-full aspect-square bg-black overflow-hidden">
-                      <img
-                        src={`data:image/jpeg;base64,${p.face}`}
-                        alt={p.person_id}
-                        className="w-full h-full object-cover"
-                      />
-                      {/* Scan line animation */}
-                      <div className="absolute inset-x-0 top-0 h-[1px] bg-[#00ff85]/50 animate-scanner" />
-                    </div>
-
-                    {/* Person ID + meta */}
-                    <div className="px-2 py-1.5">
-                      <p className="text-[10px] font-bold text-[#00ff85] tracking-widest">{p.person_id}</p>
-                      <p className="text-[7px] opacity-30 mt-0.5">{p.timestamp} · {p.feed_id}</p>
-                      {p.traits && p.traits !== 'ANALYZING...' && (
-                        <p className="text-[7px] text-[#00e5ff]/50 mt-0.5 truncate">{p.traits}</p>
-                      )}
-                    </div>
-                  </motion.div>
-                  );
-                })}
-              </AnimatePresence>
-            )}
-          </div>
-
-          {detectedPersons.length > 0 && (
-            <div className="p-2 border-t border-[rgba(0,255,133,0.1)] shrink-0">
-              <button
-                onClick={() => setDetectedPersons([])}
-                className="w-full py-1.5 text-[8px] font-bold tracking-widest border border-[rgba(255,68,102,0.3)] text-red-400 hover:bg-red-900/10 transition-all"
-              >
-                CLEAR_LOG ({detectedPersons.length})
-              </button>
-            </div>
+              {/* ─── ALERTS PANEL ─── */}
+              <AlertsPanel
+                alerts={alerts}
+                watchlist={watchlist}
+                setIsAddingTarget={setIsAddingTarget}
+                setMapAlert={setMapAlert}
+                scrollRef={scrollRef as React.RefObject<HTMLDivElement>}
+                dismissSpeech={dismissSpeech}
+              />
+            </motion.div>
           )}
-        </section>
-        )}
-
-
-        {/* ─── ALERTS SIDEBAR ─── */}
-        <aside className="w-[340px] bg-[#070809] border-l border-[rgba(0,255,133,0.1)] flex flex-col shrink-0">
-
-          {/* Sidebar header */}
-          <div className="px-5 py-4 border-b border-[rgba(0,255,133,0.1)] bg-[rgba(6,6,8,0.9)] flex justify-between items-center shrink-0">
-            <div>
-              <h2 className="text-[11px] font-bold tracking-[0.25em]">ALERTS_BUFFER</h2>
-              <div className="flex items-center gap-1.5 mt-1">
-                <p className="text-[8px] opacity-25 uppercase">Incidents</p>
-                <div className="h-[2px] w-2 bg-[#00ff85]/20" />
-                <button onClick={() => setIsAddingTarget(true)} className="text-[8px] text-[#00ff85] hover:underline hover:opacity-100 opacity-60 font-bold tracking-widest">OPEN_WATCHLIST ({watchlist.length})</button>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              {alerts.length > 0 && (
-                <span className="text-[9px] bg-[rgba(0,255,133,0.1)] border border-[rgba(0,255,133,0.2)] px-1.5 py-0.5 font-bold">
-                  {alerts.length}
-                </span>
-              )}
-              <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-            </div>
-          </div>
-
-          {/* Alerts list */}
-          <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-3">
-            {alerts.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center gap-3 opacity-15">
-                <Shield className="w-10 h-10" />
-                <span className="text-[9px] tracking-[0.3em]">NO_THREATS_DETECTED</span>
-              </div>
-            ) : (
-              <AnimatePresence initial={false}>
-                {alerts.map((alert, index) => (
-                  <motion.div key={index}
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="relative overflow-hidden border group"
-                    style={alert.is_person_search_match
-                      ? { borderColor: 'rgba(255,68,102,0.4)', background: 'rgba(255,68,102,0.04)' }
-                      : { borderColor: 'rgba(0,255,133,0.1)', background: 'rgba(12,13,16,0.8)' }
-                    }
-                  >
-                    {/* ID badge */}
-                    <div className="absolute top-0 right-0 px-2 py-0.5 text-[8px] font-bold flex items-center gap-1.5"
-                      style={alert.is_person_search_match
-                        ? { background: '#ff4466', color: '#fff' }
-                        : { background: 'rgba(0,255,133,0.15)', color: '#00ff85' }
-                      }>
-                      {alert.is_person_search_match && <Target className="w-2.5 h-2.5" />}
-                      ID_{index.toString().padStart(3, '0')}
-                    </div>
-
-
-                    {/* Timestamp */}
-                    <div className="absolute left-2 top-2 text-[7px] opacity-30 rotate-180 [writing-mode:vertical-lr]">
-                      {alert.timestamp}_UTC
-                    </div>
-
-                    <div className="p-2.5 pl-7">
-                      {/* Image */}
-                      <div className="relative mb-2.5 aspect-[4/3] overflow-hidden">
-                        <img
-                          src={`data:image/jpeg;base64,${alert.image}`}
-                          alt="INCIDENT"
-                          className={`w-full h-full object-cover transition-all duration-500 ${alert.is_person_search_match ? 'brightness-125 saturate-150' : 'grayscale group-hover:grayscale-0'}`}
-                        />
-                        {alert.is_person_search_match && (
-                          <>
-                            <div className="absolute inset-0 bg-red-600/15 mix-blend-overlay animate-pulse" />
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <Crosshair className="w-10 h-10 text-red-400 animate-ping opacity-50" />
-                            </div>
-                          </>
-                        )}
-                      </div>
-
-                      {/* Labels */}
-                      <div className="flex justify-between items-center bg-[rgba(0,0,0,0.3)] px-2 py-1.5 border-l-2 mb-2"
-                        style={{ borderColor: alert.is_person_search_match ? '#ff4466' : '#00ff85' }}>
-                        <span className="text-[9px] font-bold opacity-50">THREAT:</span>
-                        <div className="flex flex-wrap gap-1 justify-end">
-                          {alert.is_person_search_match && (
-                            <span className="text-[8px] px-1.5 py-0.5 font-bold bg-red-600 text-white">TARGET_Ω</span>
-                          )}
-                          {alert.detections.map((d, i) => (
-                            <span key={i} className="text-[8px] px-1.5 py-0.5 border border-[rgba(0,255,133,0.2)] text-[#00ff85]">
-                              {d.label.toUpperCase()}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Match confirmation */}
-                      {alert.is_person_search_match && (
-                        <div className="bg-red-950/20 border border-red-800/40 p-2 mb-2">
-                          <p className="text-[8px] text-red-500 font-bold uppercase tracking-widest mb-1 italic">
-                            {(typeof alert.is_person_search_match === 'string') ? alert.is_person_search_match : "TARGET_LOCATED"}
-                          </p>
-                          <p className="text-[7px] text-red-400 opacity-80 leading-tight">Visual verification required immediately. Threat active in current sector.</p>
-                        </div>
-                      )}
-
-                      {/* Confidence & Location */}
-                      <div className="flex justify-between items-center text-[8px] font-bold">
-                        <div className="flex flex-col opacity-30">
-                          <span>AI_REL: {(Math.max(...(alert.detections.map(d => d.confidence) || [0]), 0) * 100).toFixed(1)}%</span>
-                          <span>CHANNEL_00</span>
-                        </div>
-
-                        
-                        {alert.location && (
-                          <button 
-                            onClick={() => setMapAlert(alert)}
-                            className="flex items-center gap-1.5 px-2 py-1 bg-[rgba(0,255,133,0.05)] border border-[rgba(0,255,133,0.2)] text-[#00ff85] hover:bg-[#00ff85] hover:text-[#000] transition-all duration-300"
-                          >
-                            <MapPin className="w-3 h-3" />
-                            MAP
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            )}
-          </div>
-        </aside>
+        </AnimatePresence>
       </main>
 
-      {/* ─── PERSON DETAIL MODAL (only when personLogEnabled) ─── */}
+      {/* ─── PERSON DETAIL MODAL ─── */}
       {personLogEnabled && (
-      <AnimatePresence>
-        {selectedPerson && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            onClick={() => setSelectedPerson(null)}
-            className="fixed inset-0 z-[500] bg-black/85 backdrop-blur-lg flex items-center justify-center p-8"
-          >
+        <AnimatePresence>
+          {selectedPerson && (
             <motion.div
-              initial={{ scale: 0.85, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.85, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="relative bg-[#090a0c] border border-[rgba(0,255,133,0.25)] shadow-[0_0_80px_rgba(0,255,133,0.08)] w-full max-w-sm overflow-hidden"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setSelectedPerson(null)}
+              className="fixed inset-0 z-[500] bg-black/85 backdrop-blur-lg flex items-center justify-center p-8"
             >
-              {/* Corner brackets */}
-              {['top-0 left-0 border-t-2 border-l-2','top-0 right-0 border-t-2 border-r-2','bottom-0 left-0 border-b-2 border-l-2','bottom-0 right-0 border-b-2 border-r-2'].map((c, i) => (
-                <div key={i} className={`absolute w-6 h-6 ${c} border-[#00ff85]/50 z-10`} />
-              ))}
-
-              {/* Close */}
-              <button
-                onClick={() => setSelectedPerson(null)}
-                className="absolute top-3 right-3 z-20 p-1.5 bg-black/60 border border-[rgba(0,255,133,0.2)] hover:border-[#00ff85] hover:text-[#00ff85] transition-all"
+              <motion.div
+                initial={{ scale: 0.85, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.85, opacity: 0 }}
+                onClick={(e) => e.stopPropagation()}
+                className="relative bg-[#090a0c] border border-[rgba(0,255,133,0.25)] shadow-[0_0_80px_rgba(0,255,133,0.08)] w-full max-w-sm overflow-hidden"
               >
-                <X className="w-4 h-4" />
-              </button>
-
-              {/* Face image — full width */}
-              <div className="relative w-full aspect-square bg-black overflow-hidden">
-                <img
-                  src={`data:image/jpeg;base64,${selectedPerson.face}`}
-                  alt={selectedPerson.person_id}
-                  className="w-full h-full object-cover"
-                  style={{ imageRendering: 'auto' }}
-                />
-                {/* Scan overlay */}
-                <div className="absolute inset-x-0 top-0 h-[2px] bg-[#00ff85]/60 animate-scanner" />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#090a0c] via-transparent to-transparent" />
-                {/* Status */}
-                <div
-                  className="absolute top-3 left-3 px-2.5 py-1 text-[9px] font-bold tracking-widest"
-                  style={selectedPerson.status === 'NEW'
-                    ? { background: '#00ff85', color: '#000' }
-                    : { background: '#00e5ff', color: '#000' }
-                  }
+                {['top-0 left-0 border-t-2 border-l-2', 'top-0 right-0 border-t-2 border-r-2', 'bottom-0 left-0 border-b-2 border-l-2', 'bottom-0 right-0 border-b-2 border-r-2'].map((c, i) => (
+                  <div key={i} className={`absolute w-6 h-6 ${c} border-[#00ff85]/50 z-10`} />
+                ))}
+                <button
+                  onClick={() => setSelectedPerson(null)}
+                  className="absolute top-3 right-3 z-20 p-1.5 bg-black/60 border border-[rgba(0,255,133,0.2)] hover:border-[#00ff85] transition-all"
                 >
-                  {selectedPerson.status === 'NEW' ? 'NEW_SUBJECT' : 'REAPPEARED'}
-                </div>
-              </div>
-
-              {/* Info */}
-              <div className="p-5 space-y-4">
-                <div>
-                  <p className="text-[9px] opacity-30 tracking-[0.3em] mb-1">BIOMETRIC_SUBJECT_ID</p>
-                  <p className="text-2xl font-bold tracking-widest text-[#00ff85]">{selectedPerson.person_id}</p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-black/40 border border-[rgba(0,255,133,0.1)] p-3">
-                    <p className="text-[8px] opacity-30 tracking-widest mb-1">FEED_SOURCE</p>
-                    <p className="text-[11px] font-bold text-[#00ff85]">{selectedPerson.feed_id.toUpperCase()}</p>
-                  </div>
-                  <div className="bg-black/40 border border-[rgba(0,255,133,0.1)] p-3">
-                    <p className="text-[8px] opacity-30 tracking-widest mb-1">DETECTED_AT</p>
-                    <p className="text-[11px] font-bold text-[#00ff85]">{selectedPerson.timestamp}</p>
-                  </div>
-                </div>
-
-                <p className="text-[8px] text-[#00ff85]/20 leading-relaxed pt-1 border-t border-[rgba(0,255,133,0.06)]">
-                  Subject logged by Re-ID engine. Will re-appear in PERSONS_LOG after a 5-minute cooldown window.
-                </p>
-
-                <div className="pt-2">
-                  <button
-                    onClick={() => {
-                      const isFocused = focusedPersonId === selectedPerson.person_id;
-                      handleSetFocus(isFocused ? null : selectedPerson.person_id);
-                    }}
-                    className={`w-full py-3 border font-bold text-[10px] tracking-[0.2em] transition-all flex items-center justify-center gap-2 ${
-                      focusedPersonId === selectedPerson.person_id
-                        ? 'bg-red-600 border-red-600 text-white shadow-[0_0_15px_rgba(255,0,0,0.4)]'
-                        : 'bg-[rgba(255,255,255,0.02)] border-[rgba(0,255,133,0.3)] text-[#00ff85] hover:bg-[#00ff85] hover:text-black'
-                    }`}
+                  <X className="w-4 h-4" />
+                </button>
+                <div className="relative w-full aspect-square bg-black overflow-hidden">
+                  <img
+                    src={`data:image/jpeg;base64,${selectedPerson.face}`}
+                    alt={selectedPerson.person_id}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-x-0 top-0 h-[2px] bg-[#00ff85]/60 animate-scanner" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#090a0c] via-transparent to-transparent" />
+                  <div
+                    className="absolute top-3 left-3 px-2.5 py-1 text-[9px] font-bold tracking-widest"
+                    style={selectedPerson.status === 'NEW' ? { background: '#00ff85', color: '#000' } : { background: '#00e5ff', color: '#000' }}
                   >
-                    <Target className={`w-3.5 h-3.5 ${focusedPersonId === selectedPerson.person_id ? 'animate-pulse' : ''}`} />
-                    {focusedPersonId === selectedPerson.person_id ? 'TERMINATE_FOCUS' : 'ESTABLISH_TACTICAL_FOCUS'}
-                  </button>
+                    {selectedPerson.status === 'NEW' ? 'NEW_SUBJECT' : 'REAPPEARED'}
+                  </div>
                 </div>
-              </div>
+                <div className="p-5 space-y-4">
+                  <div>
+                    <p className="text-[9px] opacity-30 tracking-[0.3em] mb-1">BIOMETRIC_SUBJECT_ID</p>
+                    <p className="text-2xl font-bold tracking-widest text-[#00ff85]">{selectedPerson.person_id}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-black/40 border border-[rgba(0,255,133,0.1)] p-3">
+                      <p className="text-[8px] opacity-30 tracking-widest mb-1">FEED_SOURCE</p>
+                      <p className="text-[11px] font-bold text-[#00ff85]">{selectedPerson.feed_id.toUpperCase()}</p>
+                    </div>
+                    <div className="bg-black/40 border border-[rgba(0,255,133,0.1)] p-3">
+                      <p className="text-[8px] opacity-30 tracking-widest mb-1">DETECTED_AT</p>
+                      <p className="text-[11px] font-bold text-[#00ff85]">{selectedPerson.timestamp}</p>
+                    </div>
+                  </div>
+                  <p className="text-[8px] text-[#00ff85]/20 leading-relaxed pt-1 border-t border-[rgba(0,255,133,0.06)]">
+                    Subject logged by Re-ID engine. Will re-appear in PERSONS_LOG after a 5-minute cooldown window.
+                  </p>
+                  <div className="pt-2">
+                    <button
+                      onClick={() => {
+                        const isFocused = focusedPersonId === selectedPerson.person_id;
+                        handleSetFocus(isFocused ? null : selectedPerson.person_id);
+                      }}
+                      className={`w-full py-3 border font-bold text-[10px] tracking-[0.2em] transition-all flex items-center justify-center gap-2 ${
+                        focusedPersonId === selectedPerson.person_id
+                          ? 'bg-red-600 border-red-600 text-white shadow-[0_0_15px_rgba(255,0,0,0.4)]'
+                          : 'bg-[rgba(255,255,255,0.02)] border-[rgba(0,255,133,0.3)] text-[#00ff85] hover:bg-[#00ff85] hover:text-black'
+                      }`}
+                    >
+                      <Target className={`w-3.5 h-3.5 ${focusedPersonId === selectedPerson.person_id ? 'animate-pulse' : ''}`} />
+                      {focusedPersonId === selectedPerson.person_id ? 'TERMINATE_FOCUS' : 'ESTABLISH_TACTICAL_FOCUS'}
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>
       )}
 
       {/* ─── MAP MODAL ─── */}
       <AnimatePresence>
         {mapAlert && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 z-[100] bg-black/20 backdrop-blur-md flex items-center justify-center p-6"
           >
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }}
               className="w-full max-w-4xl bg-[#0a0b0d] border border-[rgba(0,255,133,0.2)] shadow-[0_0_50px_rgba(0,0,0,0.8)] flex flex-col"
             >
@@ -1671,26 +969,21 @@ const Dashboard: React.FC = () => {
                   <X className="w-5 h-5 text-[#00ff85]" />
                 </button>
               </div>
-
               <div className="flex h-[500px]">
-                {/* Embedded Google Map */}
                 <div className="flex-1 bg-black relative">
-                  <iframe 
-                    width="100%" height="100%" frameBorder="0" style={{ border: 0, filter: 'invert(90%) hue-rotate(180deg) brightness(0.8)' }}
+                  <iframe
+                    width="100%" height="100%" frameBorder="0"
+                    style={{ border: 0, filter: 'invert(90%) hue-rotate(180deg) brightness(0.8)' }}
                     src={`https://www.google.com/maps?q=${mapAlert.location?.lat},${mapAlert.location?.lon}&z=14&output=embed`}
                     allowFullScreen
                   />
-                  {/* Decorative Scan FX */}
                   <div className="absolute inset-0 pointer-events-none border-[15px] border-[#00ff85]/5" />
                 </div>
-
-                {/* Tactical Stats */}
                 <div className="w-72 border-l border-[rgba(0,255,133,0.1)] p-5 flex flex-col bg-[#0a0b0d]">
                   <div className="mb-6">
                     <p className="text-[9px] font-bold opacity-30 tracking-widest mb-2">TARGET_COORDINATES</p>
                     <p className="text-[12px] font-mono text-[#00ff85]">{mapAlert.location?.lat}° N, {mapAlert.location?.lon}° E</p>
                   </div>
-
                   <div className="mb-6 p-3 bg-[rgba(0,229,255,0.04)] border border-[rgba(0,229,255,0.2)]">
                     <p className="text-[9px] font-bold text-[#00e5ff] tracking-widest mb-1 leading-tight">INTERCEPT_DISTANCE</p>
                     {operatorLatLon ? (
@@ -1703,19 +996,16 @@ const Dashboard: React.FC = () => {
                       </div>
                     ) : (
                       <div className="flex gap-1 items-center animate-pulse">
-                        <div className="w-1 h-1 bg-[#00e5ff] rounded-full" />
-                        <div className="w-1 h-1 bg-[#00e5ff] rounded-full" />
-                        <div className="w-1 h-1 bg-[#00e5ff] rounded-full" />
+                        {[0, 1, 2].map(i => <div key={i} className="w-1 h-1 bg-[#00e5ff] rounded-full" />)}
                       </div>
                     )}
                   </div>
-
                   <div className="mt-auto pt-4 border-t border-[rgba(0,255,133,0.1)]">
                     <div className="flex items-center gap-2 mb-3">
                       <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
                       <p className="text-[9px] font-bold text-red-500 uppercase tracking-widest">Priority Alert</p>
                     </div>
-                    <button 
+                    <button
                       onClick={() => window.open(mapAlert.location?.maps, '_blank')}
                       className="w-full py-2 bg-[#00ff85] text-black font-bold text-[10px] hover:bg-[#00cc6a] transition-all"
                     >

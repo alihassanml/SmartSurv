@@ -7,11 +7,12 @@ import threading
 import base64
 import queue
 import shutil
+import subprocess
+import json as _json
 import numpy as np
 from PIL import Image
 from ultralytics import YOLO
 from concurrent.futures import ThreadPoolExecutor
-from playsound import playsound
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -300,7 +301,7 @@ class CameraEngine:
 
         self.sound_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'sound', 'drop.mp3'))
         self.privacy_mode = False # Blurs unauthorized faces in live view
-        
+
         # Cooldowns and settings
         self.last_activity_alert = 0.0
         self.activity_cooldown = 3.0
@@ -309,12 +310,51 @@ class CameraEngine:
         self.last_sound_time = 0.0
         self.sound_cooldown = 5
         self.executor = None
-        
+
+        # ── Dedicated sound subprocess ────────────────────────────────────────
+        # All audio (MP3 alert beep + Piper TTS) runs in a separate OS process.
+        # Uses subprocess.Popen (not multiprocessing) to avoid the Windows
+        # 'spawn' bootstrapping issue that re-imports main.py on process start.
+        # Commands are sent as JSON lines to the worker's stdin.
+        _piper_model_path = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), '..', 'model', 'voice', 'en_US-hfc_female-medium.onnx')
+        )
+        _piper_config_path = _piper_model_path + '.json'
+        _worker_script = os.path.abspath(os.path.join(os.path.dirname(__file__), 'sound_worker.py'))
+        _no_window = subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
+        self._sound_cmd_queue = queue.Queue(maxsize=10)  # internal thread-safe queue
+        try:
+            self._sound_proc = subprocess.Popen(
+                [sys.executable, _worker_script],
+                stdin=subprocess.PIPE,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                creationflags=_no_window,
+            )
+            print(f'[Sound] Worker process started (PID {self._sound_proc.pid}).')
+            # Writer thread: drains _sound_cmd_queue → writes JSON to subprocess stdin
+            self._sound_writer_thread = threading.Thread(target=self._sound_writer, daemon=True)
+            self._sound_writer_thread.start()
+            # Send Piper TTS init command
+            self._sound_cmd_queue.put_nowait({
+                'cmd': 'init_tts',
+                'model': _piper_model_path,
+                'config': _piper_config_path,
+            })
+        except Exception as e:
+            print(f'[Sound] Failed to start worker process: {e}')
+            self._sound_proc = None
+
         self.class_sounds = {name: False for name in self.class_names}
         self.search_sound_enabled = True
         self.sound_enabled = True
+        self.voice_enabled = True   # TTS voice alerts on/off
         self.email_enabled = True
         self.last_email_time = 0.0
+
+        # Speak-once tracking: label keys that have already been announced.
+        # Entry stays until operator dismisses it via dismiss_speech().
+        self._spoke_labels: set = set()
         
         self.email_sender = os.getenv("SMTP_EMAIL")
         self.email_password = os.getenv("SMTP_PASSWORD")
@@ -349,10 +389,54 @@ class CameraEngine:
         if os.path.exists(self.persistent_path):
             self.set_search_target(self.persistent_path, persist=False)
 
-    def _play_alert_sound(self):
+    def _sound_writer(self):
+        """Daemon thread: drains _sound_cmd_queue and writes JSON commands to sound worker stdin."""
+        while True:
+            try:
+                cmd = self._sound_cmd_queue.get()
+                if cmd is None:  # shutdown sentinel
+                    break
+                if self._sound_proc and self._sound_proc.stdin:
+                    line = _json.dumps(cmd) + '\n'
+                    self._sound_proc.stdin.write(line.encode())
+                    self._sound_proc.stdin.flush()
+            except Exception as e:
+                print(f'[Sound] Writer error: {e}')
+
+    def _speak(self, text: str):
+        """Queue a TTS utterance (non-blocking). Respects voice_enabled flag."""
+        if not self.sound_enabled or not self.voice_enabled or not self._sound_proc:
+            return
         try:
-            if os.path.exists(self.sound_path): playsound(self.sound_path)
-        except Exception: pass
+            self._sound_cmd_queue.put_nowait({'cmd': 'tts', 'text': text})
+        except queue.Full:
+            pass  # drop if queue is full — audio is best-effort
+
+    def _speak_once(self, label_key: str, text: str):
+        """Speak text only once per label_key. Re-arms when operator dismisses it."""
+        if label_key in self._spoke_labels:
+            return  # already announced — wait for operator dismiss
+        self._spoke_labels.add(label_key)
+        self._speak(text)
+
+    def dismiss_speech(self, label_key: str | None = None):
+        """
+        Clear the speak-once lock so the system will announce again.
+        Pass label_key=None to clear all locks (global reset).
+        """
+        if label_key:
+            self._spoke_labels.discard(label_key)
+        else:
+            self._spoke_labels.clear()
+
+    def _play_alert_sound(self):
+        """Queue an MP3 alert beep to the sound worker process (non-blocking)."""
+        if not self.sound_enabled or not self._sound_proc:
+            return
+        try:
+            self._sound_cmd_queue.put_nowait({'cmd': 'play', 'path': self.sound_path})
+        except queue.Full:
+            pass  # drop if queue is full — audio is best-effort
 
     def _send_email_alert(self, feed_id, frame_buf, detections, is_search_match=False):
         if not self.email_sender or not self.email_password: return
@@ -386,7 +470,16 @@ class CameraEngine:
             if any(self.class_sounds.get(d['label'], True) for d in detections):
                 if now - self.last_sound_time > self.sound_cooldown:
                     self.last_sound_time = now
-                    threading.Thread(target=self._play_alert_sound, daemon=True).start()
+                    self._play_alert_sound()  # non-blocking: sends to sound process
+            # Build label key for speak-once tracking
+            labels = list(dict.fromkeys(d['label'] for d in detections))
+            label_key = '|'.join(sorted(labels))
+            if len(labels) == 1:
+                speech = f"{labels[0]} detected"
+            else:
+                speech = f"{', '.join(labels[:-1])} and {labels[-1]} detected"
+            # Speak ONCE — stays silent until operator clicks Dismiss
+            self._speak_once(label_key, speech)
 
         # Search Alert
         if is_search_match and (now - self.last_search_alert > self.search_cooldown):
@@ -394,23 +487,30 @@ class CameraEngine:
             triggered = True
             if self.search_sound_enabled and (now - self.last_sound_time > self.sound_cooldown):
                 self.last_sound_time = now
-                threading.Thread(target=self._play_alert_sound, daemon=True).start()
+                self._play_alert_sound()  # non-blocking: sends to sound process
+            self._speak_once('watchlist_target', "Watchlist target located")
 
         if triggered:
-            _, buf = cv2.imencode('.jpg', display_frame, [cv2.IMWRITE_JPEG_QUALITY, 50])
-            frame_bytes = buf.tobytes()
-            if self.email_enabled and (now - self.last_email_time > 30):
-                self.last_email_time = now
-                threading.Thread(target=self._send_email_alert, args=(feed_id, frame_bytes, detections, is_search_match), daemon=True).start()
-            
-            self.alert_queue.put({
-                "feed_id": feed_id,
-                "timestamp": time.strftime("%H:%M:%S"),
-                "detections": detections,
-                "image": base64.b64encode(buf).decode('utf-8'),
-                "is_person_search_match": is_search_match,
-                "location": {"id": f"{self.camera_id}-{feed_id}", "lat": self.camera_lat, "lon": self.camera_lon}
-            })
+            try:
+                _, buf = cv2.imencode('.jpg', display_frame, [cv2.IMWRITE_JPEG_QUALITY, 50])
+                frame_bytes = buf.tobytes()
+                if self.email_enabled and (now - self.last_email_time > 30):
+                    self.last_email_time = now
+                    threading.Thread(target=self._send_email_alert, args=(feed_id, frame_bytes, detections, is_search_match), daemon=True).start()
+
+                alert = {
+                    "feed_id": feed_id,
+                    "timestamp": time.strftime("%H:%M:%S"),
+                    "detections": [{"label": d["label"], "confidence": float(d["confidence"]), "box": [float(v) for v in d["box"]]} for d in detections],
+                    "image": base64.b64encode(buf).decode('utf-8'),
+                    "is_person_search_match": bool(is_search_match),
+                    "location": {"id": f"{self.camera_id}-{feed_id}", "lat": self.camera_lat, "lon": self.camera_lon}
+                }
+                self.alert_queue.put(alert)
+                labels = [d['label'] for d in detections]
+                print(f"[Alert] Queued — feed={feed_id} labels={labels} queue_size={self.alert_queue.qsize()}")
+            except Exception as e:
+                print(f"[Alert] Error building alert: {e}")
 
     def _process_detections(self, frame):
         detections = []
@@ -632,12 +732,31 @@ class CameraEngine:
         self.executor = ThreadPoolExecutor(max_workers=6)
         self.running = True
         self._sync_feeds()
+        print("[Sound] System started — audio alerts active.")
+        self._speak("SmartSurv system is online. Audio alerts are active.")
 
     def stop(self):
         self.running = False
         for feed in list(self.feeds.values()): feed.stop()
         self.feeds.clear()
         if self.executor: self.executor.shutdown(wait=False); self.executor = None
+        # Shutdown sound worker subprocess gracefully
+        try:
+            self._sound_cmd_queue.put_nowait(None)  # stop writer thread
+        except Exception:
+            pass
+        try:
+            if self._sound_proc and self._sound_proc.stdin:
+                self._sound_proc.stdin.write(b'{"cmd": "stop"}\n')
+                self._sound_proc.stdin.flush()
+                self._sound_proc.stdin.close()
+            if self._sound_proc:
+                self._sound_proc.wait(timeout=3.0)
+        except Exception:
+            try:
+                if self._sound_proc: self._sound_proc.terminate()
+            except Exception:
+                pass
 
     def restart(self, source=None):
         if source is not None: self.source_config = source
@@ -713,6 +832,7 @@ class CameraEngine:
     def set_class_sounds(self, s): self.class_sounds.update({k: bool(v) for k, v in s.items()})
     def set_search_sound_enabled(self, e): self.search_sound_enabled = e
     def set_sound_enabled(self, e): self.sound_enabled = e
+    def set_voice_enabled(self, e): self.voice_enabled = e
     def set_email_enabled(self, e): self.email_enabled = e
     def get_class_names(self): return self.class_names
     def get_thresholds(self): return dict(self.class_thresholds)

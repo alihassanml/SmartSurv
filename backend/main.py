@@ -266,6 +266,12 @@ async def lifespan(app: FastAPI):
 
     # Camera starts OFF — user turns it on from the dashboard
     yield
+    # Shutdown: close all WebRTC peer connections then stop camera
+    app.state.is_running = False
+    coros = [pc.close() for pc in pcs]
+    if coros:
+        await asyncio.gather(*coros)
+    pcs.clear()
     camera.stop()
 
 
@@ -286,12 +292,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-@app.on_event("shutdown")
-async def on_shutdown():
-    coros = [pc.close() for pc in pcs]
-    await asyncio.gather(*coros)
-    pcs.clear()
 
 class Offer(BaseModel):
     sdp: str
@@ -567,8 +567,26 @@ def get_system_info():
         "smtp_email": camera.email_sender,
         "email_enabled": camera.email_enabled,
         "privacy_mode": camera.privacy_mode,
-        "person_log_enabled": _db_get("ui_person_log_enabled", True)
+        "person_log_enabled": _db_get("ui_person_log_enabled", True),
+        "voice_enabled": camera.voice_enabled,
     }
+
+class VoiceUpdate(BaseModel):
+    enabled: bool
+
+class SpeechDismiss(BaseModel):
+    label: Optional[str] = None  # None = clear all spoke-once locks
+
+@app.post("/api/camera/voice")
+def set_voice(body: VoiceUpdate):
+    camera.set_voice_enabled(body.enabled)
+    return {"status": "success", "voice_enabled": camera.voice_enabled}
+
+@app.post("/api/camera/speech/dismiss")
+def dismiss_speech(body: SpeechDismiss):
+    """Clear the speak-once lock for a label (or all labels) so the system speaks again on next detection."""
+    camera.dismiss_speech(body.label)
+    return {"status": "dismissed", "label": body.label}
 
 # ── UI Settings (person_log toggle, etc.) ─────────────────────────────────────
 @app.get("/api/persons/search")
@@ -596,12 +614,17 @@ async def websocket_endpoint(websocket: WebSocket):
     from fastapi.concurrency import run_in_threadpool
     await websocket.accept()
     try:
-        while app.state.is_running:
+        while getattr(app.state, 'is_running', True):
             alerts = await run_in_threadpool(camera.get_alerts)
             if alerts:
                 for alert in alerts:
-                    await websocket.send_text(json.dumps(alert))
-            await asyncio.sleep(0.5)
+                    try:
+                        await websocket.send_text(json.dumps(alert, default=str))
+                    except Exception:
+                        pass  # skip un-serializable alerts rather than crash the loop
+                await asyncio.sleep(0)
+            else:
+                await asyncio.sleep(0.05)
     except (WebSocketDisconnect, asyncio.CancelledError, RuntimeError):
         pass
     except Exception:
@@ -621,7 +644,11 @@ async def persons_endpoint(websocket: WebSocket):
             if events:
                 for event in events:
                     await websocket.send_text(json.dumps(event))
-            await asyncio.sleep(0.5)
+                # Yield to other coroutines between bursts
+                await asyncio.sleep(0)
+            else:
+                # No events — short sleep so we stay responsive without busy-looping
+                await asyncio.sleep(0.05)
     except (WebSocketDisconnect, asyncio.CancelledError, RuntimeError):
         pass
     except Exception:
