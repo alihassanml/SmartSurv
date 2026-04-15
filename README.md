@@ -71,13 +71,24 @@ A high-priority operator control for active pursuit scenarios.
 
 ## 📺 **Mission Control Dashboard Features**
 
-### **4. Hybrid Monitoring Mode (Ops_Core)**
+### **4. Analytics Intelligence Core (ANALYTICS_CORE)**
+*   **Real-Time Statistics Dashboard:** Four primary stat cards — `TOTAL_ALERTS`, `AVG_CONFIDENCE`, `PERSONS_DETECTED`, and `TARGET_MATCHES` — update live as events come in.
+*   **Activity Breakdown:** Visual bar chart of all detected activity classes ranked by frequency.
+*   **Hourly Trend Chart:** 24-hour alert density graph for peak-hour identification.
+*   **RECENT DETECTIONS Table:** Full incident ledger with timestamp, detected activities, max confidence score, and classification (TARGET_MATCH vs. DETECTION).
+    *   **Independent Scroll:** The detections table has its own scrollable viewport (`max-h-64`) so the rest of the analytics dashboard stays fixed — no full-page scroll triggered by the table.
+    *   **Sticky Column Headers:** Table headers remain visible while scrolling through detections.
+    *   **Full History:** All logged incidents are shown (no arbitrary 10-row cap).
+
+---
+
+### **5. Hybrid Monitoring Mode (Ops_Core)**
 *   **Unified Grid Infrastructure:** Process and display multiple live camera feeds simultaneously including **Local Laptop Cameras** and **Remote Mobile Nodes**.
 *   **Low-Latency Canvas Rendering:** Utilizes a custom high-performance canvas buffer for decoding MJPEG streams, eliminating typical browser video lag and memory leaks.
 *   **Dynamic Source Control:** Instantly switch between `Local`, `Remote`, or `Hybrid` surveillance modes via the global operations toggle.
 *   **Remote Web-Link Uplink:** Generate unique encrypted links (linked via WebSockets) to turn any smartphone into a wireless surveillance node without configuration.
 
-### **5. Intelligence Deep-Link (AI Models)**
+### **6. Intelligence Deep-Link (AI Models)**
 *   **Object & Activity Detection (YOLOv11):** Specifically trained to detect security-critical activities:
     *   🚨 **Weapons:** Detects guns, knives, and other prohibited objects.
     *   🚬 **Smoking:** Identifies unauthorized smoking in restricted zones.
@@ -91,7 +102,7 @@ A high-priority operator control for active pursuit scenarios.
     *   **Semantic Embedding Storage:** Stores CLIP visual embeddings alongside FaceNet identity embeddings for dual-mode person representation.
 *   **Activity Heatmap Matrix:** Visualizes movement hotspots over a 60x80 decaying intensity grid.
 
-### **6. Tactical Operational Controls**
+### **7. Tactical Operational Controls**
 *   **Precision Sensitivity Sliders:** Fine-tune detection confidence thresholds for each class individually.
 *   **Notification Engine:**
     *   **Visual Evidence:** Automated SMTP-encrypted emails with incident snapshots.
