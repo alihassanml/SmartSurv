@@ -195,7 +195,7 @@ const Dashboard: React.FC = () => {
   // ─── Persons WebSocket ───
   useEffect(() => {
     if (!cameraActive) return;
-    const ws = new WebSocket(`ws://localhost:8000/ws/persons`);
+    const ws = new WebSocket(`ws://${window.location.hostname}:8000/ws/persons`);
     ws.onmessage = (event) => {
       const data: PersonEvent = JSON.parse(event.data);
       if (focusedPersonId && data.person_id === focusedPersonId) {
@@ -419,8 +419,8 @@ const Dashboard: React.FC = () => {
     finally { setIsReconnecting(false); }
   };
 
-  const displayIp = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-    ? (systemIp || 'localhost')
+  const displayIp = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || !window.location.hostname.includes('.'))
+    ? (systemIp || window.location.hostname)
     : window.location.hostname;
 
   const remoteUrl = `${window.location.protocol}//${displayIp}${window.location.port ? ':' + window.location.port : ''}/remote-camera?client_id=${Math.random().toString(36).substring(7)}`;
