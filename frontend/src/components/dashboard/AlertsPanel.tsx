@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Shield, Target, MapPin, Crosshair, MicOff } from 'lucide-react';
+import { Shield, Target, MapPin, Crosshair, MicOff, X, Maximize2 } from 'lucide-react';
 import type { Alert } from '../../types/dashboard';
 
 interface AlertsPanelProps {
@@ -20,6 +20,8 @@ const AlertsPanel: React.FC<AlertsPanelProps> = ({
   scrollRef,
   dismissSpeech,
 }) => {
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
   return (
     <aside className="w-[340px] bg-[#070809] border-l border-[rgba(0,255,133,0.1)] flex flex-col shrink-0">
       {/* Header */}
@@ -87,16 +89,22 @@ const AlertsPanel: React.FC<AlertsPanelProps> = ({
 
                 <div className="p-2.5 pl-7">
                   {/* Image */}
-                  <div className="relative mb-2.5 aspect-[4/3] overflow-hidden">
+                  <div 
+                    className="relative mb-2.5 aspect-[4/3] overflow-hidden cursor-pointer group/img"
+                    onClick={() => setSelectedImage(`data:image/jpeg;base64,${alert.image}`)}
+                  >
                     <img
                       src={`data:image/jpeg;base64,${alert.image}`}
                       alt="INCIDENT"
-                      className={`w-full h-full object-cover transition-all duration-500 ${alert.is_person_search_match ? 'brightness-125 saturate-150' : 'grayscale group-hover:grayscale-0'}`}
+                      className={`w-full h-full object-cover transition-all duration-500 ${alert.is_person_search_match ? 'brightness-125 saturate-150' : 'grayscale group-hover:grayscale-0'} group-hover/img:scale-105`}
                     />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
+                      <Maximize2 className="w-6 h-6 text-[#00ff85] drop-shadow-[0_0_8px_rgba(0,255,133,0.5)]" />
+                    </div>
                     {alert.is_person_search_match && (
                       <>
                         <div className="absolute inset-0 bg-red-600/15 mix-blend-overlay animate-pulse" />
-                        <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                           <Crosshair className="w-10 h-10 text-red-400 animate-ping opacity-50" />
                         </div>
                       </>
@@ -169,6 +177,74 @@ const AlertsPanel: React.FC<AlertsPanelProps> = ({
           </AnimatePresence>
         )}
       </div>
+
+      {/* Image Modal Overlay */}
+      <AnimatePresence>
+        {selectedImage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setSelectedImage(null)}
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-xl p-4 cursor-zoom-out"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative max-w-[95vw] max-h-[92vh] bg-[#070809] border border-[#00ff85]/20 shadow-[0_0_100px_rgba(0,0,0,0.8)] group/modal overflow-hidden flex flex-col"
+            >
+              {/* Tactical Corners */}
+              <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-[#00ff85]/50 z-10 pointer-events-none" />
+              <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-[#00ff85]/50 z-10 pointer-events-none" />
+              <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-[#00ff85]/50 z-10 pointer-events-none" />
+              <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-[#00ff85]/50 z-10 pointer-events-none" />
+
+              {/* Close Button UI */}
+              <div className="absolute top-0 left-0 right-0 h-12 bg-gradient-to-b from-black/80 to-transparent flex items-center justify-between px-6 z-20 opacity-0 group-hover/modal:opacity-100 transition-opacity">
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                  <span className="text-[10px] font-bold tracking-[0.4em] text-[#00ff85] uppercase">Secure_Incident_View_Alpha</span>
+                </div>
+                <button 
+                  onClick={() => setSelectedImage(null)}
+                  className="p-1.5 bg-black/40 border border-[#00ff85]/20 hover:bg-[#00ff85] hover:text-black transition-all"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-hidden flex items-center justify-center p-4">
+                <img
+                  src={selectedImage}
+                  alt="ENLARGED_INCIDENT"
+                  className="max-w-full max-h-full object-contain select-none shadow-[0_0_60px_rgba(0,0,0,0.8)]"
+                />
+              </div>
+
+              {/* Status Bar */}
+              <div className="px-6 py-3 bg-black/80 backdrop-blur-md border-t border-[#00ff85]/10 flex items-center justify-between z-20 shrink-0">
+                <div className="flex items-center gap-6">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[9px] font-mono text-[#00ff85]/40">UID:</span>
+                    <span className="text-[9px] font-mono text-[#00ff85] font-bold tracking-tight">INF-{Math.random().toString(36).substring(7).toUpperCase()}-SRV</span>
+                  </div>
+                  <div className="h-3 w-[1px] bg-[#00ff85]/10" />
+                  <div className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#00ff85] animate-pulse" />
+                    <span className="text-[9px] font-mono text-[#00ff85]/80 uppercase tracking-widest">Live_Verification_Active</span>
+                  </div>
+                </div>
+                <div className="text-[9px] font-mono text-[#00ff85]/40 uppercase tracking-tighter">
+                  System: SmartSurv Core // Buffer: 1024KB
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </aside>
   );
 };

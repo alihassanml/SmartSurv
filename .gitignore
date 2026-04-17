@@ -11,3 +11,4 @@ backend/.env
 .env
 kaggle.json
 .env.local
+frontend/public/models/vosk-model
