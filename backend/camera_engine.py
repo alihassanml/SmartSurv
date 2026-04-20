@@ -488,7 +488,7 @@ class CameraEngine:
             if self.search_sound_enabled and (now - self.last_sound_time > self.sound_cooldown):
                 self.last_sound_time = now
                 self._play_alert_sound()  # non-blocking: sends to sound process
-            self._speak_once('watchlist_target', "Watchlist target located")
+            self._speak_once('watchlist_target', "Target located")
 
         if triggered:
             try:
