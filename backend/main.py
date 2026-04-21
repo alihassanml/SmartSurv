@@ -13,7 +13,7 @@ from aiortc import RTCPeerConnection, RTCSessionDescription
 from webrtc_utils import CameraStreamTrack
 
 pcs = set()
-
+import torch
 
 from camera_engine import CameraEngine
 from database import SessionLocal, Base, engine, User, Setting
@@ -626,7 +626,39 @@ async def video_feed(id: Optional[str] = Query(None)):
             pass
     return StreamingResponse(generate(), media_type="multipart/x-mixed-replace; boundary=frame")
 
-@app.get("/api/system/info")
+def get_system_specs():
+    import psutil, platform
+    specs = {
+        "os": platform.system(),
+        "cpu": platform.processor(),
+        "cores": psutil.cpu_count(logical=True),
+        "ram": round(psutil.virtual_memory().total / (1024**3), 1),
+        "gpu": None
+    }
+    if torch.cuda.is_available():
+        specs["gpu"] = {
+            "name": torch.cuda.get_device_name(0),
+            "vram": round(torch.cuda.get_device_properties(0).total_memory / (1024**3), 1)
+        }
+    
+    # Heuristics for camera capacity
+    capacity = 0
+    status = "INSUFFICIENT"
+    
+    if specs["gpu"]:
+        if specs["gpu"]["vram"] >= 6: capacity = 6; status = "OPTIMAL"
+        elif specs["gpu"]["vram"] >= 4: capacity = 4; status = "GOOD"
+        else: capacity = 2; status = "MODERATE"
+    else:
+        if specs["cores"] >= 8: capacity = 2; status = "MODERATE (CPU ONLY)"
+        elif specs["cores"] >= 4: capacity = 1; status = "MINIMAL"
+        else: capacity = 0; status = "INSUFFICIENT"
+        
+    return {**specs, "capacity": capacity, "status": status}
+
+@app.get("/api/system/check")
+def system_check():
+    return get_system_specs()
 def get_system_info():
     return {
         "local_ip": get_local_ip(),

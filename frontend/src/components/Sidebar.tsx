@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutGrid, Bell, BarChart2, Target, Settings,
-  Users, Shield, ChevronLeft, ChevronRight,
+  Users, Shield, ChevronLeft, ChevronRight, Activity
 } from 'lucide-react';
 
 const navItems = [
@@ -14,8 +14,9 @@ const navItems = [
 ];
 
 const bottomItems = [
-  { icon: Settings, label: 'Settings',  path: '/dashboard/settings' },
-  { icon: Users,    label: 'Users',     path: '/dashboard/users' },
+  { icon: Activity, label: 'System Health', path: '/dashboard/system' },
+  { icon: Settings, label: 'Settings',      path: '/dashboard/settings' },
+  { icon: Users,    label: 'Users',         path: '/dashboard/users' },
 ];
 
 const Sidebar: React.FC = () => {

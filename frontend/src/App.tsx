@@ -11,6 +11,7 @@ import AlertsLog from './pages/dashboard/AlertsLog';
 import Analytics from './pages/dashboard/Analytics';
 import WatchlistPage from './pages/dashboard/WatchlistPage';
 import SettingsPage from './pages/dashboard/SettingsPage';
+import SystemHealth from './pages/dashboard/SystemHealth';
 import UsersPage from './pages/dashboard/UsersPage';
 
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
@@ -41,6 +42,7 @@ const App: React.FC = () => {
           <Route path="analytics" element={<Analytics />} />
           <Route path="watchlist" element={<WatchlistPage />} />
           <Route path="settings" element={<SettingsPage />} />
+          <Route path="system" element={<SystemHealth />} />
           <Route path="users" element={<UsersPage />} />
         </Route>
       </Routes>
