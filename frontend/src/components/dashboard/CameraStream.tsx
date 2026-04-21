@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+﻿import React, { useEffect, useRef } from 'react';
 import { API } from '../../types/dashboard';
 
 interface CameraStreamProps {
@@ -108,3 +108,4 @@ const CameraStream: React.FC<CameraStreamProps> = ({ feedId, active, showHeatmap
 };
 
 export default CameraStream;
+

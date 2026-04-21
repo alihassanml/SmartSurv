@@ -1,6 +1,9 @@
-import React from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, UploadCloud, Search } from 'lucide-react';
+import {
+  X, UploadCloud, Search, Pencil, Check, AlertTriangle,
+  Camera, Image as ImageIcon, RefreshCw, ZapIcon,
+} from 'lucide-react';
 import { API } from '../../types/dashboard';
 
 interface WatchlistManagerProps {
@@ -13,6 +16,7 @@ interface WatchlistManagerProps {
   handleAddWatchlist: (e: React.ChangeEvent<HTMLInputElement>) => void;
   watchlist: string[];
   removeTarget: (name: string) => void;
+  fetchWatchlist: () => void;
 }
 
 const WatchlistManager: React.FC<WatchlistManagerProps> = ({
@@ -25,76 +29,457 @@ const WatchlistManager: React.FC<WatchlistManagerProps> = ({
   handleAddWatchlist,
   watchlist,
   removeTarget,
+  fetchWatchlist,
 }) => {
+  /* ── Rename state ── */
+  const [editingName, setEditingName] = useState<string | null>(null);
+  const [editValue, setEditValue]     = useState('');
+  const [editError, setEditError]     = useState('');
+  const [editLoading, setEditLoading] = useState(false);
+
+  /* ── Add-mode state ── */
+  const [addMode, setAddMode] = useState<'upload' | 'camera'>('upload');
+
+  /* ── Camera capture state ── */
+  const videoRef                              = useRef<HTMLVideoElement>(null);
+  const canvasRef                             = useRef<HTMLCanvasElement>(null);
+  const streamRef                             = useRef<MediaStream | null>(null); // stable ref for direct attachment
+  const [stream, setStream]                   = useState<MediaStream | null>(null);
+  const [videoReady, setVideoReady]           = useState(false);  // true once first frame is decoded
+  const [capturedPreview, setCapturedPreview] = useState<string | null>(null);
+  const [capturedBlob, setCapturedBlob]       = useState<Blob | null>(null);
+  const [camError, setCamError]               = useState('');
+  const [camLoading, setCamLoading]           = useState(false);
+  const [submitLoading, setSubmitLoading]     = useState(false);
+  const [submitError, setSubmitError]         = useState('');
+
+  /* ── Stop camera helper ── */
+  const stopCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop());
+      streamRef.current = null;
+    }
+    setStream(null);
+    setVideoReady(false);
+  }, []);
+
+  /* ── Start camera — registers canplay listener imperatively BEFORE play() ── */
+  const startCamera = useCallback(async () => {
+    setCamError('');
+    setVideoReady(false);
+    setCamLoading(true);
+    try {
+      const s = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+        audio: false,
+      });
+      streamRef.current = s;
+      setStream(s);
+
+      if (videoRef.current) {
+        const video = videoRef.current;
+        video.srcObject = s;
+
+        // ✅ Register listeners BEFORE play() — React's onCanPlay JSX prop
+        //    arrives too late (event already fired by the time React reconciles).
+        const markReady = () => {
+          setVideoReady(true);
+          video.removeEventListener('canplay',       markReady);
+          video.removeEventListener('loadedmetadata', markReady);
+        };
+        video.addEventListener('canplay',       markReady);
+        video.addEventListener('loadedmetadata', markReady);
+
+        await video.play().catch(() => {});
+
+        // Fallback: if readyState already advanced past HAVE_CURRENT_DATA
+        // (can happen on fast machines where play() resolves synchronously)
+        if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+          setVideoReady(true);
+        }
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setCamError(`Camera error: ${msg}`);
+    } finally {
+      setCamLoading(false);
+    }
+  }, []);
+
+  /* ── Safety net: re-attach if stream state updates without srcObject set ── */
+  useEffect(() => {
+    if (stream && videoRef.current && !videoRef.current.srcObject) {
+      const video = videoRef.current;
+      video.srcObject = stream;
+      const markReady = () => {
+        setVideoReady(true);
+        video.removeEventListener('canplay',       markReady);
+        video.removeEventListener('loadedmetadata', markReady);
+      };
+      video.addEventListener('canplay',       markReady);
+      video.addEventListener('loadedmetadata', markReady);
+      video.play().catch(() => {});
+    }
+  }, [stream]);
+
+  /* ── Start / stop camera on mode change ── */
+  useEffect(() => {
+    if (addMode === 'camera') {
+      setCapturedPreview(null);
+      setCapturedBlob(null);
+      startCamera();
+    } else {
+      stopCamera();
+    }
+  }, [addMode, startCamera, stopCamera]);
+
+  /* ── Stop camera when panel closes ── */
+  useEffect(() => {
+    if (!isAddingTarget) {
+      stopCamera();
+      setCapturedPreview(null);
+      setCapturedBlob(null);
+      setAddMode('upload');
+      setSubmitError('');
+    }
+  }, [isAddingTarget, stopCamera]);
+
+  /* ── Capture frame from webcam ── */
+  const captureFrame = () => {
+    const video  = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas) { setCamError('Video element not available.'); return; }
+
+    const w = video.videoWidth;
+    const h = video.videoHeight;
+    if (!w || !h) {
+      setCamError('Video stream not ready yet — wait a moment and try again.');
+      return;
+    }
+
+    canvas.width  = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) { setCamError('Canvas not supported in this browser.'); return; }
+
+    // Mirror horizontally to match the CSS scaleX(-1) on the video
+    ctx.save();
+    ctx.translate(w, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(video, 0, 0, w, h);
+    ctx.restore();
+
+    canvas.toBlob(blob => {
+      if (blob) {
+        setCapturedBlob(blob);
+        setCapturedPreview(canvas.toDataURL('image/jpeg'));
+        stopCamera();
+      } else {
+        setCamError('Failed to capture frame — please try again.');
+      }
+    }, 'image/jpeg', 0.92);
+  };
+
+  /* ── Retake photo ── */
+  const retake = () => {
+    setCapturedPreview(null);
+    setCapturedBlob(null);
+    setSubmitError('');
+    setCamError('');
+    setVideoReady(false);
+    startCamera();
+  };
+
+  /* ── Auto-name generator: target1, target2, … ── */
+  const getAutoName = (): string => {
+    let i = 1;
+    while (watchlist.includes(`target${i}`)) i++;
+    return `target${i}`;
+  };
+
+  /* ── Submit camera-captured image ── */
+  const submitCameraCapture = async () => {
+    if (!capturedBlob) return;
+    const name = newTargetName.trim() || getAutoName();
+    setSubmitLoading(true);
+    setSubmitError('');
+    try {
+      const formData = new FormData();
+      formData.append('file', capturedBlob, 'capture.jpg');
+      const res = await fetch(
+        `${API}/api/watchlist?name=${encodeURIComponent(name)}`,
+        { method: 'POST', body: formData }
+      );
+      const data = await res.json();
+      if (res.ok) {
+        setNewTargetName('');
+        setCapturedPreview(null);
+        setCapturedBlob(null);
+        setAddMode('upload');
+        fetchWatchlist();
+      } else {
+        setSubmitError(data.message || 'Failed — face not detected.');
+      }
+    } catch {
+      setSubmitError('Network error. Try again.');
+    } finally {
+      setSubmitLoading(false);
+    }
+  };
+
+  /* ── Rename helpers ── */
+  const startEdit  = (name: string) => { setEditingName(name); setEditValue(name); setEditError(''); };
+  const cancelEdit = () => { setEditingName(null); setEditValue(''); setEditError(''); };
+
+  const submitRename = async (oldName: string) => {
+    const trimmed = editValue.trim();
+    if (!trimmed)              { setEditError('Name cannot be empty'); return; }
+    if (trimmed === oldName)   { cancelEdit(); return; }
+    if (watchlist.includes(trimmed)) { setEditError('Name already exists'); return; }
+    setEditLoading(true);
+    try {
+      const res = await fetch(`${API}/api/watchlist/${encodeURIComponent(oldName)}/rename`, {
+        method: 'POST',                                  // ✅ POST (not PUT)
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ new_name: trimmed }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        setEditError(data.message || 'Rename failed');
+      } else {
+        cancelEdit();
+        fetchWatchlist();
+      }
+    } catch {
+      setEditError('Network error');
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  /* ── Render ── */
   return (
     <AnimatePresence>
       {isAddingTarget && (
         <>
+          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            onClick={() => setIsAddingTarget(false)}
+            onClick={() => { setIsAddingTarget(false); cancelEdit(); }}
             className="fixed inset-0 bg-black/80 z-[300] backdrop-blur-md"
           />
+
+          {/* Panel */}
           <motion.div
             initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
-            className="fixed top-0 right-0 h-full w-[400px] bg-[#090a0c] border-l border-[#00ff85]/20 p-8 z-[301] shadow-2xl"
+            transition={{ type: 'spring', damping: 28, stiffness: 260 }}
+            className="fixed top-0 right-0 h-full w-[440px] bg-[#111316] border-l border-[#b0c6ff]/20 z-[301] shadow-2xl flex flex-col"
           >
-            <div className="flex justify-between items-center mb-10 border-b border-[#00ff85]/10 pb-6">
+            {/* Header */}
+            <div className="flex justify-between items-center px-8 py-6 border-b border-[#b0c6ff]/10 shrink-0">
               <div>
-                <h3 className="text-xl font-bold tracking-widest text-[#00ff85]">WATCHLIST_DB</h3>
+                <h3 className="text-xl font-bold tracking-widest text-[#b0c6ff]">WATCHLIST_DB</h3>
                 <p className="text-[10px] opacity-40 uppercase font-bold mt-1">Personnel Authorization Management</p>
               </div>
               <button
-                onClick={() => setIsAddingTarget(false)}
-                className="p-2 hover:bg-white/5 border border-transparent hover:border-[#00ff85]/30"
+                onClick={() => { setIsAddingTarget(false); cancelEdit(); }}
+                className="p-2 hover:bg-white/5 border border-transparent hover:border-[#b0c6ff]/30 transition-all"
               >
-                <X className="w-5 h-5 text-[#00ff85]" />
+                <X className="w-5 h-5 text-[#b0c6ff]" />
               </button>
             </div>
 
-            <div className="space-y-8">
-              {/* Add New Target */}
-              <div className="space-y-3 bg-[#0c0e12] p-5 border border-[#00ff85]/10">
-                <p className="text-[9px] font-bold text-[#00ff85]/60 tracking-widest uppercase">Add New Target</p>
+            <div className="flex-1 overflow-y-auto px-8 py-6 space-y-8">
+
+              {/* ── Add New Target ── */}
+              <div className="space-y-4 bg-[#0c0e12] p-5 border border-[#b0c6ff]/10">
+                <p className="text-[10px] font-bold text-[#b0c6ff]/60 tracking-widest uppercase">Add New Target</p>
+
+                {/* Name Input */}
                 <input
                   type="text"
-                  placeholder="ENTER_PERSON_NAME..."
+                  placeholder="ENTER_NAME... (auto: target1, target2…)"
                   value={newTargetName}
                   onChange={(e) => setNewTargetName(e.target.value)}
-                  className="w-full bg-black/40 border border-[#00ff85]/20 text-[#00ff85] text-xs px-4 py-3 placeholder:text-[#00ff85]/20 focus:outline-none focus:border-[#00ff85]/50 transition-all font-bold"
+                  className="w-full bg-black/40 border border-[#b0c6ff]/20 text-[#b0c6ff] text-xs px-4 py-3 placeholder:text-[#b0c6ff]/20 focus:outline-none focus:border-[#b0c6ff]/50 transition-all font-bold"
                 />
-                <label className="block">
-                  {newTargetPreview ? (
-                    <div className="relative w-full aspect-square border border-[#00ff85]/30 mb-3 bg-black/40 overflow-hidden">
-                      <img src={newTargetPreview} className="w-full h-full object-cover grayscale" alt="Preview" />
-                      <div className="absolute inset-0 bg-[#00ff85]/10 animate-pulse" />
-                      <div className="absolute top-0 left-0 w-full h-0.5 bg-[#00ff85] animate-scanner" />
-                      <button
-                        onClick={(e) => { e.preventDefault(); setNewTargetPreview(null); }}
-                        className="absolute top-2 right-2 p-1 bg-black/60 text-white hover:text-red-500"
+
+                {/* Mode Tabs */}
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => setAddMode('upload')}
+                    className={`flex items-center justify-center gap-2 py-2.5 text-[10px] font-bold tracking-widest uppercase border transition-all ${
+                      addMode === 'upload'
+                        ? 'border-[#b0c6ff]/60 bg-[#b0c6ff]/10 text-[#b0c6ff]'
+                        : 'border-[#b0c6ff]/15 text-[#b0c6ff]/30 hover:border-[#b0c6ff]/30 hover:text-[#b0c6ff]/60'
+                    }`}
+                  >
+                    <ImageIcon className="w-3.5 h-3.5" />
+                    Upload Image
+                  </button>
+                  <button
+                    onClick={() => setAddMode('camera')}
+                    className={`flex items-center justify-center gap-2 py-2.5 text-[10px] font-bold tracking-widest uppercase border transition-all ${
+                      addMode === 'camera'
+                        ? 'border-[#b0c6ff]/60 bg-[#b0c6ff]/10 text-[#b0c6ff]'
+                        : 'border-[#b0c6ff]/15 text-[#b0c6ff]/30 hover:border-[#b0c6ff]/30 hover:text-[#b0c6ff]/60'
+                    }`}
+                  >
+                    <Camera className="w-3.5 h-3.5" />
+                    Live Capture
+                  </button>
+                </div>
+
+                {/* ── Upload Mode ── */}
+                {addMode === 'upload' && (
+                  <label className="block">
+                    {newTargetPreview ? (
+                      <div className="relative w-full aspect-square border border-[#b0c6ff]/30 bg-black/40 overflow-hidden">
+                        <img src={newTargetPreview} className="w-full h-full object-cover grayscale" alt="Preview" />
+                        <div className="absolute inset-0 bg-[#b0c6ff]/10 animate-pulse" />
+                        <div className="absolute top-0 left-0 w-full h-0.5 bg-[#b0c6ff] animate-scanner" />
+                        <button
+                          onClick={(e) => { e.preventDefault(); setNewTargetPreview(null); }}
+                          className="absolute top-2 right-2 p-1 bg-black/60 text-white hover:text-red-500"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div
+                        className="w-full py-10 border-2 border-dashed border-[#b0c6ff]/40 hover:bg-[#b0c6ff]/5 cursor-pointer text-[#b0c6ff] font-bold text-[10px] tracking-widest uppercase text-center transition-all flex flex-col items-center gap-3"
+                        onClick={() => {
+                          // Auto-set name before the file dialog opens so parent state is ready
+                          if (!newTargetName.trim()) setNewTargetName(getAutoName());
+                        }}
                       >
-                        <X className="w-4 h-4" />
+                        <UploadCloud className="w-7 h-7" />
+                        {newTargetName.trim() ? 'Select Biometric Image' : `Select Image (auto-name: ${getAutoName()})`}
+                      </div>
+                    )}
+                    <input type="file" className="hidden" onChange={handleAddWatchlist} accept="image/*" />
+                  </label>
+                )}
+
+                {/* ── Camera Mode ── */}
+                {addMode === 'camera' && (
+                  <div className="space-y-3">
+                    {/* Video / Preview area */}
+                    <div className="relative w-full aspect-video bg-black border border-[#b0c6ff]/20 overflow-hidden">
+                      {/* Live video */}
+                      <video
+                        ref={videoRef}
+                        autoPlay
+                        playsInline
+                        muted
+                        className={`w-full h-full object-cover ${capturedPreview ? 'hidden' : 'block'}`}
+                        style={{ transform: 'scaleX(-1)' }}
+                      />
+                      {/* Captured snapshot — no transform needed, canvas already mirrored */}
+                      {capturedPreview && (
+                        <img
+                          src={capturedPreview}
+                          alt="Captured"
+                          className="w-full h-full object-cover grayscale"
+                        />
+                      )}
+                      {/* Hidden canvas for capture */}
+                      <canvas ref={canvasRef} className="hidden" />
+
+                      {/* Loading overlay */}
+                      {camLoading && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/70">
+                          <RefreshCw className="w-6 h-6 text-[#b0c6ff] animate-spin" />
+                        </div>
+                      )}
+
+                      {/* Scan line when live */}
+                      {stream && !capturedPreview && (
+                        <div className="absolute top-0 left-0 w-full h-0.5 bg-[#b0c6ff]/60 animate-scanner" />
+                      )}
+
+                      {/* Captured badge */}
+                      {capturedPreview && (
+                        <div className="absolute top-2 left-2 bg-[#b0c6ff]/20 border border-[#b0c6ff]/40 px-2 py-0.5 text-[9px] font-bold text-[#b0c6ff] tracking-widest">
+                          CAPTURED
+                        </div>
+                      )}
+
+                      {/* Corner brackets */}
+                      <div className="absolute top-1 left-1 w-4 h-4 border-t border-l border-[#b0c6ff]/40" />
+                      <div className="absolute top-1 right-1 w-4 h-4 border-t border-r border-[#b0c6ff]/40" />
+                      <div className="absolute bottom-1 left-1 w-4 h-4 border-b border-l border-[#b0c6ff]/40" />
+                      <div className="absolute bottom-1 right-1 w-4 h-4 border-b border-r border-[#b0c6ff]/40" />
+                    </div>
+
+                    {/* Camera error */}
+                    {camError && (
+                      <div className="flex items-center gap-2 text-[10px] text-red-400 bg-red-500/5 border border-red-500/20 p-2">
+                        <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                        {camError}
+                      </div>
+                    )}
+
+                    {/* Capture / Retake / Submit */}
+                    {!capturedPreview ? (
+                      <button
+                        onClick={captureFrame}
+                        disabled={camLoading}
+                        className="w-full py-3 flex items-center justify-center gap-2 text-[11px] font-bold tracking-widest uppercase border-2 border-[#b0c6ff]/60 text-[#b0c6ff] bg-[#b0c6ff]/08 hover:bg-[#b0c6ff]/15 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        <ZapIcon className="w-4 h-4" />
+                        {camLoading ? 'Starting camera...' : 'Capture Photo'}
                       </button>
-                    </div>
-                  ) : (
-                    <div className={`w-full py-8 border-2 border-dashed ${newTargetName ? 'border-[#00ff85]/40 hover:bg-[#00ff85]/5 cursor-pointer text-[#00ff85]' : 'border-white/5 text-white/10 opacity-50 cursor-not-allowed'} font-bold text-[10px] tracking-widest uppercase text-center transition-all flex flex-col items-center gap-2`}>
-                      <UploadCloud className="w-6 h-6" />
-                      {newTargetName ? 'Select Biometric Image' : 'Enter Name First'}
-                    </div>
-                  )}
-                  <input type="file" className="hidden" onChange={handleAddWatchlist} disabled={!newTargetName} />
-                </label>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={retake}
+                          className="py-2.5 text-[10px] font-bold tracking-widest uppercase border border-[#b0c6ff]/30 text-[#b0c6ff]/60 hover:border-[#b0c6ff]/60 hover:text-[#b0c6ff] transition-all flex items-center justify-center gap-2"
+                        >
+                          <RefreshCw className="w-3 h-3" />
+                          Retake
+                        </button>
+                        <button
+                          onClick={submitCameraCapture}
+                          disabled={submitLoading}
+                          className="py-2.5 text-[10px] font-bold tracking-widest uppercase border-2 border-[#b0c6ff] text-[#b0c6ff] bg-[#b0c6ff]/10 hover:bg-[#b0c6ff] hover:text-black transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                        >
+                          {submitLoading
+                            ? <><RefreshCw className="w-3 h-3 animate-spin" /> Saving...</>
+                            : <><Check className="w-3 h-3" /> Confirm</>
+                          }
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Submit error */}
+                    {submitError && (
+                      <div className="flex items-center gap-2 text-[10px] text-red-400 bg-red-500/5 border border-red-500/20 p-2">
+                        <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                        {submitError}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
-              {/* Active Watchlist */}
+              {/* ── Active Watchlist ── */}
               <div className="space-y-4">
-                <p className="text-[9px] font-bold text-[#00ff85]/60 tracking-widest uppercase">Active Targets ({watchlist.length})</p>
-                <div className="grid grid-cols-2 gap-3 overflow-y-auto max-h-[420px] pr-1 custom-scrollbar">
+                <p className="text-[10px] font-bold text-[#b0c6ff]/60 tracking-widest uppercase">
+                  Active Targets ({watchlist.length})
+                </p>
+                <div className="grid grid-cols-2 gap-3">
                   {watchlist.length === 0 ? (
-                    <div className="col-span-2 text-center py-10 opacity-20 text-[10px] italic">NO_TARGETS_ACTIVE</div>
+                    <div className="col-span-2 text-center py-10 opacity-20 text-[10px] italic">
+                      NO_TARGETS_ACTIVE
+                    </div>
                   ) : (
                     watchlist.map(name => (
-                      <div key={name} className="relative border border-[#00ff85]/15 bg-black/50 group hover:border-[#00ff85]/50 transition-all overflow-hidden">
+                      <div
+                        key={name}
+                        className="relative border border-[#b0c6ff]/15 bg-black/50 group hover:border-[#b0c6ff]/40 transition-all overflow-hidden"
+                      >
+                        {/* Thumbnail */}
                         <div className="relative w-full aspect-square bg-black overflow-hidden">
                           <img
                             src={`${API}/api/watchlist/images/${name}.jpg?t=${Date.now()}`}
@@ -102,24 +487,83 @@ const WatchlistManager: React.FC<WatchlistManagerProps> = ({
                             onError={(e) => { e.currentTarget.style.display = 'none'; }}
                             alt={name}
                           />
-                          <div className="absolute inset-0 bg-[#00ff85]/0 group-hover:bg-[#00ff85]/5 transition-all duration-300" />
-                          <div className="absolute top-0 left-0 w-full h-[1px] bg-[#00ff85]/40 opacity-0 group-hover:opacity-100 animate-scanner" />
+                          <div className="absolute inset-0 bg-[#b0c6ff]/0 group-hover:bg-[#b0c6ff]/5 transition-all duration-300" />
+                          <div className="absolute top-0 left-0 w-full h-[1px] bg-[#b0c6ff]/40 opacity-0 group-hover:opacity-100 animate-scanner" />
+
+                          {/* Delete */}
                           <button
                             onClick={() => removeTarget(name)}
-                            className="absolute top-1 right-1 p-1 bg-black/70 text-[#00ff85]/30 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                            className="absolute top-1 right-1 p-1 bg-black/70 text-[#b0c6ff]/30 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                            title="Remove target"
                           >
                             <X className="w-3 h-3" />
                           </button>
+
+                          {/* Edit */}
+                          {editingName !== name && (
+                            <button
+                              onClick={() => startEdit(name)}
+                              className="absolute top-1 left-1 p-1 bg-black/70 text-[#b0c6ff]/30 hover:text-[#b0c6ff] opacity-0 group-hover:opacity-100 transition-all"
+                              title="Rename target"
+                            >
+                              <Pencil className="w-3 h-3" />
+                            </button>
+                          )}
                         </div>
-                        <div className="px-2 py-1.5 flex items-center justify-between">
-                          <span className="text-[9px] font-bold tracking-wider text-[#00ff85] truncate">{name.toUpperCase()}</span>
-                          <Search className="w-3 h-3 text-[#00ff85]/30 shrink-0" />
+
+                        {/* Name / Edit row */}
+                        <div className="px-2 py-1.5">
+                          {editingName === name ? (
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-1">
+                                <input
+                                  autoFocus
+                                  value={editValue}
+                                  onChange={e => { setEditValue(e.target.value); setEditError(''); }}
+                                  onKeyDown={e => {
+                                    if (e.key === 'Enter')  submitRename(name);
+                                    if (e.key === 'Escape') cancelEdit();
+                                  }}
+                                  className="flex-1 min-w-0 bg-black/60 border border-[#b0c6ff]/40 text-[#b0c6ff] text-[9px] px-1.5 py-1 focus:outline-none font-bold w-0"
+                                />
+                                <button
+                                  onClick={() => submitRename(name)}
+                                  disabled={editLoading}
+                                  className="p-1 text-[#b0c6ff] hover:text-green-400 transition-all shrink-0"
+                                  title="Save"
+                                >
+                                  <Check className="w-3 h-3" />
+                                </button>
+                                <button
+                                  onClick={cancelEdit}
+                                  className="p-1 text-[#b0c6ff]/40 hover:text-red-400 transition-all shrink-0"
+                                  title="Cancel"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </div>
+                              {editError && (
+                                <div className="flex items-center gap-1 text-[8px] text-red-400">
+                                  <AlertTriangle className="w-2.5 h-2.5 shrink-0" />
+                                  {editError}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-between">
+                              <span className="text-[9px] font-bold tracking-wider text-[#b0c6ff] truncate">
+                                {name.toUpperCase()}
+                              </span>
+                              <Search className="w-3 h-3 text-[#b0c6ff]/30 shrink-0" />
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))
                   )}
                 </div>
               </div>
+
             </div>
           </motion.div>
         </>

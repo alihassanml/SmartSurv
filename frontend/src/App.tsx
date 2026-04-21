@@ -5,14 +5,17 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import VerifyEmail from './pages/VerifyEmail';
 import RemoteCamera from './pages/RemoteCamera';
-import Dashboard from './Dashboard';
+import AppLayout from './layouts/AppLayout';
+import Monitor from './pages/dashboard/Monitor';
+import AlertsLog from './pages/dashboard/AlertsLog';
+import Analytics from './pages/dashboard/Analytics';
+import WatchlistPage from './pages/dashboard/WatchlistPage';
+import SettingsPage from './pages/dashboard/SettingsPage';
+import UsersPage from './pages/dashboard/UsersPage';
 
-// Protected Route Wrapper
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   const token = localStorage.getItem('token');
-  if (!token) {
-    return <Navigate to="/login" replace />;
-  }
+  if (!token) return <Navigate to="/login" replace />;
   return children;
 };
 
@@ -25,14 +28,21 @@ const App: React.FC = () => {
         <Route path="/signup" element={<Signup />} />
         <Route path="/verify" element={<VerifyEmail />} />
         <Route path="/remote-camera" element={<RemoteCamera />} />
-        <Route 
-          path="/dashboard" 
+        <Route
+          path="/dashboard"
           element={
             <ProtectedRoute>
-              <Dashboard />
+              <AppLayout />
             </ProtectedRoute>
-          } 
-        />
+          }
+        >
+          <Route index element={<Monitor />} />
+          <Route path="alerts" element={<AlertsLog />} />
+          <Route path="analytics" element={<Analytics />} />
+          <Route path="watchlist" element={<WatchlistPage />} />
+          <Route path="settings" element={<SettingsPage />} />
+          <Route path="users" element={<UsersPage />} />
+        </Route>
       </Routes>
     </Router>
   );

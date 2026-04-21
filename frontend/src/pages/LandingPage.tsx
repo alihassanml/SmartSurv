@@ -1,10 +1,9 @@
-import React, { useEffect, useRef, useState } from 'react';
+﻿import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Shield, Eye, Bell, Activity, Zap, Lock } from 'lucide-react';
 
-// Animated Matrix rain canvas
-const MatrixRain: React.FC = () => {
+const ParticleCanvas: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -16,32 +15,32 @@ const MatrixRain: React.FC = () => {
     const fontSize = 13;
     const cols = Math.floor(canvas.width / fontSize);
     const drops: number[] = Array(cols).fill(1);
-    const chars = '01アイウエオカキクケコサNSM%#@${}[]()><';
+    const chars = '01ã‚¢ã‚¤ã‚¦ã‚¨ã‚ªã‚«ã‚­ã‚¯ã‚±ã‚³BCDEF{}[]()><';
     const draw = () => {
-      ctx.fillStyle = 'rgba(6,6,8,0.07)';
+      ctx.fillStyle = 'rgba(12,14,17,0.08)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.font = `${fontSize}px JetBrains Mono`;
+      ctx.font = `${fontSize}px Inter`;
       for (let i = 0; i < drops.length; i++) {
         const text = chars[Math.floor(Math.random() * chars.length)];
-        ctx.globalAlpha = Math.random() * 0.35 + 0.05;
-        ctx.fillStyle = i % 7 === 0 ? '#ffffff' : '#00ff85';
+        ctx.globalAlpha = Math.random() * 0.18 + 0.03;
+        ctx.fillStyle = i % 5 === 0 ? '#ccd8ff' : '#b0c6ff';
         ctx.fillText(text, i * fontSize, drops[i] * fontSize);
         if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
         drops[i]++;
       }
       ctx.globalAlpha = 1;
     };
-    const interval = setInterval(draw, 55);
+    const interval = setInterval(draw, 60);
     window.addEventListener('resize', resize);
     return () => { clearInterval(interval); window.removeEventListener('resize', resize); };
   }, []);
-  return <canvas ref={canvasRef} className="fixed inset-0 z-0 opacity-[0.22] pointer-events-none" />;
+  return <canvas ref={canvasRef} className="fixed inset-0 z-0 opacity-[0.18] pointer-events-none" />;
 };
 
 const features = [
-  { icon: Eye,      title: 'Autonomous Detection', desc: 'Detects fights, weapons, and activities using YOLOv8 deep learning CV in real-time.', color: '#00ff85', delay: 0.5 },
-  { icon: Activity, title: 'Person Re-ID',          desc: 'Upload a reference image and the system scans all live feeds to lock on the target.',   color: '#00e5ff', delay: 0.6 },
-  { icon: Bell,     title: 'Instant Uplink',         desc: 'Multi-channel alerts via Dashboard, WhatsApp, and Email with evidence snapshots.',         color: '#a855f7', delay: 0.7 },
+  { icon: Eye,      title: 'Autonomous Detection', desc: 'Detects fights, weapons, and activities using YOLOv8 deep learning CV in real-time.', color: '#b0c6ff', delay: 0.5 },
+  { icon: Activity, title: 'Person Re-ID',          desc: 'Upload a reference image and the system scans all live feeds to lock on the target.',   color: '#b4c6f8', delay: 0.6 },
+  { icon: Bell,     title: 'Instant Uplink',         desc: 'Multi-channel alerts via Dashboard, WhatsApp, and Email with evidence snapshots.',         color: '#a6b8e9', delay: 0.7 },
 ];
 
 const termLines = [
@@ -72,40 +71,47 @@ const LandingPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#060608] text-[#00ff85] font-mono overflow-x-hidden relative">
-      <MatrixRain />
+    <div className="min-h-screen overflow-x-hidden relative" style={{ background: '#0c0e11', color: '#e2e2e6', fontFamily: "'Inter', sans-serif" }}>
+      <ParticleCanvas />
 
       {/* Centre ambient glow */}
       <div className="fixed inset-0 z-0 pointer-events-none"
-        style={{ background: 'radial-gradient(ellipse 60% 40% at 50% 25%, rgba(0,255,133,0.07) 0%, transparent 70%)' }} />
+        style={{ background: 'radial-gradient(ellipse 60% 40% at 50% 25%, rgba(176,198,255,0.06) 0%, transparent 70%)' }} />
 
-      {/* ── NAV ── */}
+      {/* â”€â”€ NAV â”€â”€ */}
       <motion.nav
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="relative z-10 flex justify-between items-center px-8 py-5 border-b border-[rgba(0,255,133,0.1)] backdrop-blur-sm bg-[rgba(6,6,8,0.75)]"
+        className="relative z-10 flex justify-between items-center px-8 py-5 backdrop-blur-sm"
+        style={{ borderBottom: '1px solid rgba(176,198,255,0.1)', background: 'rgba(12,14,17,0.8)' }}
       >
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 border border-[#00ff85] flex items-center justify-center animate-glow-pulse">
-            <Shield className="w-5 h-5" />
+          <div className="w-9 h-9 flex items-center justify-center animate-glow-pulse"
+            style={{ border: '1px solid #b0c6ff', borderRadius: '0.25rem' }}>
+            <Shield className="w-5 h-5" style={{ color: '#b0c6ff' }} />
           </div>
-          <span className="text-base font-bold tracking-[0.25em] uppercase">SmartSurv</span>
+          <span style={{ fontSize: '0.9rem', fontFamily: "'Manrope', sans-serif", fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#ccd8ff' }}>
+            SmartSurv
+          </span>
         </div>
         <div className="flex items-center gap-3">
           {isAuthenticated ? (
             <button id="nav-dashboard-btn" onClick={() => navigate('/dashboard')}
-              className="btn-primary px-5 py-2 bg-[#00ff85] text-[#060608] font-bold text-xs tracking-widest uppercase hover:bg-[#00c962] transition-colors duration-200">
+              className="btn-primary px-5 py-2 font-bold text-xs tracking-widest uppercase transition-colors duration-200"
+              style={{ background: '#0a58ca', color: '#ccd8ff', borderRadius: '0.25rem' }}>
               Enter Dashboard
             </button>
           ) : (
             <>
               <button id="nav-login-btn" onClick={() => navigate('/login')}
-                className="btn-primary px-4 py-2 border border-[rgba(0,255,133,0.35)] text-[#00ff85] hover:border-[#00ff85] hover:bg-[rgba(0,255,133,0.06)] text-xs tracking-widest uppercase transition-all duration-300">
+                className="btn-primary px-4 py-2 text-xs tracking-widest uppercase transition-all duration-300"
+                style={{ border: '1px solid rgba(176,198,255,0.3)', color: '#b0c6ff', borderRadius: '0.25rem', background: 'transparent' }}>
                 Login
               </button>
               <button id="nav-signup-btn" onClick={() => navigate('/signup')}
-                className="btn-primary px-5 py-2 bg-[#00ff85] text-[#060608] font-bold text-xs tracking-widest uppercase hover:bg-[#00c962] transition-colors duration-200">
+                className="btn-primary px-5 py-2 font-bold text-xs tracking-widest uppercase transition-colors duration-200"
+                style={{ background: '#0a58ca', color: '#ccd8ff', borderRadius: '0.25rem' }}>
                 Get Access
               </button>
             </>
@@ -113,7 +119,7 @@ const LandingPage: React.FC = () => {
         </div>
       </motion.nav>
 
-      {/* ── HERO ── */}
+      {/* â”€â”€ HERO â”€â”€ */}
       <motion.main
         variants={containerVariants}
         initial="hidden"
@@ -122,41 +128,45 @@ const LandingPage: React.FC = () => {
       >
         {/* Status pill */}
         <motion.div variants={itemVariants}
-          className="inline-flex items-center gap-2 px-4 py-1.5 mb-8 border border-[rgba(0,255,133,0.3)] bg-[rgba(0,255,133,0.03)] text-[10px] tracking-widest uppercase">
-          <div className="w-1.5 h-1.5 bg-[#00ff85] rounded-full animate-pulse" />
+          className="inline-flex items-center gap-2 px-4 py-1.5 mb-8 text-[10px] tracking-widest uppercase"
+          style={{ border: '1px solid rgba(176,198,255,0.25)', background: 'rgba(176,198,255,0.04)', color: '#b0c6ff', borderRadius: '0.25rem' }}>
+          <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#b0c6ff' }} />
           SYSTEM_STATUS: ONLINE
         </motion.div>
 
         {/* Headline */}
         <motion.h1 variants={itemVariants}
           className="text-5xl md:text-7xl font-bold tracking-tight leading-[1.05] mb-6"
-          style={{ fontFamily: "'Space Grotesk', monospace" }}>
+          style={{ fontFamily: "'Manrope', sans-serif", color: '#e2e2e6' }}>
           Intelligent
           <span className="block" style={{
-            background: 'linear-gradient(135deg, #00ff85 0%, #00e5ff 50%, #a855f7 100%)',
+            background: 'linear-gradient(135deg, #b0c6ff 0%, #b4c6f8 40%, #a6b8e9 70%, #ccd8ff 100%)',
             WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
           }}>Surveillance</span>
-          <span className="block text-4xl md:text-5xl text-[#00ff85]/50 font-light tracking-widest">
+          <span className="block text-4xl md:text-5xl font-light tracking-widest" style={{ color: 'rgba(176,198,255,0.4)' }}>
             Automated Reality.
           </span>
         </motion.h1>
 
         {/* Subtitle */}
         <motion.p variants={itemVariants}
-          className="max-w-xl text-sm text-[#00ff85]/55 mb-10 leading-relaxed">
+          className="max-w-xl text-sm mb-10 leading-relaxed"
+          style={{ color: 'rgba(226,226,230,0.55)' }}>
           SmartSurv transforms traditional CCTV into proactive, intelligent security networks using
           YOLOv8, FaceNet, and real-time WebSocket streaming.
         </motion.p>
 
         {/* Terminal block */}
-        <motion.div variants={itemVariants} className="w-full max-w-lg text-left border border-[rgba(0,255,133,0.15)] bg-[rgba(0,0,0,0.55)] mb-12">
-          <div className="flex items-center gap-2 px-4 py-2.5 border-b border-[rgba(0,255,133,0.1)] bg-[rgba(0,255,133,0.03)]">
+        <motion.div variants={itemVariants} className="w-full max-w-lg text-left mb-12"
+          style={{ border: '1px solid rgba(176,198,255,0.12)', background: 'rgba(17,19,22,0.8)', borderRadius: '0.25rem' }}>
+          <div className="flex items-center gap-2 px-4 py-2.5"
+            style={{ borderBottom: '1px solid rgba(176,198,255,0.08)', background: 'rgba(176,198,255,0.02)' }}>
             <div className="w-2.5 h-2.5 rounded-full bg-red-500/60" />
             <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/60" />
-            <div className="w-2.5 h-2.5 rounded-full bg-[#00ff85]/60" />
-            <span className="ml-2 text-[9px] opacity-30 tracking-widest">SMARTSURV_BOOT_LOG</span>
+            <div className="w-2.5 h-2.5 rounded-full" style={{ background: 'rgba(176,198,255,0.6)' }} />
+            <span className="ml-2 text-[9px] opacity-30 tracking-widest" style={{ color: '#b0c6ff' }}>SMARTSURV_BOOT_LOG</span>
           </div>
-          <div className="p-4 space-y-1.5 text-[11px] min-h-[90px]">
+          <div className="p-4 space-y-1.5 text-[11px] min-h-[90px]" style={{ color: '#c3c6d6', fontFamily: "'Inter', monospace" }}>
             <AnimatePresence>
               {termLines.slice(0, termStep).map((line, i) => (
                 <motion.div key={i}
@@ -164,15 +174,16 @@ const LandingPage: React.FC = () => {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.3 }}
                   className="flex gap-2">
-                  <span className="opacity-45">{line.text}</span>
-                  {line.result && <span className="text-[#00ff85] font-bold">{line.result}</span>}
+                  <span className="opacity-50">{line.text}</span>
+                  {line.result && <span className="font-bold" style={{ color: '#b0c6ff' }}>{line.result}</span>}
                 </motion.div>
               ))}
             </AnimatePresence>
             {termStep >= termLines.length && (
               <div className="inline-flex items-center gap-1">
-                <span className="opacity-45">&gt;</span>
-                <span className="w-2 h-3.5 bg-[#00ff85] inline-block animate-[type-cursor_1s_ease-in-out_infinite]" />
+                <span className="opacity-45" style={{ color: '#b0c6ff' }}>&gt;</span>
+                <span className="w-2 h-3.5 inline-block animate-[type-cursor_1s_ease-in-out_infinite]"
+                  style={{ background: '#b0c6ff' }} />
               </div>
             )}
           </div>
@@ -182,13 +193,19 @@ const LandingPage: React.FC = () => {
         <motion.div variants={itemVariants} className="flex flex-wrap gap-4 justify-center mb-24">
           <button id="hero-start-btn"
             onClick={() => navigate(isAuthenticated ? '/dashboard' : '/signup')}
-            className="btn-primary group px-8 py-3.5 bg-[#00ff85] text-[#060608] font-bold text-sm tracking-widest uppercase hover:bg-transparent hover:text-[#00ff85] border-2 border-[#00ff85] transition-all duration-300 flex items-center gap-2">
-            <Zap className="w-4 h-4 group-hover:animate-bounce" />
+            className="btn-primary group px-8 py-3.5 font-bold text-sm tracking-widest uppercase transition-all duration-300 flex items-center gap-2"
+            style={{ background: '#0a58ca', color: '#ccd8ff', border: '2px solid #0a58ca', borderRadius: '0.25rem' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; (e.currentTarget as HTMLButtonElement).style.color = '#b0c6ff'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = '#0a58ca'; (e.currentTarget as HTMLButtonElement).style.color = '#ccd8ff'; }}>
+            <Zap className="w-4 h-4" />
             {isAuthenticated ? 'Open Dashboard' : 'Initialize Access'}
           </button>
           <button id="hero-learn-btn"
             onClick={() => navigate('/login')}
-            className="btn-primary px-8 py-3.5 border border-[rgba(0,255,133,0.3)] text-[#00ff85]/70 text-sm tracking-widest uppercase hover:border-[#00ff85] hover:text-[#00ff85] hover:bg-[rgba(0,255,133,0.06)] transition-all duration-300 flex items-center gap-2">
+            className="btn-primary px-8 py-3.5 text-sm tracking-widest uppercase transition-all duration-300 flex items-center gap-2"
+            style={{ border: '1px solid rgba(176,198,255,0.25)', color: 'rgba(176,198,255,0.65)', borderRadius: '0.25rem', background: 'transparent' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#b0c6ff'; (e.currentTarget as HTMLButtonElement).style.color = '#b0c6ff'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(176,198,255,0.25)'; (e.currentTarget as HTMLButtonElement).style.color = 'rgba(176,198,255,0.65)'; }}>
             <Lock className="w-4 h-4" />
             Operator Login
           </button>
@@ -203,16 +220,25 @@ const LandingPage: React.FC = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: f.delay, ease: 'easeOut' }}
               whileHover={{ y: -4, transition: { duration: 0.2 } }}
-              className="group relative p-6 border border-[rgba(0,255,133,0.08)] bg-[rgba(12,13,16,0.7)] hover:border-[rgba(0,255,133,0.3)] hover:bg-[rgba(0,255,133,0.02)] transition-colors duration-300 text-left cursor-default"
+              className="group relative p-6 text-left cursor-default transition-all duration-300"
+              style={{
+                border: '1px solid rgba(176,198,255,0.08)',
+                background: 'rgba(26,28,31,0.7)',
+                borderRadius: '0.5rem',
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(176,198,255,0.25)'; (e.currentTarget as HTMLDivElement).style.background = 'rgba(30,32,35,0.9)'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(176,198,255,0.08)'; (e.currentTarget as HTMLDivElement).style.background = 'rgba(26,28,31,0.7)'; }}
             >
-              <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ borderColor: f.color }} />
-              <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ borderColor: f.color }} />
-              <div className="w-10 h-10 border mb-4 flex items-center justify-center group-hover:scale-110 transition-transform duration-300"
-                style={{ borderColor: `${f.color}40`, color: f.color }}>
+              <div className="absolute top-0 left-0 w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                style={{ borderTop: `2px solid ${f.color}`, borderLeft: `2px solid ${f.color}` }} />
+              <div className="absolute bottom-0 right-0 w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                style={{ borderBottom: `2px solid ${f.color}`, borderRight: `2px solid ${f.color}` }} />
+              <div className="w-10 h-10 mb-4 flex items-center justify-center group-hover:scale-110 transition-transform duration-300"
+                style={{ border: `1px solid ${f.color}40`, color: f.color, borderRadius: '0.25rem' }}>
                 <f.icon className="w-5 h-5" />
               </div>
-              <h3 className="text-sm font-bold mb-2 uppercase tracking-wide" style={{ color: f.color }}>{f.title}</h3>
-              <p className="text-[12px] text-[#00ff85]/45 leading-relaxed group-hover:text-[#00ff85]/65 transition-colors duration-300">{f.desc}</p>
+              <h3 className="text-sm font-bold mb-2 uppercase tracking-wide" style={{ color: f.color, fontFamily: "'Manrope', sans-serif" }}>{f.title}</h3>
+              <p className="text-[12px] leading-relaxed" style={{ color: 'rgba(195,198,214,0.5)' }}>{f.desc}</p>
             </motion.div>
           ))}
         </div>
@@ -222,3 +248,4 @@ const LandingPage: React.FC = () => {
 };
 
 export default LandingPage;
+

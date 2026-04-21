@@ -20,6 +20,8 @@ class User(Base):
     hashed_password = Column(String)
     is_verified = Column(Boolean, default=False, nullable=False)
     verification_code = Column(String, nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+    is_admin = Column(Boolean, default=False, nullable=False)
 
 class Setting(Base):
     """Key-value store for persistent settings (thresholds, sounds, etc.)."""
@@ -41,6 +43,10 @@ def _run_migrations():
             conn.execute(text("ALTER TABLE users ADD COLUMN is_verified BOOLEAN NOT NULL DEFAULT 0"))
         if "verification_code" not in existing_cols:
             conn.execute(text("ALTER TABLE users ADD COLUMN verification_code VARCHAR"))
+        if "is_active" not in existing_cols:
+            conn.execute(text("ALTER TABLE users ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT 1"))
+        if "is_admin" not in existing_cols:
+            conn.execute(text("ALTER TABLE users ADD COLUMN is_admin BOOLEAN NOT NULL DEFAULT 0"))
         conn.commit()
 
 _run_migrations()

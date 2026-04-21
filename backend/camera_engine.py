@@ -201,7 +201,7 @@ class CameraFeed:
                             r = int(max(x2 - x1, y2 - y1) * 0.65)
                             color = (0, 0, 255) if is_target else (0, 255, 255)
                             cv2.circle(display_frame, (cx, cy), r, color, 2)
-                            tag = "TARGET_Ω" if is_target else f"FOCUS: {face.get('id')}"
+                            tag = f"TARGET: {face.get('id')}" if is_target else f"FOCUS: {face.get('id')}"
                             cv2.putText(display_frame, tag, (x1, y1 - 10), 
                                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
                 else:
@@ -308,18 +308,14 @@ class CameraEngine:
         self.last_search_alert = 0.0
         self.search_cooldown = 1.5
         self.last_sound_time = 0.0
-        self.sound_cooldown = 5
+        self.sound_cooldown = 1.0  # Reduced from 5s to 1s for responsive audio feedback
         self.executor = None
 
         # ── Dedicated sound subprocess ────────────────────────────────────────
-        # All audio (MP3 alert beep + Piper TTS) runs in a separate OS process.
+        # MP3 alert beep runs in a separate OS process.
         # Uses subprocess.Popen (not multiprocessing) to avoid the Windows
         # 'spawn' bootstrapping issue that re-imports main.py on process start.
         # Commands are sent as JSON lines to the worker's stdin.
-        _piper_model_path = os.path.abspath(
-            os.path.join(os.path.dirname(__file__), '..', 'model', 'voice', 'en_US-hfc_female-medium.onnx')
-        )
-        _piper_config_path = _piper_model_path + '.json'
         _worker_script = os.path.abspath(os.path.join(os.path.dirname(__file__), 'sound_worker.py'))
         _no_window = subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
         self._sound_cmd_queue = queue.Queue(maxsize=10)  # internal thread-safe queue
@@ -335,12 +331,6 @@ class CameraEngine:
             # Writer thread: drains _sound_cmd_queue → writes JSON to subprocess stdin
             self._sound_writer_thread = threading.Thread(target=self._sound_writer, daemon=True)
             self._sound_writer_thread.start()
-            # Send Piper TTS init command
-            self._sound_cmd_queue.put_nowait({
-                'cmd': 'init_tts',
-                'model': _piper_model_path,
-                'config': _piper_config_path,
-            })
         except Exception as e:
             print(f'[Sound] Failed to start worker process: {e}')
             self._sound_proc = None
@@ -348,13 +338,8 @@ class CameraEngine:
         self.class_sounds = {name: False for name in self.class_names}
         self.search_sound_enabled = True
         self.sound_enabled = True
-        self.voice_enabled = True   # TTS voice alerts on/off
         self.email_enabled = True
         self.last_email_time = 0.0
-
-        # Speak-once tracking: label keys that have already been announced.
-        # Entry stays until operator dismisses it via dismiss_speech().
-        self._spoke_labels: set = set()
         
         self.email_sender = os.getenv("SMTP_EMAIL")
         self.email_password = os.getenv("SMTP_PASSWORD")
@@ -403,38 +388,14 @@ class CameraEngine:
             except Exception as e:
                 print(f'[Sound] Writer error: {e}')
 
-    def _speak(self, text: str):
-        """Queue a TTS utterance (non-blocking). Respects voice_enabled flag."""
-        if not self.sound_enabled or not self.voice_enabled or not self._sound_proc:
-            return
-        try:
-            self._sound_cmd_queue.put_nowait({'cmd': 'tts', 'text': text})
-        except queue.Full:
-            pass  # drop if queue is full — audio is best-effort
-
-    def _speak_once(self, label_key: str, text: str):
-        """Speak text only once per label_key. Re-arms when operator dismisses it."""
-        if label_key in self._spoke_labels:
-            return  # already announced — wait for operator dismiss
-        self._spoke_labels.add(label_key)
-        self._speak(text)
-
-    def dismiss_speech(self, label_key: str | None = None):
-        """
-        Clear the speak-once lock so the system will announce again.
-        Pass label_key=None to clear all locks (global reset).
-        """
-        if label_key:
-            self._spoke_labels.discard(label_key)
-        else:
-            self._spoke_labels.clear()
-
     def _play_alert_sound(self):
         """Queue an MP3 alert beep to the sound worker process (non-blocking)."""
         if not self.sound_enabled or not self._sound_proc:
+            print(f"[Sound] Skipped: enabled={self.sound_enabled}, proc={self._sound_proc is not None}")
             return
         try:
             self._sound_cmd_queue.put_nowait({'cmd': 'play', 'path': self.sound_path})
+            print(f"[Sound] Queued: {self.sound_path}")
         except queue.Full:
             pass  # drop if queue is full — audio is best-effort
 
@@ -467,28 +428,19 @@ class CameraEngine:
         if detections and (now - self.last_activity_alert > self.activity_cooldown):
             self.last_activity_alert = now
             triggered = True
-            if any(self.class_sounds.get(d['label'], True) for d in detections):
-                if now - self.last_sound_time > self.sound_cooldown:
-                    self.last_sound_time = now
-                    self._play_alert_sound()  # non-blocking: sends to sound process
-            # Build label key for speak-once tracking
-            labels = list(dict.fromkeys(d['label'] for d in detections))
-            label_key = '|'.join(sorted(labels))
-            if len(labels) == 1:
-                speech = f"{labels[0]} detected"
-            else:
-                speech = f"{', '.join(labels[:-1])} and {labels[-1]} detected"
-            # Speak ONCE — stays silent until operator clicks Dismiss
-            self._speak_once(label_key, speech)
+            # Play sound if global sound is enabled OR any specific class sound is enabled
+            should_play_sound = self.sound_enabled or any(self.class_sounds.get(d['label'], False) for d in detections)
+            if should_play_sound and (now - self.last_sound_time > self.sound_cooldown):
+                self.last_sound_time = now
+                self._play_alert_sound()  # non-blocking: sends to sound process
 
-        # Search Alert
+        # Search Alert (person/watchlist match)
         if is_search_match and (now - self.last_search_alert > self.search_cooldown):
             self.last_search_alert = now
             triggered = True
-            if self.search_sound_enabled and (now - self.last_sound_time > self.sound_cooldown):
+            if (self.search_sound_enabled or self.sound_enabled) and (now - self.last_sound_time > self.sound_cooldown):
                 self.last_sound_time = now
                 self._play_alert_sound()  # non-blocking: sends to sound process
-            self._speak_once('watchlist_target', "Target located")
 
         if triggered:
             try:
@@ -733,7 +685,6 @@ class CameraEngine:
         self.running = True
         self._sync_feeds()
         print("[Sound] System started — audio alerts active.")
-        self._speak("SmartSurv system is online. Audio alerts are active.")
 
     def stop(self):
         self.running = False
@@ -832,7 +783,6 @@ class CameraEngine:
     def set_class_sounds(self, s): self.class_sounds.update({k: bool(v) for k, v in s.items()})
     def set_search_sound_enabled(self, e): self.search_sound_enabled = e
     def set_sound_enabled(self, e): self.sound_enabled = e
-    def set_voice_enabled(self, e): self.voice_enabled = e
     def set_email_enabled(self, e): self.email_enabled = e
     def get_class_names(self): return self.class_names
     def get_thresholds(self): return dict(self.class_thresholds)
@@ -865,6 +815,22 @@ class CameraEngine:
         if os.path.exists(p):
             try: os.remove(p)
             except: pass
+
+    def rename_watchlist(self, old_name: str, new_name: str) -> bool:
+        if not new_name or new_name == old_name:
+            return False
+        with self.reid_lock:
+            if old_name not in self.watchlist:
+                return False
+            if new_name in self.watchlist:
+                return False
+            self.watchlist[new_name] = self.watchlist.pop(old_name)
+        old_path = os.path.join(self.watchlist_dir, f"{old_name}.jpg")
+        new_path = os.path.join(self.watchlist_dir, f"{new_name}.jpg")
+        if os.path.exists(old_path):
+            try: os.rename(old_path, new_path)
+            except: pass
+        return True
 
     def get_watchlist_names(self):
         return list(self.watchlist.keys())

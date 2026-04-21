@@ -1,7 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(dir \"c:\\\\Users\\\\aliha\\\\Documents\\\\Final Year Project\\\\frontend\\\\src\\\\components\\\\dashboard\")"
-    ]
-  }
-}

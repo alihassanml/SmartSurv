@@ -1,5 +1,5 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Depends, File, UploadFile, Query
-from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi.responses import StreamingResponse, JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -279,10 +279,11 @@ from fastapi.staticfiles import StaticFiles
 
 app = FastAPI(lifespan=lifespan)
 
-# Mount watchlist directory as static so frontend can show thumbnails
+# Watchlist path used both by the API routes and by the static mount below.
+# The mount is registered LAST (end of file) to avoid Starlette's ordered
+# prefix-matching from intercepting /api/watchlist/{name}/rename with a 404.
 WATCHLIST_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data', 'watchlist'))
 os.makedirs(WATCHLIST_PATH, exist_ok=True)
-app.mount("/api/watchlist/images", StaticFiles(directory=WATCHLIST_PATH), name="watchlist_images")
 
 
 app.add_middleware(
@@ -369,6 +370,9 @@ def signup(user: UserCreate, db: Session = Depends(get_db)):
     if db.query(User).filter(User.email == user.email).first():
         raise HTTPException(status_code=400, detail="Email already registered")
 
+    # Make the first registered user an admin automatically
+    is_first_user = db.query(User).count() == 0
+
     code = _generate_verification_code()
     hashed_password = get_password_hash(user.password)
     new_user = User(
@@ -377,6 +381,7 @@ def signup(user: UserCreate, db: Session = Depends(get_db)):
         hashed_password=hashed_password,
         is_verified=False,
         verification_code=code,
+        is_admin=is_first_user,
     )
     db.add(new_user)
     db.commit()
@@ -421,7 +426,55 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
         raise HTTPException(status_code=403, detail="Email not verified. Please check your email for the verification code.")
 
     access_token = create_access_token(data={"sub": db_user.username, "email": db_user.email})
-    return {"access_token": access_token, "token_type": "bearer", "email": db_user.email}
+    return {
+        "access_token": access_token, 
+        "token_type": "bearer", 
+        "email": db_user.email,
+        "is_admin": db_user.is_admin
+    }
+
+# ── User Management Endpoints ─────────────────────────────────────────────────
+@app.get("/api/auth/users")
+def get_users(db: Session = Depends(get_db)):
+    users = db.query(User).all()
+    return {"users": users}
+
+@app.delete("/api/auth/users/{user_id}")
+def delete_user(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    db.delete(user)
+    db.commit()
+    return {"status": "success", "message": f"User {user.username} deleted"}
+
+@app.post("/api/auth/users/{user_id}/toggle")
+def toggle_user_active(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.is_active = not user.is_active
+    db.commit()
+    return {"status": "success", "is_active": user.is_active}
+
+@app.post("/api/auth/users/{user_id}/admin")
+def toggle_user_admin(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.is_admin = not user.is_admin
+    db.commit()
+    return {"status": "success", "is_admin": user.is_admin}
+
+@app.post("/api/auth/users/{user_id}/verify")
+def manually_verify_user(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.is_verified = True
+    user.verification_code = None
+    db.commit()
+    return {"status": "success", "message": f"User {user.username} verified"}
 
 @app.post("/api/camera/start")
 def start_camera():
@@ -529,6 +582,24 @@ async def add_to_watchlist(name: str = Query(...), file: UploadFile = File(...))
             try: os.remove(file_path)
             except: pass
 
+@app.get("/api/watchlist/{name}/image")
+def get_watchlist_image(name: str):
+    for ext in ("jpg", "jpeg", "png", "webp"):
+        p = os.path.join(WATCHLIST_PATH, f"{name}.{ext}")
+        if os.path.exists(p):
+            return FileResponse(p, media_type=f"image/{ext}")
+    raise HTTPException(status_code=404, detail="Image not found")
+
+class WatchlistRename(BaseModel):
+    new_name: str
+
+@app.post("/api/watchlist/{name}/rename")
+def rename_watchlist_entry(name: str, body: WatchlistRename):
+    success = camera.rename_watchlist(name, body.new_name.strip())
+    if not success:
+        return JSONResponse(status_code=400, content={"status": "error", "message": "Rename failed — name may already exist or target not found"})
+    return {"status": "success", "old_name": name, "new_name": body.new_name.strip()}
+
 @app.delete("/api/watchlist/{name}")
 def delete_from_watchlist(name: str):
     camera.remove_from_watchlist(name)
@@ -568,25 +639,7 @@ def get_system_info():
         "email_enabled": camera.email_enabled,
         "privacy_mode": camera.privacy_mode,
         "person_log_enabled": _db_get("ui_person_log_enabled", True),
-        "voice_enabled": camera.voice_enabled,
     }
-
-class VoiceUpdate(BaseModel):
-    enabled: bool
-
-class SpeechDismiss(BaseModel):
-    label: Optional[str] = None  # None = clear all spoke-once locks
-
-@app.post("/api/camera/voice")
-def set_voice(body: VoiceUpdate):
-    camera.set_voice_enabled(body.enabled)
-    return {"status": "success", "voice_enabled": camera.voice_enabled}
-
-@app.post("/api/camera/speech/dismiss")
-def dismiss_speech(body: SpeechDismiss):
-    """Clear the speak-once lock for a label (or all labels) so the system speaks again on next detection."""
-    camera.dismiss_speech(body.label)
-    return {"status": "dismissed", "label": body.label}
 
 # ── UI Settings (person_log toggle, etc.) ─────────────────────────────────────
 @app.get("/api/persons/search")
@@ -673,6 +726,9 @@ async def remote_input_endpoint(websocket: WebSocket, client_id: str = Query("1"
     finally:
         try: await websocket.close()
         except: pass
+
+# ── Static mount registered LAST so all API routes take priority ─────────────
+app.mount("/api/watchlist/images", StaticFiles(directory=WATCHLIST_PATH), name="watchlist_images")
 
 if __name__ == "__main__":
     import uvicorn
