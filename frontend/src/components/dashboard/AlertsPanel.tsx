@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Shield, Target, MapPin, Crosshair, X, Maximize2 } from 'lucide-react';
 import type { Alert } from '../../types/dashboard';

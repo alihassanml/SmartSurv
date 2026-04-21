@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, Search, RefreshCw, X, Target } from 'lucide-react';
 import type { PersonEvent } from '../../types/dashboard';
