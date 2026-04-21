@@ -80,9 +80,7 @@ class CameraFeed:
         self.latest_frame = None
         
         
-        # Activity Heatmap (80x60 grid for performance)
-        self.heatmap = np.zeros((60, 80), dtype=np.float32)
-        self.heatmap_last_decay = time.time()
+
 
 
     def start(self):
@@ -157,8 +155,8 @@ class CameraFeed:
                 except Exception: pass
                 self.pending_face = None
 
-            # ── Fire new inference every 5th frame (only when prev is done) ─
-            if self.frame_counter % 5 == 0 and self.pending_det is None and self.pending_face is None:
+            # ── Fire new inference every 2nd frame (only when prev is done) ─
+            if self.frame_counter % 2 == 0 and self.pending_det is None and self.pending_face is None:
                 if self.engine.executor:
                     try:
                         self.pending_det = self.engine.executor.submit(self.engine._process_detections, frame.copy())
@@ -212,14 +210,12 @@ class CameraFeed:
                     cv2.circle(display_frame, (cx, cy), r, (0, 255, 0), 2)
 
 
-            # ── Update Heatmap ───────────────────────────────────────────
-            self._update_heatmap(self.last_detections)
+
             
             # ── Handle Alerts & Re-ID ────────────────────────────────────
             self.engine._handle_alerts(self.feed_id, display_frame, self.last_detections, self.last_is_target_match)
 
-            # ── Overlay Heatmap (Subtle) ──────────────────────────────────
-            self._apply_heatmap_overlay(display_frame)
+
 
             # ── Update latest raw frame for WebRTC ───────────────────────
             self.latest_frame = display_frame
@@ -232,45 +228,7 @@ class CameraFeed:
             try: self.frame_queue.put_nowait(buf.tobytes())
             except queue.Full: pass
 
-    def _update_heatmap(self, detections):
-        # Decay heatmap every 1 second
-        now = time.time()
-        if now - self.heatmap_last_decay > 1.0:
-            self.heatmap *= 0.95 # Decay factor
-            self.heatmap_last_decay = now
-            
-        for d in detections:
-            if d['label'].lower() in ['weapons', 'violence']:
-                x1, y1, x2, y2 = [int(v) for v in d["box"]]
-                # Map to 80x60 grid (640/8=80, 480/8=60)
-                gx1, gy1 = max(0, int(x1/8)), max(0, int(y1/8))
-                gx2, gy2 = min(79, int(x2/8)), min(59, int(y2/8))
-                self.heatmap[gy1:gy2, gx1:gx2] += 0.2
-                self.heatmap = np.clip(self.heatmap, 0, 10)
 
-    def _apply_heatmap_overlay(self, frame):
-        # Only show heatmap if enabled in engine (future-proofing)
-        if not self.heatmap.any(): return
-        
-        # Upscale heatmap to frame size
-        hm_colored = cv2.applyColorMap((np.clip(self.heatmap, 0, 1) * 255).astype(np.uint8), cv2.COLORMAP_JET)
-        h, w = frame.shape[:2]
-        hm_upscaled = cv2.resize(hm_colored, (w, h))
-        
-        # Blend with original frame (very subtle 15% opacity)
-        cv2.addWeighted(hm_upscaled, 0.15, frame, 0.85, 0, frame)
-
-    def get_heatmap_data(self):
-        # Return base64 encoded heatmap as transparent PNG for frontend overlay
-        intensity = (np.clip(self.heatmap, 0, 1) * 255).astype(np.uint8)
-        hm_colored = cv2.applyColorMap(intensity, cv2.COLORMAP_JET)
-        
-        # Create an alpha channel using the original intensity
-        b, g, r = cv2.split(hm_colored)
-        rgba = cv2.merge([b, g, r, intensity]) # BGR + Alpha
-        
-        _, buf = cv2.imencode('.png', rgba)
-        return base64.b64encode(buf).decode('utf-8')
 
 
 class CameraEngine:
@@ -459,8 +417,10 @@ class CameraEngine:
                     "location": {"id": f"{self.camera_id}-{feed_id}", "lat": self.camera_lat, "lon": self.camera_lon}
                 }
                 self.alert_queue.put(alert)
-                labels = [d['label'] for d in detections]
-                print(f"[Alert] Queued — feed={feed_id} labels={labels} queue_size={self.alert_queue.qsize()}")
+                
+                # Enhanced Logging
+                reason = "WATCHLIST_MATCH" if is_search_match else f"DETECTED:{[d['label'] for d in detections]}"
+                print(f"[Alert] Queued — feed={feed_id} reason={reason} (q:{self.alert_queue.qsize()})")
             except Exception as e:
                 print(f"[Alert] Error building alert: {e}")
 

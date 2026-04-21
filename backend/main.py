@@ -605,11 +605,7 @@ def delete_from_watchlist(name: str):
     camera.remove_from_watchlist(name)
     return {"status": "success", "message": f"Removed {name} from watchlist"}
 
-@app.get("/api/camera/heatmap/{id}")
-def get_camera_heatmap(id: str):
-    if id in camera.feeds:
-        return {"heatmap": camera.feeds[id].get_heatmap_data()}
-    return JSONResponse(status_code=404, content={"message": "Feed not found"})
+
 
 
 @app.get("/video_feed")
@@ -638,7 +634,7 @@ def get_system_info():
         "smtp_email": camera.email_sender,
         "email_enabled": camera.email_enabled,
         "privacy_mode": camera.privacy_mode,
-        "person_log_enabled": _db_get("ui_person_log_enabled", True),
+        "person_log_enabled": _db_get("ui_person_log_enabled", False),
     }
 
 # ── UI Settings (person_log toggle, etc.) ─────────────────────────────────────
@@ -650,7 +646,7 @@ def search_persons(q: str):
 @app.get("/api/settings/ui")
 def get_ui_settings():
     """Return persisted UI settings."""
-    person_log_enabled = _db_get("ui_person_log_enabled", False)  # default ON
+    person_log_enabled = _db_get("ui_person_log_enabled", False)  # default OFF
     return {"person_log_enabled": person_log_enabled}
 
 @app.post("/api/settings/ui")

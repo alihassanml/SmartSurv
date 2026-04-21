@@ -28,8 +28,7 @@ interface SettingsPanelProps {
   smtpEmail: string | null;
   systemIp: string | null;
   handleLogout: () => void;
-  showHeatmap: boolean;
-  setShowHeatmap: (v: boolean) => void;
+
   currentSource: '0' | 'remote' | 'hybrid';
   handleSourceChange: (src: '0' | 'remote' | 'hybrid') => void;
   isReconnecting: boolean;
@@ -57,8 +56,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   smtpEmail,
   systemIp,
   handleLogout,
-  showHeatmap,
-  setShowHeatmap,
+
   currentSource,
   handleSourceChange,
   isReconnecting,
@@ -140,35 +138,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 </div>
               </div>
 
-              {/* Heatmap Toggle */}
-              <div className="p-6 border-b border-[rgba(176,198,255,0.08)]">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Sliders className="w-3.5 h-3.5 text-[#b0c6ff]" />
-                    <div>
-                      <span className="text-[12px] font-bold tracking-[0.2em]">HEATMAP_OVERLAY</span>
-                      <p className="text-[10px] opacity-30 mt-0.5 uppercase">Activity heat visualization</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setShowHeatmap(!showHeatmap)}
-                    className="relative w-10 h-5 border transition-all duration-300 shrink-0"
-                    style={showHeatmap
-                      ? { borderColor: '#b0c6ff', background: 'rgba(176,198,255,0.08)' }
-                      : { borderColor: 'rgba(255,68,102,0.4)', background: 'rgba(255,68,102,0.04)' }
-                    }
-                  >
-                    <div
-                      className={`absolute top-0.5 bottom-0.5 w-3.5 transition-all duration-300 ${
-                        showHeatmap ? 'right-0.5 bg-[#b0c6ff] shadow-[0_0_6px_#b0c6ff]' : 'left-0.5 bg-red-700'
-                      }`}
-                    />
-                  </button>
-                </div>
-                {showHeatmap && (
-                  <p className="text-[10px] text-[#b0c6ff]/50 mt-2 tracking-wider animate-pulse">▸ Heatmap overlay active on feeds</p>
-                )}
-              </div>
+
 
               {/* Email Alerts */}
               <div className="p-6 border-b border-[rgba(176,198,255,0.08)]">

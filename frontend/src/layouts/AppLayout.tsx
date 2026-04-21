@@ -27,8 +27,8 @@ export interface AppContextValue {
   togglePrivacy: () => void;
   personLogEnabled: boolean;
   togglePersonLog: () => void;
-  showHeatmap: boolean;
-  setShowHeatmap: (v: boolean) => void;
+  browserSoundEnabled: boolean;
+  toggleBrowserSound: () => void;
   classThresholds: ClassThreshold[];
   thresholdsLoading: boolean;
   handleThresholdChange: (name: string, value: number) => void;
@@ -83,7 +83,7 @@ const AppLayout: React.FC = () => {
   const [isReconnecting, setIsReconnecting] = useState(false);
   const [activeFeeds, setActiveFeeds] = useState<string[]>([]);
   const [watchlist, setWatchlist] = useState<string[]>([]);
-  const [showHeatmap, setShowHeatmap] = useState(false);
+
   const [currentSource, setCurrentSource] = useState<'0' | 'remote' | 'hybrid'>(
     (localStorage.getItem('currentSource') as '0' | 'remote' | 'hybrid') || '0'
   );
@@ -91,7 +91,9 @@ const AppLayout: React.FC = () => {
   // ── Settings state ──
   const [emailEnabled, setEmailEnabled] = useState(true);
   const [privacyMode, setPrivacyMode] = useState(false);
-  const [personLogEnabled, setPersonLogEnabled] = useState(true);
+  const [personLogEnabled, setPersonLogEnabled] = useState(false);
+  const [browserSoundEnabled, setBrowserSoundEnabled] = useState(localStorage.getItem('browserSound') !== 'false');
+  const alertAudioRef = useRef<HTMLAudioElement | null>(null);
   const [smtpEmail, setSmtpEmail] = useState<string | null>(null);
   const [systemIp, setSystemIp] = useState<string | null>(null);
   const [classThresholds, setClassThresholds] = useState<ClassThreshold[]>([]);
@@ -111,16 +113,37 @@ const AppLayout: React.FC = () => {
   // ── Unread alerts badge ──
   const [unreadAlerts, setUnreadAlerts] = useState(0);
 
-  // ── Init camera + system info ──
+  // ── Browser Audio ──
   useEffect(() => {
-    localStorage.setItem('cameraActive', 'false');
-    setCameraActive(false);
-    fetch(`${API}/api/camera/stop`, { method: 'POST' }).catch(() => {});
+    alertAudioRef.current = new Audio('/alert.mp3');
+    alertAudioRef.current.load();
+  }, []);
+
+  const playAlertSound = useCallback(() => {
+    if (!browserSoundEnabled || !alertAudioRef.current) return;
+    alertAudioRef.current.currentTime = 0;
+    alertAudioRef.current.play().catch(() => {
+      console.warn("Audio playback blocked by browser. User interaction needed.");
+    });
+  }, [browserSoundEnabled]);
+
+  // ── Init system info ──
+  useEffect(() => {
     fetch(`${API}/api/camera/mode`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ mode: 'both' }),
     }).catch(() => {});
-    return () => { fetch(`${API}/api/camera/stop`, { method: 'POST' }).catch(() => {}); };
+
+    fetch(`${API}/api/camera/feeds`)
+      .then(r => r.json())
+      .then(d => {
+        const active = d.feeds && d.feeds.length > 0;
+        setCameraActive(active);
+        localStorage.setItem('cameraActive', String(active));
+        setActiveFeeds(d.feeds || []);
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -174,6 +197,7 @@ const AppLayout: React.FC = () => {
           const data = JSON.parse(event.data);
           setAlerts(prev => [data, ...prev].slice(0, 50));
           setUnreadAlerts(n => n + 1);
+          playAlertSound();
         } catch (_) {}
       };
     };
@@ -184,19 +208,29 @@ const AppLayout: React.FC = () => {
   // ── Persons WebSocket ──
   useEffect(() => {
     if (!cameraActive) return;
-    const ws = new WebSocket(`ws://${window.location.hostname}:8000/ws/persons`);
-    ws.onmessage = (event) => {
-      const data: PersonEvent = JSON.parse(event.data);
-      if (focusedPersonId && data.person_id === focusedPersonId) {
-        setFocusedPersonVisible(true);
-        setTimeout(() => setFocusedPersonVisible(false), 3000);
-      }
-      setDetectedPersons(prev => {
-        const filtered = prev.filter(p => p.person_id !== data.person_id);
-        return [data, ...filtered].slice(0, 30);
-      });
+    let ws: WebSocket | null = null;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+    let dead = false;
+
+    const connect = () => {
+      if (dead) return;
+      ws = new WebSocket(`ws://${window.location.hostname}:8000/ws/persons`);
+      ws.onmessage = (event) => {
+        const data: PersonEvent = JSON.parse(event.data);
+        if (focusedPersonId && data.person_id === focusedPersonId) {
+          setFocusedPersonVisible(true);
+          setTimeout(() => setFocusedPersonVisible(false), 3000);
+        }
+        setDetectedPersons(prev => {
+          const filtered = prev.filter(p => p.person_id !== data.person_id);
+          return [data, ...filtered].slice(0, 30);
+        });
+      };
+      ws.onclose = () => { if (!dead) retryTimer = setTimeout(connect, 1500); };
+      ws.onerror = () => ws?.close();
     };
-    return () => ws.close();
+    connect();
+    return () => { dead = true; if (retryTimer) clearTimeout(retryTimer); ws?.close(); };
   }, [cameraActive, focusedPersonId]);
 
   // ── Camera feeds polling ──
@@ -283,6 +317,12 @@ const AppLayout: React.FC = () => {
     } catch (_) {}
   };
 
+  const toggleBrowserSound = () => {
+    const newVal = !browserSoundEnabled;
+    setBrowserSoundEnabled(newVal);
+    localStorage.setItem('browserSound', String(newVal));
+  };
+
   const handleSoundToggle = async (className: string) => {
     const updated = classThresholds.map(cls => cls.name === className ? { ...cls, sound_enabled: !cls.sound_enabled } : cls);
     setClassThresholds(updated);
@@ -343,7 +383,7 @@ const AppLayout: React.FC = () => {
     watchlist, fetchWatchlist,
     emailEnabled, toggleEmail,
     privacyMode, togglePrivacy, personLogEnabled, togglePersonLog,
-    showHeatmap, setShowHeatmap,
+    browserSoundEnabled, toggleBrowserSound,
     classThresholds, thresholdsLoading, handleThresholdChange, handleSaveThresholds,
     saveStatus, handleSoundToggle, smtpEmail, systemIp,
     focusedPersonId, handleSetFocus, focusedPersonVisible,

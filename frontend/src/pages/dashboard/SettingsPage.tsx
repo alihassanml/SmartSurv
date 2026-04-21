@@ -53,7 +53,6 @@ const SettingsPage: React.FC = () => {
     emailEnabled, toggleEmail,
     privacyMode, togglePrivacy,
     personLogEnabled, togglePersonLog,
-    showHeatmap, setShowHeatmap,
     currentSource, handleSourceChange,
     classThresholds, thresholdsLoading, handleThresholdChange, handleSaveThresholds, saveStatus,
     handleSoundToggle,
@@ -61,6 +60,7 @@ const SettingsPage: React.FC = () => {
     handleLogout,
     isReconnecting,
     watchlist,
+    browserSoundEnabled, toggleBrowserSound,
   } = useApp();
 
   const navigate = useNavigate();
@@ -170,6 +170,7 @@ const SettingsPage: React.FC = () => {
             <Card>
               <Section title="Notifications">
                 <div className="-mt-2">
+                  <ToggleRow icon={<Volume2 className="w-4 h-4" style={{ color: '#b0c6ff' }} />} label="Browser Sound" desc="Play alert sound in this browser" on={browserSoundEnabled} onToggle={toggleBrowserSound} />
                   <ToggleRow icon={<Mail className="w-4 h-4" style={{ color: '#b0c6ff' }} />} label="Email Alerts" desc="Send incident snapshots via SMTP" on={emailEnabled} onToggle={toggleEmail} id="email-toggle-btn" />
                 </div>
               </Section>
@@ -179,7 +180,6 @@ const SettingsPage: React.FC = () => {
             <Card>
               <Section title="Privacy & Display">
                 <div className="-mt-2">
-                  <ToggleRow icon={<Sliders className="w-4 h-4" style={{ color: '#b0c6ff' }} />} label="Heatmap Overlay" desc="Activity heat visualization on feed" on={showHeatmap} onToggle={() => setShowHeatmap(!showHeatmap)} />
                   <ToggleRow icon={<Shield className="w-4 h-4" style={{ color: '#b4c6f8' }} />} label="Privacy Guard" desc="Selective face redaction on feeds" on={privacyMode} onToggle={togglePrivacy} />
                   <ToggleRow icon={<User className="w-4 h-4" style={{ color: '#b0c6ff' }} />} label="Person Log Panel" desc="Show Re-ID sidebar and face crops" on={personLogEnabled} onToggle={togglePersonLog} id="person-log-toggle-btn" />
                 </div>

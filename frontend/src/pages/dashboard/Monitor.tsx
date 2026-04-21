@@ -17,7 +17,6 @@ const Monitor: React.FC = () => {
     currentSource, handleSourceChange, activeFeeds,
     watchlist,
     privacyMode, personLogEnabled,
-    showHeatmap,
     focusedPersonId, handleSetFocus, focusedPersonVisible,
     semanticQuery, semanticResults, semanticLoading, handleSemanticSearch,
     isReconnecting,
@@ -199,7 +198,7 @@ const Monitor: React.FC = () => {
               activeFeeds.map(feedId => (
                 <div key={feedId} className="relative overflow-hidden"
                   style={{ border: '1px solid rgba(176,198,255,0.08)', background: 'rgba(0,0,0,0.4)' }}>
-                  <CameraStream feedId={feedId} active={cameraActive} showHeatmap={showHeatmap} />
+                  <CameraStream feedId={feedId} active={cameraActive} />
                   <div className="absolute top-2 left-2 px-2 py-0.5 text-[8px] font-bold tracking-tighter"
                     style={{ background: 'rgba(0,0,0,0.7)', border: '1px solid rgba(176,198,255,0.2)', color: '#b0c6ff' }}>
                     FEED_{feedId.toUpperCase()}
@@ -213,7 +212,7 @@ const Monitor: React.FC = () => {
                 </div>
               ))
             ) : (
-              cameraActive && <CameraStream active={cameraActive} showHeatmap={showHeatmap} />
+              cameraActive && <CameraStream active={cameraActive} />
             )}
           </div>
 

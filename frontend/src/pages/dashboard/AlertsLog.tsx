@@ -2,8 +2,9 @@ import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Shield, AlertTriangle, ShieldAlert, User, MapPin, Download,
-  Activity, CheckCircle, X, Eye, Camera, Clock,
+  Activity, CheckCircle, X, Eye, Camera, Clock, FileText,
 } from 'lucide-react';
+import { jsPDF } from 'jspdf';
 import { useApp } from '../../layouts/AppLayout';
 import type { Alert } from '../../types/dashboard';
 
@@ -84,6 +85,110 @@ const AlertsLog: React.FC = () => {
     document.body.removeChild(link);
   };
 
+  const handleDownloadPDF = (alertToExport?: Alert) => {
+    const alertData = alertToExport || viewingAlert;
+    if (!alertData) return;
+    try {
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+
+      // Cyber-Ops Background
+      doc.setFillColor(15, 17, 21);
+      doc.rect(0, 0, pageWidth, 300, 'F');
+      
+      // Header Banner
+      doc.setFillColor(10, 88, 202);
+      doc.rect(0, 0, pageWidth, 6);
+
+      doc.setTextColor(204, 216, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(22);
+      doc.text('SMARTSURV INCIDENT REPORT', 20, 25);
+      
+      doc.setFontSize(10);
+      doc.setTextColor(176, 198, 255);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`GENERATED: ${new Date().toLocaleString()}`, 20, 32);
+
+      // Severity Box
+      const sev = getSeverity(alertData);
+      let sevColor = [176, 198, 255]; // default
+      if (sev === 'critical') sevColor = [255, 107, 107];
+      if (sev === 'high') sevColor = [255, 169, 77];
+      if (sev === 'match') sevColor = [255, 180, 171];
+
+      doc.setDrawColor(sevColor[0], sevColor[1], sevColor[2]);
+      doc.setFillColor(sevColor[0], sevColor[1], sevColor[2]);
+      doc.rect(20, 42, 3, 15, 'F');
+      
+      doc.setTextColor(sevColor[0], sevColor[1], sevColor[2]);
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`SEVERITY LEVEL: ${sev.toUpperCase()}`, 26, 48);
+      
+      doc.setTextColor(200, 200, 200);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text('INCIDENT TIMESTAMP:', 20, 70);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`${alertData.timestamp}`, 65, 70);
+
+      doc.setFont('helvetica', 'bold');
+      doc.text('CAMERA LOCATION:', 20, 78);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`${alertData.location?.id || 'Unknown Sensor'}`, 65, 78);
+
+      let y = 90;
+      doc.setFont('helvetica', 'bold');
+      doc.text('DETECTED THREATS:', 20, y);
+      doc.setFont('helvetica', 'normal');
+      y += 8;
+      
+      if (alertData.detections.length === 0) {
+        doc.text('No standard object threats identified.', 25, y);
+        y += 6;
+      } else {
+        alertData.detections.forEach((d) => {
+          doc.text(`• ${d.label.toUpperCase()}  (${Math.round(d.confidence * 100)}% CONFIDENCE)`, 25, y);
+          y += 6;
+        });
+      }
+
+      y += 10;
+      
+      // Image Section
+      doc.setFont('helvetica', 'bold');
+      doc.text('EVIDENCE SNAPSHOT:', 20, y);
+      y += 6;
+
+      if (alertData.image) {
+        const imgData = `data:image/jpeg;base64,${alertData.image}`;
+        // Standard 4:3 camera ratio assumption for canvas footprint
+        doc.setDrawColor(176, 198, 255);
+        doc.setLineWidth(0.5);
+        doc.rect(20, y, 170, 127.5); // frame
+        doc.addImage(imgData, 'JPEG', 20, y, 170, 127.5);
+        
+        y += 135;
+      } else {
+        doc.setTextColor(100, 100, 100);
+        doc.text('[ VISUAL EVIDENCE UNAVAILABLE ]', 20, y+10);
+        y += 20;
+      }
+
+      // Footer
+      doc.setFontSize(8);
+      doc.setTextColor(100, 100, 100);
+      doc.setFont('helvetica', 'italic');
+      doc.text('This is an automatically generated incident report by SmartSurv.', 20, 285);
+
+      doc.save(`SmartSurv_Incident_${alertData.timestamp.replace(/[: ]/g, '')}.pdf`);
+    } catch (err) {
+      console.error('Failed to generate PDF', err);
+      alert('Unable to generate PDF report.');
+    }
+  };
+
   const FILTERS: { key: FilterSeverity; label: string }[] = [
     { key: 'ALL',      label: 'All' },
     { key: 'CRITICAL', label: 'Critical' },
@@ -145,11 +250,19 @@ const AlertsLog: React.FC = () => {
                       );
                     })()}
                   </div>
-                  <button onClick={() => setViewingAlert(null)} className="p-1.5 transition-all" style={{ color: 'rgba(176,198,255,0.4)' }}
-                    onMouseEnter={e => (e.currentTarget.style.color = '#b0c6ff')}
-                    onMouseLeave={e => (e.currentTarget.style.color = 'rgba(176,198,255,0.4)')}>
-                    <X className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => handleDownloadPDF()} className="flex items-center gap-1.5 px-3 py-1.5 text-[9px] font-bold tracking-widest uppercase transition-all"
+                      style={{ background: 'rgba(176,198,255,0.08)', border: '1px solid rgba(176,198,255,0.2)', color: '#b0c6ff', borderRadius: '0.25rem' }}
+                      onMouseEnter={e => { (e.currentTarget.style.background = '#b0c6ff'); (e.currentTarget.style.color = '#000') }}
+                      onMouseLeave={e => { (e.currentTarget.style.background = 'rgba(176,198,255,0.08)'); (e.currentTarget.style.color = '#b0c6ff') }}>
+                      <FileText className="w-3.5 h-3.5" /> PDF
+                    </button>
+                    <button onClick={() => setViewingAlert(null)} className="p-1.5 transition-all" style={{ color: 'rgba(176,198,255,0.4)' }}
+                      onMouseEnter={e => (e.currentTarget.style.color = '#ffb4ab')}
+                      onMouseLeave={e => (e.currentTarget.style.color = 'rgba(176,198,255,0.4)')}>
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
                 </div>
 
                 <div className="space-y-4 flex-1">
@@ -304,7 +417,7 @@ const AlertsLog: React.FC = () => {
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, scale: 0.97 }}
                     transition={{ delay: Math.min(idx * 0.02, 0.3) }}
-                    className="flex items-start gap-4 p-4 group cursor-pointer transition-all duration-200"
+                    className="flex items-center gap-4 p-4 group cursor-pointer transition-all duration-200"
                     style={{ background: '#1a1c1f', border: `1px solid rgba(176,198,255,0.08)`, borderRadius: '0.375rem' }}
                     onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = s.border; (e.currentTarget as HTMLDivElement).style.background = s.bg; }}
                     onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(176,198,255,0.08)'; (e.currentTarget as HTMLDivElement).style.background = '#1a1c1f'; }}
@@ -337,10 +450,6 @@ const AlertsLog: React.FC = () => {
                             <User className="w-2.5 h-2.5" /> WATCHLIST_MATCH
                           </span>
                         )}
-                        <span className="ml-auto flex items-center gap-1.5 text-[9px]" style={{ color: 'rgba(176,198,255,0.35)' }}>
-                          <Clock className="w-3 h-3" />
-                          {alert.timestamp}
-                        </span>
                       </div>
 
                       {/* Detection labels */}
@@ -370,16 +479,38 @@ const AlertsLog: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Inspect button */}
-                    <button
-                      onClick={e => { e.stopPropagation(); setViewingAlert(alert); }}
-                      className="shrink-0 flex items-center gap-2 px-4 py-2 text-[9px] font-bold tracking-widest uppercase opacity-0 group-hover:opacity-100 transition-all"
-                      style={{ background: 'rgba(176,198,255,0.06)', border: '1px solid rgba(176,198,255,0.2)', color: '#b0c6ff', borderRadius: '0.25rem' }}
-                      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#b0c6ff'; (e.currentTarget as HTMLButtonElement).style.color = '#000'; }}
-                      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(176,198,255,0.06)'; (e.currentTarget as HTMLButtonElement).style.color = '#b0c6ff'; }}
-                    >
-                      <Eye className="w-3.5 h-3.5" /> INSPECT
-                    </button>
+                    {/* Centered Timestamp */}
+                    <div className="flex-1 flex justify-center pointer-events-none">
+                      <div className="flex items-center gap-2 px-4 py-2 border border-[rgba(176,198,255,0.08)] bg-[rgba(176,198,255,0.02)]" style={{ borderRadius: '0.25rem' }}>
+                        <Clock className="w-3.5 h-3.5" style={{ color: 'rgba(176,198,255,0.4)' }} />
+                        <span className="text-[11px] font-mono font-bold tracking-widest" style={{ color: '#b0c6ff' }}>
+                          {alert.timestamp.split(' ').pop()}
+                        </span>
+                        <span className="text-[8px] opacity-30 ml-1 font-bold">{alert.timestamp.split(' ')[0]}</span>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-2 shrink-0 self-center">
+                      <button
+                        onClick={e => { e.stopPropagation(); handleDownloadPDF(alert); }}
+                        className="flex items-center gap-2 px-4 py-2 text-[9px] font-bold tracking-widest uppercase opacity-0 group-hover:opacity-100 transition-all"
+                        style={{ background: 'rgba(176,198,255,0.06)', border: '1px solid rgba(176,198,255,0.2)', color: '#b0c6ff', borderRadius: '0.25rem' }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#b0c6ff'; (e.currentTarget as HTMLButtonElement).style.color = '#000'; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(176,198,255,0.06)'; (e.currentTarget as HTMLButtonElement).style.color = '#b0c6ff'; }}
+                      >
+                        <Download className="w-3.5 h-3.5" /> PDF
+                      </button>
+                      <button
+                        onClick={e => { e.stopPropagation(); setViewingAlert(alert); }}
+                        className="flex items-center gap-2 px-4 py-2 text-[9px] font-bold tracking-widest uppercase opacity-0 group-hover:opacity-100 transition-all"
+                        style={{ background: 'rgba(176,198,255,0.06)', border: '1px solid rgba(176,198,255,0.2)', color: '#b0c6ff', borderRadius: '0.25rem' }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#b0c6ff'; (e.currentTarget as HTMLButtonElement).style.color = '#000'; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(176,198,255,0.06)'; (e.currentTarget as HTMLButtonElement).style.color = '#b0c6ff'; }}
+                      >
+                        <Eye className="w-3.5 h-3.5" /> INSPECT
+                      </button>
+                    </div>
                   </motion.div>
                 );
               })}

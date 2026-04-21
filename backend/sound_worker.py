@@ -26,11 +26,13 @@ def _play_sound_mci(path: str):
         import ctypes
         winmm = ctypes.windll.winmm
         alias = 'smartsurv_alert'
+        # Close any previous instance first
+        winmm.mciSendStringW(f'close {alias}', None, 0, None)
+        # Open and play immediately without waiting
         err = winmm.mciSendStringW(f'open "{path}" type mpegvideo alias {alias}', None, 0, None)
         if err != 0:
             winmm.mciSendStringW(f'open "{path}" alias {alias}', None, 0, None)
-        winmm.mciSendStringW(f'play {alias} wait', None, 0, None)
-        winmm.mciSendStringW(f'close {alias}', None, 0, None)
+        winmm.mciSendStringW(f'play {alias}', None, 0, None)
     except Exception as e:
         print(f'[SoundWorker] MCI play error: {e}', flush=True)
 
