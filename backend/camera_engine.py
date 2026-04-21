@@ -8,8 +8,14 @@ import base64
 import queue
 import shutil
 import subprocess
+import logging
 import json as _json
 import numpy as np
+
+# Suppress OpenCV noise
+os.environ["OPENCV_VIDEOIO_PRIORITY_MSMF"] = "0"
+os.environ["OPENCV_LOG_LEVEL"] = "OFF"
+cv2.setLogLevel(0)
 from PIL import Image
 from ultralytics import YOLO
 from concurrent.futures import ThreadPoolExecutor
@@ -435,29 +441,37 @@ class CameraEngine:
                     triggered = True
 
         if triggered:
-            try:
-                _, buf = cv2.imencode('.jpg', display_frame, [cv2.IMWRITE_JPEG_QUALITY, 50])
-                frame_bytes = buf.tobytes()
-                if self.email_enabled and (now - self.last_email_time > 30):
-                    self.last_email_time = now
-                    threading.Thread(target=self._send_email_alert, args=(feed_id, frame_bytes, detections, is_search_match), daemon=True).start()
+            # Prevent log spam: Only record same person once every 2 minutes
+            if is_search_match:
+                last_log = getattr(self, f"last_log_{person_id}", 0)
+                if (now - last_log < 60):
+                    triggered = False
+            
+            if triggered:
+                if is_search_match: setattr(self, f"last_log_{person_id}", now)
+                try:
+                    _, buf = cv2.imencode('.jpg', display_frame, [cv2.IMWRITE_JPEG_QUALITY, 50])
+                    frame_bytes = buf.tobytes()
+                    if self.email_enabled and (now - self.last_email_time > 30):
+                        self.last_email_time = now
+                        threading.Thread(target=self._send_email_alert, args=(feed_id, frame_bytes, detections, is_search_match), daemon=True).start()
 
-                alert = {
-                    "feed_id": feed_id,
-                    "timestamp": time.strftime("%H:%M:%S"),
-                    "detections": [{"label": d["label"], "confidence": float(d["confidence"]), "box": [float(v) for v in d["box"]]} for d in detections],
-                    "image": base64.b64encode(buf).decode('utf-8'),
-                    "is_person_search_match": bool(is_search_match),
-                    "backend_ts": now * 1000, # ms since epoch
-                    "location": {"id": f"{self.camera_id}-{feed_id}", "lat": self.camera_lat, "lon": self.camera_lon}
-                }
-                self.alert_queue.put(alert)
-                
-                # Enhanced Logging
-                reason = "WATCHLIST_MATCH" if is_search_match else f"DETECTED:{[d['label'] for d in detections]}"
-                print(f"[Alert] Queued — feed={feed_id} reason={reason} (q:{self.alert_queue.qsize()})")
-            except Exception as e:
-                print(f"[Alert] Error building alert: {e}")
+                    alert = {
+                        "feed_id": feed_id,
+                        "timestamp": time.strftime("%H:%M:%S"),
+                        "detections": [{"label": d["label"], "confidence": float(d["confidence"]), "box": [float(v) for v in d["box"]]} for d in detections],
+                        "image": base64.b64encode(buf).decode('utf-8'),
+                        "is_person_search_match": bool(is_search_match),
+                        "backend_ts": now * 1000, # ms since epoch
+                        "location": {"id": f"{self.camera_id}-{feed_id}", "lat": self.camera_lat, "lon": self.camera_lon}
+                    }
+                    self.alert_queue.put(alert)
+                    
+                    # Enhanced Logging
+                    reason = "WATCHLIST_MATCH" if is_search_match else f"DETECTED:{[d['label'] for d in detections]}"
+                    print(f"[Alert] Queued — feed={feed_id} reason={reason} (q:{self.alert_queue.qsize()})")
+                except Exception as e:
+                    print(f"[Alert] Error building alert: {e}")
 
     def _process_detections(self, frame):
         detections = []
@@ -766,12 +780,17 @@ class CameraEngine:
     def _scan_hardware(self):
         """Scan system for available camera indices."""
         available = []
+        # Get indices already in use
+        active_indices = [f.source for f in self.feeds.values() if isinstance(f.source, int)]
+        
         # Parallel scan to avoid blocking the engine
         with ThreadPoolExecutor(max_workers=5) as executor:
             def check(i):
+                if i in active_indices: return i # Already have it
                 try:
-                    # Use CAP_DSHOW or CAP_MSMF for faster probing on Windows
-                    c = cv2.VideoCapture(i, cv2.CAP_MSMF if sys.platform == 'win32' else 0)
+                    # On Windows, opening a camera that is ALREADY OPEN in another process/thread 
+                    # can cause the MSMF backend to throw a 'can't grab frame' error or warnings.
+                    c = cv2.VideoCapture(i, cv2.CAP_DSHOW) # DSHOW is faster for probing than MSMF
                     if c.isOpened():
                         c.release()
                         return i
