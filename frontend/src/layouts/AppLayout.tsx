@@ -44,6 +44,7 @@ export interface AppContextValue {
   semanticResults: { id: string; score: number }[];
   semanticLoading: boolean;
   handleSemanticSearch: (val: string) => void;
+  systemLatency: number | null;
   isReconnecting: boolean;
   username: string;
   userEmail: string;
@@ -112,6 +113,7 @@ const AppLayout: React.FC = () => {
 
   // ── Unread alerts badge ──
   const [unreadAlerts, setUnreadAlerts] = useState(0);
+  const [systemLatency, setSystemLatency] = useState<number | null>(null);
 
   // ── Browser Audio ──
   useEffect(() => {
@@ -204,6 +206,28 @@ const AppLayout: React.FC = () => {
     connect();
     return () => { dead = true; if (retryTimer) clearTimeout(retryTimer); ws?.close(); };
   }, [isReconnecting]);
+
+  // ── Stats (Heartbeat) WebSocket ──
+  useEffect(() => {
+    let ws: WebSocket | null = null;
+    let dead = false;
+    const connect = () => {
+      if (dead) return;
+      ws = new WebSocket(`ws://${window.location.hostname}:8000/ws/stats`);
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.ts) {
+            const lag = Math.max(0, Date.now() - data.ts);
+            setSystemLatency(lag);
+          }
+        } catch (_) {}
+      };
+      ws.onclose = () => { if (!dead) setTimeout(connect, 3000); };
+    };
+    connect();
+    return () => { dead = true; ws?.close(); };
+  }, []);
 
   // ── Persons WebSocket ──
   useEffect(() => {
@@ -389,6 +413,7 @@ const AppLayout: React.FC = () => {
     focusedPersonId, handleSetFocus, focusedPersonVisible,
     semanticQuery, semanticResults, semanticLoading, handleSemanticSearch,
     isReconnecting, username, userEmail, handleLogout,
+    systemLatency,
   };
 
   return (

@@ -134,6 +134,8 @@ class CameraFeed:
 
             if frame is None: continue
             
+            # ── Measure throughput ──────────────────────────────────────────
+            loop_start = time.time()
             display_frame = frame.copy()
 
             # ── Collect inference results when ready (NEVER block) ────────
@@ -206,6 +208,20 @@ class CameraFeed:
 
             
             # ── Handle Alerts & Re-ID ────────────────────────────────────
+            # ── Draw HUD (Latency & Performance) ─────────────────────────
+            latency_ms = (time.time() - loop_start) * 1000
+            inf_tag = f"INF: {latency_ms:.1f}ms"
+            fps_tag = f"SRC: {int(getattr(self.cap, 'get', lambda x: 30)(cv2.CAP_PROP_FPS) or 30)}FPS" if self.source != "remote" else "REMOTE"
+            
+            # Tactical Glass-Style HUD in corner
+            overlay = display_frame.copy()
+            cv2.rectangle(overlay, (5, 5), (170, 32), (30, 20, 10), -1)
+            cv2.addWeighted(overlay, 0.6, display_frame, 0.4, 0, display_frame)
+            cv2.rectangle(display_frame, (5, 5), (170, 32), (150, 100, 50), 1)
+            
+            cv2.putText(display_frame, f"{inf_tag} | {fps_tag}", (12, 22),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.38, (0, 255, 133), 1, cv2.LINE_AA)
+
             self.engine._handle_alerts(self.feed_id, display_frame, self.last_detections, self.last_is_target_match)
 
 
@@ -425,6 +441,7 @@ class CameraEngine:
                     "detections": [{"label": d["label"], "confidence": float(d["confidence"]), "box": [float(v) for v in d["box"]]} for d in detections],
                     "image": base64.b64encode(buf).decode('utf-8'),
                     "is_person_search_match": bool(is_search_match),
+                    "backend_ts": now * 1000, # ms since epoch
                     "location": {"id": f"{self.camera_id}-{feed_id}", "lat": self.camera_lat, "lon": self.camera_lon}
                 }
                 self.alert_queue.put(alert)
@@ -599,7 +616,7 @@ class CameraEngine:
                     self.alert_queue.put({
                         "feed_id": feed_id,
                         "timestamp": time.strftime("%H:%M:%S"),
-                        "detections": [{"label": "LOITERING", "confidence": stay_duration, "box": box.tolist() if box is not None else [0,0,0,0]}],
+                        "detections": [{"label": "LOITERING", "confidence": 1.0, "box": box.tolist() if box is not None else [0,0,0,0]}],
                         "message": f"BEHAVIORAL_ALERT: {best_match['id']} LOITERING ({int(stay_duration)}s)",
                         "image": face_crop_b64, # Show the person's face in the alert
                         "is_behavioral": True,

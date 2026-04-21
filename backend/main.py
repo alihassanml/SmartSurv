@@ -682,6 +682,29 @@ async def websocket_endpoint(websocket: WebSocket):
         try: await websocket.close()
         except: pass
 
+@app.websocket("/ws/stats")
+async def stats_endpoint(websocket: WebSocket):
+    """Streams real-time system stats (latency, load) to the frontend."""
+    await websocket.accept()
+    try:
+        while getattr(app.state, 'is_running', True):
+            # Calculate simple health/latency metrics
+            stats = {
+                "type": "stats",
+                "ts": time.time() * 1000,
+                "fps": 30, # placeholder for global avg
+                "active_feeds": camera.get_active_feeds()
+            }
+            await websocket.send_text(json.dumps(stats))
+            await asyncio.sleep(1.0) # Check every second
+    except (WebSocketDisconnect, asyncio.CancelledError, RuntimeError):
+        pass
+    except Exception:
+        pass
+    finally:
+        try: await websocket.close()
+        except: pass
+
 @app.websocket("/ws/persons")
 async def persons_endpoint(websocket: WebSocket):
     """Streams person-detection events (face crops + IDs) to the frontend."""

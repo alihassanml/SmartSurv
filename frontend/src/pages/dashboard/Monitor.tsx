@@ -19,7 +19,7 @@ const Monitor: React.FC = () => {
     privacyMode, personLogEnabled,
     focusedPersonId, handleSetFocus, focusedPersonVisible,
     semanticQuery, semanticResults, semanticLoading, handleSemanticSearch,
-    isReconnecting,
+    isReconnecting, systemLatency
   } = useApp();
 
   const [showRemoteLink, setShowRemoteLink] = useState(false);
@@ -235,12 +235,18 @@ const Monitor: React.FC = () => {
             </div>
           )}
 
-          {/* Live HUD badge */}
+          {/* Live HUD badge & Latency Monitor */}
           {cameraActive && (
-            <div className="absolute top-4 left-4 z-10 flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold"
-              style={{ background: 'rgba(10,88,202,0.9)', color: '#ccd8ff' }}>
-              <Radio className="w-3 h-3" />
-              LIVE
+            <div className="absolute top-4 left-4 z-20 flex flex-col gap-1.5">
+              <div className="flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold"
+                style={{ background: 'rgba(10,88,202,0.9)', color: '#ccd8ff' }}>
+                <Radio className="w-3 h-3 animate-pulse" />
+                LIVE
+              </div>
+              <div className="px-2.5 py-1 text-[8px] font-bold font-mono tracking-widest uppercase transition-all"
+                style={{ background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(176,198,255,0.1)', color: 'rgba(176,198,255,0.4)' }}>
+                LATENCY: <span style={{ color: '#00ff85' }}>{systemLatency !== null ? `${systemLatency}ms` : '---'}</span>
+              </div>
             </div>
           )}
         </div>
