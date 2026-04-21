@@ -63,6 +63,7 @@ class CameraFeed:
         self.remote_queue = queue.Queue(maxsize=1)
         self.running = False
         self.thread = None
+        self.consecutive_failures = 0
         
         # Internal state for this specific feed
         self.frame_counter = 0
@@ -130,7 +131,13 @@ class CameraFeed:
                     continue
                 ret, frame = self.cap.read()
                 if not ret:
+                    self.consecutive_failures += 1
+                    if self.consecutive_failures > 30:
+                        print(f"[Feed-{self.feed_id}] DISCONNECTED (Max failures).")
+                        self.running = False
+                        break
                     continue
+                self.consecutive_failures = 0
 
             if frame is None: continue
             
@@ -678,7 +685,21 @@ class CameraEngine:
         self.executor = ThreadPoolExecutor(max_workers=6)
         self.running = True
         self._sync_feeds()
+        for f in self.feeds.values(): f.start()
+        
+        # Start hardware watchdog thread for Auto-Detection
+        self._watchdog_thread = threading.Thread(target=self._hardware_watchdog, daemon=True)
+        self._watchdog_thread.start()
         print("[Sound] System started — audio alerts active.")
+
+    def _hardware_watchdog(self):
+        """Periodically scans for new cameras or disconnected ones."""
+        while self.running:
+            try:
+                self._sync_feeds()
+            except Exception as e:
+                print(f"[Watchdog] Sync error: {e}")
+            time.sleep(5.0) # Scan for new hardware every 5 seconds
 
     def stop(self):
         self.running = False
@@ -710,26 +731,56 @@ class CameraEngine:
     def _sync_feeds(self):
         """Update active feeds based on source_config."""
         should_have = []
-        if self.source_config == "hybrid":
-            should_have.append(("local", 0))
-            # Remote feeds are added dynamically as they connect
-        elif self.source_config == "remote":
-            # Remote only mode
-            pass
-        else:
-            # Assume it's a device index (default 0)
-            try:
-                idx = int(self.source_config)
+        
+        # Dynamic Detection: If source is 0 or "auto", we scan for all available hardware
+        if self.source_config in [0, "0", "auto", "hybrid"]:
+            indices = self._scan_hardware()
+            for idx in indices:
                 should_have.append(("local", idx))
-            except: pass
+        
+        if self.source_config == "remote":
+            # Remote only mode - no local cameras
+            pass
+        elif self.source_config != "auto" and self.source_config != "hybrid":
+             # Specific index requested
+             try:
+                 idx = int(self.source_config)
+                 if ("local", idx) not in should_have:
+                     should_have.append(("local", idx))
+             except: pass
 
         # Create missing local feeds
         for f_type, f_src in should_have:
-            fid = f"camera-{f_src}"
+            fid = f"cam-{f_src}"
             if fid not in self.feeds:
                 f = CameraFeed(fid, f_src, self)
                 self.feeds[fid] = f
                 if self.running: f.start()
+        
+        # Cleanup disconnected feeds
+        for fid in list(self.feeds.keys()):
+            if not self.feeds[fid].running:
+                print(f"[Engine] Pruning dead feed: {fid}")
+                del self.feeds[fid]
+
+    def _scan_hardware(self):
+        """Scan system for available camera indices."""
+        available = []
+        # Parallel scan to avoid blocking the engine
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            def check(i):
+                try:
+                    # Use CAP_DSHOW or CAP_MSMF for faster probing on Windows
+                    c = cv2.VideoCapture(i, cv2.CAP_MSMF if sys.platform == 'win32' else 0)
+                    if c.isOpened():
+                        c.release()
+                        return i
+                except: pass
+                return None
+            
+            results = executor.map(check, range(5)) # Check first 5 indices
+            available = [r for r in results if r is not None]
+        return available
 
     def push_remote_frame(self, frame_bytes: bytes, client_id: str = "remote-1"):
         if self.source_config not in ["remote", "hybrid"]: return

@@ -320,7 +320,7 @@ async def offer(params: Offer):
 
     return JSONResponse(content={"sdp": pc.localDescription.sdp, "type": pc.localDescription.type})
 
-camera = CameraEngine()
+camera = CameraEngine(source="auto")
 
 # Ensure temp directory for uploads
 TEMP_DIR = "temp_uploads"
