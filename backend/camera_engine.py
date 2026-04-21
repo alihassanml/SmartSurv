@@ -28,32 +28,26 @@ with open(os.devnull, 'w') as _devnull, contextlib.redirect_stderr(_devnull):
     import torch
     from facenet_pytorch import MTCNN, InceptionResnetV1
 
-# ─────────────────────────────────────────────────────────────────────────────
-# FaceNet singleton — loaded once so every CameraEngine shares the same weights.
-# ─────────────────────────────────────────────────────────────────────────────
-_DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-print(f"[FaceNet] Loading models on: {_DEVICE}")
-
+# ─── FaceNet (Optimized for CPU to reduce GPU overhead) ───────────────────────
 _MTCNN = MTCNN(
     keep_all=True,
-    device=_DEVICE,
+    device='cpu',
     post_process=True,
     select_largest=False,
     min_face_size=40,
 )
-_RESNET = InceptionResnetV1(pretrained='vggface2').eval().to(_DEVICE)
+_RESNET = InceptionResnetV1(pretrained='vggface2').eval().to('cpu')
 
 FACENET_THRESHOLD = 0.70
-print("[FaceNet] Models ready.")
+print("[FaceNet] Models initialized on: CPU (Hybrid Optimized)")
 
-# ─────────────────────────────────────────────────────────────────────────────
-# CLIP Model for Semantic Search
-# ─────────────────────────────────────────────────────────────────────────────
-print(f"[CLIP] Loading ViT-B-32...")
+# CLIP Model for Semantic Search (Kept on GPU for heavy vector math)
+_DEVICE_GPU = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+print(f"[CLIP] Loading ViT-B-32 on: {_DEVICE_GPU}...")
 _CLIP_MODEL, _, _CLIP_PREPROCESS = open_clip.create_model_and_transforms(
     'ViT-B-32', 
     pretrained='laion2b_s34b_b79k', 
-    device=_DEVICE
+    device=_DEVICE_GPU
 )
 _CLIP_TOKENIZER = open_clip.get_tokenizer('ViT-B-32')
 print("[CLIP] Model initialized.")
@@ -136,7 +130,6 @@ class CameraFeed:
                     continue
                 ret, frame = self.cap.read()
                 if not ret:
-                    time.sleep(0.01)
                     continue
 
             if frame is None: continue
@@ -267,6 +260,7 @@ class CameraEngine:
         self.search_cooldown = 1.5
         self.last_sound_time = 0.0
         self.sound_cooldown = 1.0  # Reduced from 5s to 1s for responsive audio feedback
+        self.sound_played_events = set() # Track IDs of persons who already beeped this session
         self.executor = None
 
         # ── Dedicated sound subprocess ────────────────────────────────────────
@@ -382,23 +376,40 @@ class CameraEngine:
         now = time.time()
         triggered = False
         
-        # Activity Alert
-        if detections and (now - self.last_activity_alert > self.activity_cooldown):
-            self.last_activity_alert = now
-            triggered = True
-            # Play sound if global sound is enabled OR any specific class sound is enabled
-            should_play_sound = self.sound_enabled or any(self.class_sounds.get(d['label'], False) for d in detections)
-            if should_play_sound and (now - self.last_sound_time > self.sound_cooldown):
-                self.last_sound_time = now
-                self._play_alert_sound()  # non-blocking: sends to sound process
+        # Activity Alert (Object Detection)
+        if detections:
+            # We track "object" alert cooldown globally as objects don't have stable IDs yet
+            if (now - self.last_activity_alert > self.activity_cooldown):
+                self.last_activity_alert = now
+                triggered = True
+                should_play_sound = self.sound_enabled or any(self.class_sounds.get(d['label'], False) for d in detections)
+                if should_play_sound and (now - self.last_sound_time > 10.0): # 10s gap for same-object repeat
+                    self.last_sound_time = now
+                    self._play_alert_sound()
 
         # Search Alert (person/watchlist match)
-        if is_search_match and (now - self.last_search_alert > self.search_cooldown):
-            self.last_search_alert = now
-            triggered = True
-            if (self.search_sound_enabled or self.sound_enabled) and (now - self.last_sound_time > self.sound_cooldown):
-                self.last_sound_time = now
-                self._play_alert_sound()  # non-blocking: sends to sound process
+        if is_search_match:
+            # Extract person ID if available from the search result
+            person_id = "unknown"
+            if isinstance(is_search_match, list) and len(is_search_match) > 0:
+                person_id = is_search_match[0].get('id', 'unknown')
+            elif isinstance(is_search_match, dict):
+                person_id = is_search_match.get('id', 'unknown')
+            elif isinstance(is_search_match, str):
+                person_id = is_search_match
+
+            if person_id not in self.sound_played_events:
+                # Play sound ONLY ONCE per person encounter
+                self.sound_played_events.add(person_id)
+                triggered = True
+                if (self.search_sound_enabled or self.sound_enabled) and (now - self.last_sound_time > self.sound_cooldown):
+                    self.last_sound_time = now
+                    self._play_alert_sound()
+            else:
+                # Still trigger the 'alert' (for the log) but don't re-play the sound
+                if (now - self.last_search_alert > self.search_cooldown):
+                    self.last_search_alert = now
+                    triggered = True
 
         if triggered:
             try:
@@ -452,7 +463,7 @@ class CameraEngine:
                 face_tensors = torch.stack([t for t in face_tensors if t is not None])
             if face_tensors.dim() == 3: face_tensors = face_tensors.unsqueeze(0)
             with torch.no_grad():
-                embeddings = _RESNET(face_tensors.to(_DEVICE))
+                embeddings = _RESNET(face_tensors.to('cpu'))
 
             def _extract_face_crop(box, frame_bgr):
                 """Crop face from frame and return base64 JPEG."""
@@ -481,7 +492,7 @@ class CameraEngine:
                     with self.reid_lock:
                         if self.watchlist:
                             wl_keys = list(self.watchlist.keys())
-                            wl_embs = torch.stack(list(self.watchlist.values())).view(len(wl_keys), -1).to(_DEVICE)
+                            wl_embs = torch.stack(list(self.watchlist.values())).view(len(wl_keys), -1).to('cpu')
                             sims = torch.nn.functional.cosine_similarity(wl_embs, embedding.unsqueeze(0))
                             best_sim, best_idx = torch.max(sims, dim=0)
                             if best_sim.item() > FACENET_THRESHOLD:
@@ -534,7 +545,7 @@ class CameraEngine:
             else:
                 pil_img = Image.fromarray(cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB))
             
-            img_input = _CLIP_PREPROCESS(pil_img).unsqueeze(0).to(_DEVICE)
+            img_input = _CLIP_PREPROCESS(pil_img).unsqueeze(0).to(_DEVICE_GPU)
             with torch.no_grad():
                 emb = _CLIP_MODEL.encode_image(img_input)
                 emb /= emb.norm(dim=-1, keepdim=True)
@@ -546,16 +557,22 @@ class CameraEngine:
         """Track persons across feeds with a 5-minute re-show cooldown."""
         now = time.time()
         SHOW_COOLDOWN = 300  # 5 minutes in seconds
+        STALE_TIMEOUT = 120    # 2 minutes gone = encounter over, sound can play again
         
         with self.reid_lock:
             # Clean old Re-ID entries (> 10 mins)
             self.reid_buffer = [e for e in self.reid_buffer if now - e['last_seen'] < 600]
+            # Reset sound flags for people who have been gone for STALE_TIMEOUT
+            stale_ids = [e['id'] for e in self.reid_buffer if now - e['last_seen'] > STALE_TIMEOUT]
+            for sid in stale_ids:
+                if sid in self.sound_played_events:
+                    self.sound_played_events.remove(sid)
             
             best_match = None
             
             if self.reid_buffer:
                 # Vectorized Cosine Similarity
-                rb_embs = torch.stack([e['embedding'] for e in self.reid_buffer]).view(len(self.reid_buffer), -1).to(_DEVICE)
+                rb_embs = torch.stack([e['embedding'] for e in self.reid_buffer]).view(len(self.reid_buffer), -1).to('cpu')
                 sims = torch.nn.functional.cosine_similarity(rb_embs, embedding.unsqueeze(0))
                 best_sim, best_idx = torch.max(sims, dim=0)
                 
@@ -614,7 +631,7 @@ class CameraEngine:
                 pid = f"P-{len(self.reid_buffer) + 1:03d}"
                 entry = {
                     "id": pid,
-                    "embedding": embedding.unsqueeze(0).to(_DEVICE),
+                    "embedding": embedding.unsqueeze(0).to('cpu'),
                     "semantic_emb": semantic_emb,
                     "last_feed": feed_id,
                     "last_seen": now,
@@ -761,7 +778,7 @@ class CameraEngine:
             if face_tensor is None: return False
             if face_tensor.dim() == 4: face_tensor = face_tensor[0]
             with torch.no_grad():
-                embedding = _RESNET(face_tensor.unsqueeze(0).to(_DEVICE))
+                embedding = _RESNET(face_tensor.unsqueeze(0).to('cpu'))
             with self.reid_lock:
                 self.watchlist[name] = embedding
             return True

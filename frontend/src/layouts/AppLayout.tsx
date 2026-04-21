@@ -195,7 +195,7 @@ const AppLayout: React.FC = () => {
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          setAlerts(prev => [data, ...prev].slice(0, 50));
+          setAlerts(prev => [data, ...prev].slice(0, 10));
           setUnreadAlerts(n => n + 1);
           playAlertSound();
         } catch (_) {}
@@ -223,7 +223,7 @@ const AppLayout: React.FC = () => {
         }
         setDetectedPersons(prev => {
           const filtered = prev.filter(p => p.person_id !== data.person_id);
-          return [data, ...filtered].slice(0, 30);
+          return [data, ...filtered].slice(0, 10);
         });
       };
       ws.onclose = () => { if (!dead) retryTimer = setTimeout(connect, 1500); };
@@ -244,7 +244,7 @@ const AppLayout: React.FC = () => {
       } catch (_) {}
     };
     fetchFeeds();
-    const interval = setInterval(fetchFeeds, 3000);
+    const interval = setInterval(fetchFeeds, 1000);
     return () => clearInterval(interval);
   }, [cameraActive, currentSource]);
 
