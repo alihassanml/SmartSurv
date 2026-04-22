@@ -8,12 +8,17 @@ interface CameraStreamProps {
   onLoaded?: () => void;
 }
 
+// Global queue to ensure cameras load sequentially (one by one)
+let connectionQueue = Promise.resolve();
+
 const CameraStream: React.FC<CameraStreamProps> = ({ feedId, active, onLoaded }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let isActive = true; // Track if this component is still active
+
     if (!active) {
       // Eye is OFF — close WebRTC connection completely (no background stream)
       if (pcRef.current) {
@@ -29,7 +34,11 @@ const CameraStream: React.FC<CameraStreamProps> = ({ feedId, active, onLoaded })
 
     setLoading(true);
 
-    const startWebRTC = async () => {
+    // Queue the WebRTC connection
+    connectionQueue = connectionQueue.then(async () => {
+      // If the component was unmounted or toggled off while waiting in queue, skip it
+      if (!isActive) return;
+
       // No STUN servers — LAN only, so host candidates resolve in <50ms
       const pc = new RTCPeerConnection({ iceServers: [] });
       pcRef.current = pc;
@@ -47,7 +56,6 @@ const CameraStream: React.FC<CameraStreamProps> = ({ feedId, active, onLoaded })
         await pc.setLocalDescription(offer);
 
         // Wait for all host ICE candidates to be gathered before sending
-        // (embedded/vanilla ICE — one round-trip instead of trickle)
         await new Promise<void>((resolve) => {
           if (pc.iceGatheringState === 'complete') { resolve(); return; }
           const onStateChange = () => {
@@ -59,6 +67,12 @@ const CameraStream: React.FC<CameraStreamProps> = ({ feedId, active, onLoaded })
           pc.addEventListener('icegatheringstatechange', onStateChange);
           setTimeout(resolve, 3000); // 3s safety cap
         });
+
+        // Check if still active before making network request
+        if (!isActive) {
+          pc.close();
+          return;
+        }
 
         const response = await fetch(`${API}/offer`, {
           method: 'POST',
@@ -75,16 +89,27 @@ const CameraStream: React.FC<CameraStreamProps> = ({ feedId, active, onLoaded })
         }
 
         const answer = await response.json();
+        
+        // Final check before applying remote description
+        if (!isActive) {
+          pc.close();
+          return;
+        }
+        
         await pc.setRemoteDescription(new RTCSessionDescription(answer));
+
+        // Wait a short moment (e.g. 500ms) after successful connection
+        // to give the backend time to stabilize before hitting it with the next camera stream
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        
       } catch (err) {
         console.error('WebRTC Negotiation Failed:', err);
-        setLoading(false);
+        if (isActive) setLoading(false);
       }
-    };
-
-    startWebRTC();
+    });
 
     return () => {
+      isActive = false; // Mark component as inactive so queued promises abort early
       if (pcRef.current) {
         pcRef.current.close();
         pcRef.current = null;

@@ -267,11 +267,14 @@ async def lifespan(app: FastAPI):
     # Seed cameras from JSON if DB is empty
     _seed_cameras_from_json()
 
+    # Load system camera state
+    system_camera_active = _db_get("system_camera_active", False)
+
     # Auto-start any URL cameras that were active before restart
     _db = SessionLocal()
     try:
         active_cams = _db.query(Camera).filter(Camera.is_active == True).all()
-        if active_cams:
+        if system_camera_active or active_cams:
             if not camera.running:
                 camera.start()
             for _cam in active_cams:
@@ -512,11 +515,13 @@ def manually_verify_user(user_id: int, db: Session = Depends(get_db)):
 @app.post("/api/camera/start")
 def start_camera():
     camera.start()
+    _db_set("system_camera_active", True)
     return {"status": "started"}
 
 @app.post("/api/camera/stop")
 def stop_camera():
     camera.stop()
+    _db_set("system_camera_active", False)
     return {"status": "stopped"}
 
 @app.post("/api/camera/mode")

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Eye, EyeOff, RefreshCw, Bell, User, LogOut } from 'lucide-react';
+import { Eye, EyeOff, RefreshCw, Bell, User, LogOut, Power } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import type { Alert, PersonEvent, ClassThreshold } from '../types/dashboard';
 import { API } from '../types/dashboard';
@@ -518,21 +518,22 @@ const AppLayout: React.FC = () => {
               {/* Connection dot */}
               
 
-              {/* Camera eye toggle */}
+              {/* System Power toggle */}
               <button
                 onClick={toggleCamera}
                 disabled={isCameraToggling}
-                title={cameraActive ? 'Camera ON — click to stop' : 'Camera OFF — click to start'}
-                className="p-2 transition-all duration-300 disabled:opacity-50"
+                title={cameraActive ? 'System Power ON — click to stop' : 'System Power OFF — click to start'}
+                className="px-3 py-1.5 flex items-center gap-2 transition-all duration-300 disabled:opacity-50 text-[10px] font-bold tracking-widest uppercase"
                 style={cameraActive
-                  ? { border: '1px solid rgba(176,198,255,0.3)', color: '#b0c6ff', background: 'rgba(176,198,255,0.05)', borderRadius: '0.25rem' }
-                  : { border: '1px solid rgba(255,180,171,0.3)', color: '#ffb4ab', background: 'rgba(255,180,171,0.05)', borderRadius: '0.25rem' }
+                  ? { border: '1px solid rgba(10,88,202,0.5)', color: '#b0c6ff', background: 'rgba(10,88,202,0.15)', borderRadius: '0.25rem' }
+                  : { border: '1px solid rgba(255,68,102,0.5)', color: '#ffb4ab', background: 'rgba(255,68,102,0.15)', borderRadius: '0.25rem' }
                 }
               >
                 {isCameraToggling
-                  ? <RefreshCw className="w-4 h-4 animate-spin" />
-                  : cameraActive ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />
+                  ? <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  : <Power className="w-3.5 h-3.5" />
                 }
+                {cameraActive ? 'SYSTEM ON' : 'SYSTEM OFF'}
               </button>
 
               {/* Alerts bell */}
