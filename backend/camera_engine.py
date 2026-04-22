@@ -197,8 +197,8 @@ class CameraFeed:
                     except Exception: pass
                     self.pending_face = None
 
-                # ── Fire new inference every 3rd frame (balance lag vs accuracy) ─
-                if self.frame_counter % 3 == 0 and self.pending_det is None and self.pending_face is None:
+                # ── Fire new inference every 2nd frame (reduced skip for better motion tracking) ─
+                if self.frame_counter % 2 == 0 and self.pending_det is None and self.pending_face is None:
                     if self.engine.executor:
                         try:
                             self.pending_det = self.engine.executor.submit(self.engine._process_detections, frame.copy())
@@ -291,9 +291,9 @@ class CameraFeed:
 class CameraEngine:
     def __init__(self, model_path='../model/S2 Model/best.pt', source=0):
         self.model = YOLO(model_path)
-        # Force CPU as requested
-        self.model.to('cpu')
-        print("[YOLO] Initialized on: CPU (Safe Mode)")
+        # Initialize on GPU if available
+        self.model.to(_DEVICE_GPU)
+        print(f"[YOLO] Initialized on: {_DEVICE_GPU}")
 
         self.source_config = source # 0, "remote", or "hybrid"
         self.feeds = {} # id -> CameraFeed
@@ -508,12 +508,18 @@ class CameraEngine:
     def _process_detections(self, frame):
         detections = []
         if self.mode in ["detection", "both"]:
-            # imgsz=224: ultra-fast for CPU inference
-            results = self.model(frame, verbose=False, imgsz=224)
+            # imgsz=640: higher resolution for better weapon/knife detection
+            results = self.model(frame, verbose=False, imgsz=640, device=_DEVICE_GPU)
             for box in results[0].boxes:
                 label = self.model.names[int(box.cls[0])]
                 conf = float(box.conf[0])
-                if conf >= self.class_thresholds.get(label, 0.5):
+                
+                # Special threshold for danger items (Recall > Precision for safety)
+                threshold = self.class_thresholds.get(label, 0.5)
+                if label.lower() in ["knife", "gun"]:
+                    threshold = 0.25 # Be more sensitive to weapons
+                
+                if conf >= threshold:
                     detections.append({"label": label, "confidence": conf, "box": box.xyxy[0].tolist()})
         return detections
 

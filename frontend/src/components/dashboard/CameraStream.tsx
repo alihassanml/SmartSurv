@@ -4,10 +4,11 @@ import { API } from '../../types/dashboard';
 interface CameraStreamProps {
   feedId?: string;
   active: boolean;
-  visible?: boolean; // reserved for future use — overlay is handled by parent
+  visible?: boolean;
+  onLoaded?: () => void;
 }
 
-const CameraStream: React.FC<CameraStreamProps> = ({ feedId, active }) => {
+const CameraStream: React.FC<CameraStreamProps> = ({ feedId, active, onLoaded }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const [loading, setLoading] = useState(true);
@@ -123,10 +124,10 @@ const CameraStream: React.FC<CameraStreamProps> = ({ feedId, active }) => {
           playsInline
           muted
           onCanPlay={() => {
-            console.log(`[CameraStream] onCanPlay for ${feedId}`);
             setLoading(false);
+            onLoaded?.();
           }}
-          onPlaying={() => setLoading(false)}
+          onPlaying={() => { setLoading(false); onLoaded?.(); }}
           onLoadedData={() => setLoading(false)}
           className="w-full h-full object-cover transition-opacity duration-500"
           style={{ 
