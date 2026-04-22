@@ -6,6 +6,15 @@ import Sidebar from '../components/Sidebar';
 import type { Alert, PersonEvent, ClassThreshold } from '../types/dashboard';
 import { API } from '../types/dashboard';
 
+export interface UrlCamera {
+  id: number;
+  name: string;
+  url: string;
+  active: boolean;
+  visible: boolean;
+  grid_position?: number;
+}
+
 export interface AppContextValue {
   alerts: Alert[];
   detectedPersons: PersonEvent[];
@@ -20,6 +29,12 @@ export interface AppContextValue {
   handleSourceChange: (src: '0' | 'remote' | 'hybrid') => void;
   activeFeeds: string[];
   watchlist: string[];
+  urlCameras: UrlCamera[];
+  fetchUrlCameras: () => void;
+  toggleUrlCamera: (id: number) => void;
+  toggleUrlCameraVisibility: (id: number) => void;
+  localCameraVisible: boolean;
+  toggleLocalCameraVisibility: () => void;
   fetchWatchlist: () => void;
   emailEnabled: boolean;
   toggleEmail: () => void;
@@ -60,6 +75,7 @@ export const useApp = () => {
 
 const pageTitles: Record<string, string> = {
   '/dashboard': 'Monitor',
+  '/dashboard/cameras': 'Cameras',
   '/dashboard/alerts': 'Alerts Log',
   '/dashboard/analytics': 'Analytics',
   '/dashboard/watchlist': 'Watchlist',
@@ -88,6 +104,7 @@ const AppLayout: React.FC = () => {
   const [currentSource, setCurrentSource] = useState<'0' | 'remote' | 'hybrid'>(
     (localStorage.getItem('currentSource') as '0' | 'remote' | 'hybrid') || '0'
   );
+  const [urlCameras, setUrlCameras] = useState<UrlCamera[]>([]);
 
   // ── Settings state ──
   const [emailEnabled, setEmailEnabled] = useState(true);
@@ -100,6 +117,8 @@ const AppLayout: React.FC = () => {
   const [classThresholds, setClassThresholds] = useState<ClassThreshold[]>([]);
   const [thresholdsLoading, setThresholdsLoading] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  // Local camera visibility — persisted in DB via /api/camera/local/toggle-visibility
+  const [localCameraVisible, setLocalCameraVisible] = useState(true);
 
   // ── Person focus ──
   const [focusedPersonId, setFocusedPersonId] = useState<string | null>(null);
@@ -157,6 +176,10 @@ const AppLayout: React.FC = () => {
         setEmailEnabled(d.email_enabled);
         setPrivacyMode(d.privacy_mode);
         setPersonLogEnabled(d.person_log_enabled);
+        // Load persisted local camera visibility (defaults true)
+        if (typeof d.local_camera_visible === 'boolean') {
+          setLocalCameraVisible(d.local_camera_visible);
+        }
       }).catch(() => {});
     fetch(`${API}/api/settings/ui`)
       .then(r => r.json())
@@ -257,20 +280,63 @@ const AppLayout: React.FC = () => {
     return () => { dead = true; if (retryTimer) clearTimeout(retryTimer); ws?.close(); };
   }, [cameraActive, focusedPersonId]);
 
-  // ── Camera feeds polling ──
+  // ── Camera feeds polling — always runs so URL-only setups update correctly ──
   useEffect(() => {
-    if (!cameraActive) return;
     const fetchFeeds = async () => {
+      // Don't override state while the user is actively toggling
+      if (isCameraToggling) return;
       try {
         const res = await fetch(`${API}/api/camera/feeds`);
         const data = await res.json();
-        setActiveFeeds(data.feeds || []);
+        const feeds: string[] = data.feeds || [];
+        setActiveFeeds(feeds);
+        // Keep cameraActive in sync: true if any feed is live
+        setCameraActive(feeds.length > 0);
       } catch (_) {}
     };
     fetchFeeds();
-    const interval = setInterval(fetchFeeds, 1000);
+    const interval = setInterval(fetchFeeds, 1500);
     return () => clearInterval(interval);
-  }, [cameraActive, currentSource]);
+  }, [isCameraToggling]);
+
+  // ── URL Cameras ──
+  const fetchUrlCameras = useCallback(async () => {
+    try {
+      const res = await fetch(`${API}/api/url-cameras`);
+      const data = await res.json();
+      setUrlCameras(data.cameras || []);
+    } catch (_) {}
+  }, []);
+
+  useEffect(() => { fetchUrlCameras(); }, [fetchUrlCameras]);
+
+  const toggleUrlCamera = async (id: number) => {
+    try {
+      const res = await fetch(`${API}/api/url-cameras/${id}/toggle`, { method: 'POST' });
+      const data = await res.json();
+      setUrlCameras(prev => prev.map(c => c.id === id ? { ...c, active: data.active } : c));
+    } catch (_) {}
+  };
+
+  const toggleUrlCameraVisibility = async (id: number) => {
+    try {
+      const res = await fetch(`${API}/api/url-cameras/${id}/toggle-visibility`, { method: 'POST' });
+      const data = await res.json();
+      setUrlCameras(prev => prev.map(c => c.id === id ? { ...c, visible: data.visible } : c));
+    } catch (_) {}
+  };
+
+  const toggleLocalCameraVisibility = async () => {
+    // Optimistic update first so UI responds instantly
+    const newVal = !localCameraVisible;
+    setLocalCameraVisible(newVal);
+    try {
+      await fetch(`${API}/api/camera/local/toggle-visibility`, { method: 'POST' });
+    } catch (_) {
+      // Roll back on failure
+      setLocalCameraVisible(!newVal);
+    }
+  };
 
   // ── Watchlist ──
   const fetchWatchlist = useCallback(async () => {
@@ -293,6 +359,17 @@ const AppLayout: React.FC = () => {
       const newState = !cameraActive;
       setCameraActive(newState);
       localStorage.setItem('cameraActive', String(newState));
+      if (!newState) {
+        // Camera stopped — immediately clear feeds so monitor goes dark
+        setActiveFeeds([]);
+      } else {
+        // Camera started — fetch feeds so monitor shows streams immediately
+        try {
+          const res = await fetch(`${API}/api/camera/feeds`);
+          const data = await res.json();
+          setActiveFeeds(data.feeds || []);
+        } catch (_) {}
+      }
     } catch (_) {}
     finally { setIsCameraToggling(false); }
   };
@@ -404,6 +481,8 @@ const AppLayout: React.FC = () => {
     alerts, detectedPersons, setDetectedPersons, selectedPerson, setSelectedPerson,
     isConnected, cameraActive, isCameraToggling, toggleCamera,
     currentSource, handleSourceChange, activeFeeds,
+    urlCameras, fetchUrlCameras, toggleUrlCamera, toggleUrlCameraVisibility,
+    localCameraVisible, toggleLocalCameraVisibility,
     watchlist, fetchWatchlist,
     emailEnabled, toggleEmail,
     privacyMode, togglePrivacy, personLogEnabled, togglePersonLog,

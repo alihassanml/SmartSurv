@@ -1,0 +1,12 @@
+[
+  {
+    "id": "url-cam-0",
+    "name": "Online Camera 1",
+    "url": "rtsp://FlagmobilityAdmin:bumpyGr!p73@210.4.119.26:5546/Streaming/Channels/101"
+  },
+  {
+    "id": "url-cam-1",
+    "name": "Online Camera 2",
+    "url": "http://213.188.196.246/mjpg/video.mjpg"
+  }
+]

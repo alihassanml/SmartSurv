@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Camera, RefreshCw, Radio, Zap, Target, X,
+  Camera, RefreshCw, Radio, Zap, Target, X, Power, Eye, EyeOff,
 } from 'lucide-react';
 import { useApp } from '../../layouts/AppLayout';
 import CameraStream from '../../components/dashboard/CameraStream';
@@ -19,17 +19,88 @@ const Monitor: React.FC = () => {
     privacyMode, personLogEnabled,
     focusedPersonId, handleSetFocus, focusedPersonVisible,
     semanticQuery, semanticResults, semanticLoading, handleSemanticSearch,
-    isReconnecting, systemLatency
+    isReconnecting, systemLatency,
+    systemIp,
+    urlCameras, toggleUrlCamera, toggleUrlCameraVisibility,
+    localCameraVisible, toggleLocalCameraVisibility,
   } = useApp();
 
   const [showRemoteLink, setShowRemoteLink] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [mapAlert, setMapAlert] = useState<Alert | null>(null);
+  const [hiddenFeeds, setHiddenFeeds] = useState<Set<string>>(new Set());
 
-  const displayIp = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-    ? (null) : window.location.hostname;
-  const systemIp = displayIp || window.location.hostname;
-  const remoteUrl = `${window.location.protocol}//${systemIp}${window.location.port ? ':' + window.location.port : ''}/remote-camera?client_id=${Math.random().toString(36).substring(7)}`;
+  // Seed hiddenFeeds from DB whenever urlCameras data loads/changes
+  useEffect(() => {
+    setHiddenFeeds(prev => {
+      const next = new Set(prev);
+      // URL cameras — visibility from DB
+      urlCameras.forEach(cam => {
+        const fid = `url-${cam.id}`;
+        if (!cam.visible) next.add(fid);
+        else next.delete(fid);
+      });
+      return next;
+    });
+  }, [urlCameras]);
+
+  // Seed local camera visibility from DB on load
+  useEffect(() => {
+    setHiddenFeeds(prev => {
+      const next = new Set(prev);
+      // Local feeds are those that do NOT start with 'url-'
+      // We sync all non-url active feeds with the DB-persisted localCameraVisible
+      activeFeeds.forEach(fid => {
+        if (!fid.startsWith('url-')) {
+          if (!localCameraVisible) next.add(fid);
+          else next.delete(fid);
+        }
+      });
+      return next;
+    });
+  }, [localCameraVisible, activeFeeds]);
+
+  const toggleFeedVisibility = async (feedId: string) => {
+    if (feedId.startsWith('url-')) {
+      const camId = parseInt(feedId.replace('url-', ''), 10);
+      if (isNaN(camId)) return;
+
+      const cam = urlCameras.find(c => c.id === camId);
+      if (!cam) return;
+
+      // Toggle visibility in DB
+      await toggleUrlCameraVisibility(camId);
+      
+      // USER REQUEST: If hiding, also stop background processing. If showing, start it.
+      // We check the current 'active' state to decide what to do.
+      // If we are about to hide it (cam.visible is true), we should also stop it.
+      if (cam.visible && cam.active) {
+        await toggleUrlCamera(camId); // Stop
+      } else if (!cam.visible && !cam.active) {
+        await toggleUrlCamera(camId); // Start
+      }
+    } else {
+      // Local / remote feeds
+      await toggleLocalCameraVisibility();
+      
+      // Synchronize with local camera power
+      // If hiding local camera, stop it. If showing, start it.
+      if (localCameraVisible && cameraActive) {
+        await toggleCamera(); // Stop
+      } else if (!localCameraVisible && !cameraActive) {
+        await toggleCamera(); // Start
+      }
+    }
+  };
+
+  const handleFeedPower = (feedId: string) => {
+    // Power button now also toggles visibility to keep things in sync as requested
+    toggleFeedVisibility(feedId);
+  };
+
+  const lanIp = systemIp || window.location.hostname;
+  const frontendPort = window.location.port ? `:${window.location.port}` : '';
+  const remoteUrl = `http://${lanIp}${frontendPort}/remote-camera?client_id=${Math.random().toString(36).substring(7)}`;
 
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
     const R = 6371;
@@ -137,118 +208,196 @@ const Monitor: React.FC = () => {
       <section className="flex-1 flex flex-col p-4 gap-3 overflow-hidden">
 
         {/* Controls bar */}
-        <div className="flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-2">
-            {/* Source selector */}
-            <select
-              value={currentSource}
-              onChange={e => handleSourceChange(e.target.value as '0' | 'remote' | 'hybrid')}
-              disabled={isReconnecting}
-              className="text-[10px] font-bold tracking-widest uppercase px-3 py-1.5 appearance-none cursor-pointer"
-              style={{ background: '#1a1c1f', border: '1px solid rgba(176,198,255,0.15)', color: '#b0c6ff', borderRadius: '0.25rem' }}
-            >
-              <option value="0">LOCAL CAMERA</option>
-              <option value="remote">REMOTE NODE</option>
-              <option value="hybrid">HYBRID</option>
-            </select>
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Source selector */}
+          <select
+            value={currentSource}
+            onChange={e => handleSourceChange(e.target.value as '0' | 'remote' | 'hybrid')}
+            disabled={isReconnecting}
+            className="text-[10px] font-bold tracking-widest uppercase px-3 py-1.5 appearance-none cursor-pointer"
+            style={{ background: '#1a1c1f', border: '1px solid rgba(176,198,255,0.15)', color: '#b0c6ff', borderRadius: '0.25rem' }}
+          >
+            <option value="0">LOCAL CAMERA</option>
+            <option value="remote">REMOTE NODE</option>
+            <option value="hybrid">HYBRID</option>
+          </select>
 
-            {/* Remote link */}
-            <button onClick={() => setShowRemoteLink(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold tracking-widest uppercase transition-all"
-              style={{ border: '1px solid rgba(176,198,255,0.15)', color: '#8c909f', borderRadius: '0.25rem', background: '#1a1c1f' }}
-              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#b0c6ff'; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = '#8c909f'; }}>
-              <Zap className="w-3 h-3" />
-              CONNECT_PHONE
-            </button>
-          </div>
-
+          {/* Remote link */}
+          <button onClick={() => setShowRemoteLink(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold tracking-widest uppercase transition-all"
+            style={{ border: '1px solid rgba(176,198,255,0.15)', color: '#8c909f', borderRadius: '0.25rem', background: '#1a1c1f' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#b0c6ff'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = '#8c909f'; }}>
+            <Zap className="w-3 h-3" />
+            CONNECT_PHONE
+          </button>
         </div>
 
         {/* Feed area */}
-        <div className="flex-1 relative overflow-hidden group" style={{ border: '1px solid rgba(176,198,255,0.1)', background: '#0c0e11', borderRadius: '0.25rem' }}>
+        <div className="flex-1 flex flex-col min-h-0 gap-3">
+          <div className="flex-1 relative overflow-hidden" style={{ border: '1px solid rgba(176,198,255,0.1)', background: '#0c0e11', borderRadius: '0.25rem' }}>
 
-          {/* Corner brackets */}
-          {['top-0 left-0 border-t-2 border-l-2', 'top-0 right-0 border-t-2 border-r-2', 'bottom-0 left-0 border-b-2 border-l-2', 'bottom-0 right-0 border-b-2 border-r-2'].map((cls, i) => (
-            <div key={i} className={`absolute w-8 h-8 ${cls} animate-corner-pulse z-10`}
-              style={{ borderColor: 'rgba(176,198,255,0.2)' }} />
-          ))}
+            {/* Corner brackets */}
+            {['top-0 left-0 border-t-2 border-l-2', 'top-0 right-0 border-t-2 border-r-2', 'bottom-0 left-0 border-b-2 border-l-2', 'bottom-0 right-0 border-b-2 border-r-2'].map((cls, i) => (
+              <div key={i} className={`absolute w-8 h-8 ${cls} animate-corner-pulse z-10`}
+                style={{ borderColor: 'rgba(176,198,255,0.2)' }} />
+            ))}
 
-          {/* Focus HUD */}
-          <AnimatePresence>
-            {focusedPersonId && (
-              <motion.div initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -20, opacity: 0 }}
-                className="absolute top-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-4 px-6 py-2 backdrop-blur-md"
-                style={{ background: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,180,171,0.4)' }}>
-                <div className="flex items-center gap-2">
-                  <Target className={`w-4 h-4 ${focusedPersonVisible ? 'animate-pulse' : ''}`}
-                    style={{ color: focusedPersonVisible ? '#ffb4ab' : '#690005' }} />
-                  <span className="text-[10px] font-bold tracking-[0.3em] uppercase" style={{ color: '#ffb4ab' }}>
-                    FOCUS: {focusedPersonId}
-                  </span>
-                </div>
-                <button onClick={() => handleSetFocus(null)}><X className="w-3 h-3" /></button>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Video grid */}
-          <div className={`absolute inset-0 p-2 grid gap-2 ${activeFeeds.length > 4 ? 'grid-cols-3' : activeFeeds.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
-            {activeFeeds.length > 0 ? (
-              activeFeeds.map(feedId => (
-                <div key={feedId} className="relative overflow-hidden"
-                  style={{ border: '1px solid rgba(176,198,255,0.08)', background: 'rgba(0,0,0,0.4)' }}>
-                  <CameraStream feedId={feedId} active={cameraActive} />
-                  <div className="absolute top-2 left-2 px-2 py-0.5 text-[8px] font-bold tracking-tighter"
-                    style={{ background: 'rgba(0,0,0,0.7)', border: '1px solid rgba(176,198,255,0.2)', color: '#b0c6ff' }}>
-                    FEED_{feedId.toUpperCase()}
+            {/* Focus HUD */}
+            <AnimatePresence>
+              {focusedPersonId && (
+                <motion.div initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -20, opacity: 0 }}
+                  className="absolute top-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-4 px-6 py-2 backdrop-blur-md"
+                  style={{ background: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,180,171,0.4)' }}>
+                  <div className="flex items-center gap-2">
+                    <Target className={`w-4 h-4 ${focusedPersonVisible ? 'animate-pulse' : ''}`}
+                      style={{ color: focusedPersonVisible ? '#ffb4ab' : '#690005' }} />
+                    <span className="text-[10px] font-bold tracking-[0.3em] uppercase" style={{ color: '#ffb4ab' }}>
+                      FOCUS: {focusedPersonId}
+                    </span>
                   </div>
-                  {privacyMode && (
-                    <div className="absolute bottom-2 right-2 px-2 py-0.5 text-[7px] font-bold tracking-widest backdrop-blur-sm"
-                      style={{ background: 'rgba(180,198,248,0.15)', color: '#b4c6f8', border: '1px solid rgba(180,198,248,0.3)' }}>
-                      PRIVACY_ACTIVE
-                    </div>
+                  <button onClick={() => handleSetFocus(null)}><X className="w-3 h-3" /></button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Video grid - ONLY VISIBLE FEEDS */}
+            {(() => {
+              const visibleFeeds = activeFeeds.filter(id => !hiddenFeeds.has(id));
+              return (
+                <div className={`absolute inset-0 grid ${visibleFeeds.length > 4 ? 'grid-cols-3' : visibleFeeds.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                  {visibleFeeds.length > 0 ? (
+                    visibleFeeds.map(feedId => (
+                      <div key={feedId} className="relative overflow-hidden group"
+                        style={{ borderRight: '1px solid rgba(176,198,255,0.06)', borderBottom: '1px solid rgba(176,198,255,0.06)' }}>
+
+                        <CameraStream feedId={feedId} active={true} visible={true} />
+
+                        {/* Feed label (top-left) */}
+                        <div className="absolute top-2 left-2 px-2 py-0.5 text-[8px] font-bold tracking-tighter"
+                          style={{ background: 'rgba(0,0,0,0.7)', border: '1px solid rgba(176,198,255,0.2)', color: '#b0c6ff', zIndex: 10 }}>
+                          FEED_{feedId.toUpperCase()}
+                        </div>
+
+                        {/* Hover overlay — Eye + Power buttons */}
+                        <div className="absolute inset-0 flex flex-col justify-end p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none group-hover:pointer-events-auto"
+                          style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 55%)', zIndex: 40 }}>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => toggleFeedVisibility(feedId)}
+                              title="Hide Feed"
+                              className="p-2 transition-all"
+                              style={{
+                                background: 'rgba(176,198,255,0.12)',
+                                border: '1px solid rgba(176,198,255,0.2)',
+                                color: '#b0c6ff',
+                                borderRadius: '0.25rem',
+                              }}>
+                              <Eye className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleFeedPower(feedId)}
+                              title="Stop Feed"
+                              className="p-2 transition-all"
+                              style={{
+                                background: 'rgba(255,68,102,0.12)',
+                                border: '1px solid rgba(255,68,102,0.3)',
+                                color: '#ffb4ab',
+                                borderRadius: '0.25rem',
+                              }}>
+                              <Power className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {privacyMode && (
+                          <div className="absolute bottom-2 right-2 px-2 py-0.5 text-[7px] font-bold tracking-widest backdrop-blur-sm z-10"
+                            style={{ background: 'rgba(180,198,248,0.15)', color: '#b4c6f8', border: '1px solid rgba(180,198,248,0.3)' }}>
+                            PRIVACY_ACTIVE
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    // No visible feeds but camera is active
+                    cameraActive && activeFeeds.length === 0 && (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-3"
+                        style={{ color: 'rgba(176,198,255,0.25)' }}>
+                        <CameraStream active={cameraActive} />
+                      </div>
+                    )
                   )}
                 </div>
-              ))
-            ) : (
-              cameraActive && <CameraStream active={cameraActive} />
+              );
+            })()}
+
+            {/* Camera off state */}
+            {!cameraActive && activeFeeds.length === 0 && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3"
+                style={{ color: 'rgba(176,198,255,0.25)' }}>
+                <motion.div animate={{ opacity: [0.3, 0.7, 0.3] }} transition={{ repeat: Infinity, duration: 2 }}>
+                  <Camera className="w-14 h-14" />
+                </motion.div>
+                <p className="text-[10px] tracking-[0.4em] font-bold">FEED_OFFLINE</p>
+                <button
+                  onClick={toggleCamera} disabled={isCameraToggling}
+                  className="mt-2 flex items-center gap-2 px-5 py-2 text-[9px] tracking-widest uppercase transition-all disabled:opacity-50"
+                  style={{ border: '1px solid rgba(176,198,255,0.2)', color: 'rgba(176,198,255,0.5)', borderRadius: '0.25rem' }}
+                >
+                  {isCameraToggling && <RefreshCw className="w-3 h-3 animate-spin" />}
+                  {isCameraToggling ? 'STARTING...' : 'START CAMERA'}
+                </button>
+              </div>
+            )}
+
+            {/* Live HUD badge */}
+            {cameraActive && (
+              <div className="absolute top-4 left-4 z-20 flex flex-col gap-1.5">
+                <div className="flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold"
+                  style={{ background: 'rgba(10,88,202,0.9)', color: '#ccd8ff' }}>
+                  <Radio className="w-3 h-3 animate-pulse" />
+                  LIVE
+                </div>
+                <div className="px-2.5 py-1 text-[8px] font-bold font-mono tracking-widest uppercase transition-all"
+                  style={{ background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(176,198,255,0.1)', color: 'rgba(176,198,255,0.4)' }}>
+                  LATENCY: <span style={{ color: '#00ff85' }}>{systemLatency !== null ? `${systemLatency}ms` : '---'}</span>
+                </div>
+              </div>
             )}
           </div>
 
-          {/* Camera off state */}
-          {!cameraActive && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3"
-              style={{ color: 'rgba(176,198,255,0.25)' }}>
-              <motion.div animate={{ opacity: [0.3, 0.7, 0.3] }} transition={{ repeat: Infinity, duration: 2 }}>
-                <Camera className="w-14 h-14" />
-              </motion.div>
-              <p className="text-[10px] tracking-[0.4em] font-bold">FEED_OFFLINE</p>
-              <button
-                onClick={toggleCamera} disabled={isCameraToggling}
-                className="mt-2 flex items-center gap-2 px-5 py-2 text-[9px] tracking-widest uppercase transition-all disabled:opacity-50"
-                style={{ border: '1px solid rgba(176,198,255,0.2)', color: 'rgba(176,198,255,0.5)', borderRadius: '0.25rem' }}
-              >
-                {isCameraToggling && <RefreshCw className="w-3 h-3 animate-spin" />}
-                {isCameraToggling ? 'STARTING...' : 'START CAMERA'}
-              </button>
-            </div>
-          )}
+          {/* HIDDEN FEEDS BAR - "The small screens" */}
+          {(() => {
+            const hiddenUrlCams = urlCameras.filter(c => !c.visible).map(c => `url-${c.id}`);
+            const isLocalHidden = !localCameraVisible;
+            const allHidden = [...(isLocalHidden ? ['cam-0'] : []), ...hiddenUrlCams];
+            
+            if (allHidden.length === 0) return null;
 
-          {/* Live HUD badge & Latency Monitor */}
-          {cameraActive && (
-            <div className="absolute top-4 left-4 z-20 flex flex-col gap-1.5">
-              <div className="flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold"
-                style={{ background: 'rgba(10,88,202,0.9)', color: '#ccd8ff' }}>
-                <Radio className="w-3 h-3 animate-pulse" />
-                LIVE
+            return (
+              <div className="flex items-center gap-3 px-4 py-3 shrink-0"
+                style={{ background: '#111316', border: '1px solid rgba(176,198,255,0.08)', borderRadius: '0.25rem' }}>
+                <span className="text-[8px] font-bold tracking-[0.3em] uppercase opacity-30 mr-2">Hidden Nodes</span>
+                <div className="flex flex-wrap gap-2">
+                  {allHidden.map(feedId => (
+                    <motion.div
+                      key={feedId}
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      className="flex items-center gap-3 pl-3 pr-2 py-1.5 transition-all hover:bg-white/5 cursor-pointer"
+                      onClick={() => toggleFeedVisibility(feedId)}
+                      style={{ background: 'rgba(176,198,255,0.03)', border: '1px solid rgba(176,198,255,0.1)', borderRadius: '0.125rem' }}
+                    >
+                      <span className="text-[9px] font-bold font-mono text-white/40">{feedId.toUpperCase()}</span>
+                      <div className="p-1.5" style={{ color: '#b0c6ff' }}>
+                        <EyeOff className="w-3 h-3" />
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
               </div>
-              <div className="px-2.5 py-1 text-[8px] font-bold font-mono tracking-widest uppercase transition-all"
-                style={{ background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(176,198,255,0.1)', color: 'rgba(176,198,255,0.4)' }}>
-                LATENCY: <span style={{ color: '#00ff85' }}>{systemLatency !== null ? `${systemLatency}ms` : '---'}</span>
-              </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
       </section>
 

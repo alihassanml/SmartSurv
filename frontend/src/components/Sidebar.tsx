@@ -3,11 +3,12 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutGrid, Bell, BarChart2, Target, Settings,
-  Users, Shield, ChevronLeft, ChevronRight, Activity
+  Users, Shield, ChevronLeft, ChevronRight, Activity, Video
 } from 'lucide-react';
 
 const navItems = [
   { icon: LayoutGrid, label: 'Monitor',   path: '/dashboard' },
+  { icon: Video,      label: 'Cameras',   path: '/dashboard/cameras' },
   { icon: Bell,       label: 'Alerts',    path: '/dashboard/alerts' },
   { icon: BarChart2,  label: 'Analytics', path: '/dashboard/analytics' },
   { icon: Target,     label: 'Watchlist', path: '/dashboard/watchlist' },

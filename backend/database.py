@@ -13,7 +13,6 @@ Base = declarative_base()
 
 class User(Base):
     __tablename__ = "users"
-
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True)
     email = Column(String, unique=True, index=True)
@@ -23,13 +22,22 @@ class User(Base):
     is_active = Column(Boolean, default=True, nullable=False)
     is_admin = Column(Boolean, default=False, nullable=False)
 
+class Camera(Base):
+    """Online / URL cameras managed via the Cameras page."""
+    __tablename__ = "cameras"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    url = Column(String, nullable=False)
+    grid_position = Column(Integer, default=0)
+    is_active = Column(Boolean, default=False)   # streaming on/off (default OFF)
+    is_visible = Column(Boolean, default=True)   # eye toggle — feed shown on monitor
+
 class Setting(Base):
     """Key-value store for persistent settings (thresholds, sounds, etc.)."""
     __tablename__ = "settings"
-
     id = Column(Integer, primary_key=True, index=True)
     key = Column(String, unique=True, index=True, nullable=False)
-    value = Column(Text, nullable=False)  # JSON-encoded value
+    value = Column(Text, nullable=False)
 
 Base.metadata.create_all(bind=engine)
 
@@ -38,15 +46,28 @@ def _run_migrations():
     from sqlalchemy import text, inspect
     with engine.connect() as conn:
         inspector = inspect(engine)
-        existing_cols = {col["name"] for col in inspector.get_columns("users")}
-        if "is_verified" not in existing_cols:
-            conn.execute(text("ALTER TABLE users ADD COLUMN is_verified BOOLEAN NOT NULL DEFAULT 0"))
-        if "verification_code" not in existing_cols:
-            conn.execute(text("ALTER TABLE users ADD COLUMN verification_code VARCHAR"))
-        if "is_active" not in existing_cols:
-            conn.execute(text("ALTER TABLE users ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT 1"))
-        if "is_admin" not in existing_cols:
-            conn.execute(text("ALTER TABLE users ADD COLUMN is_admin BOOLEAN NOT NULL DEFAULT 0"))
+
+        # users table
+        existing_users = {col["name"] for col in inspector.get_columns("users")}
+        for col, ddl in [
+            ("is_verified",       "BOOLEAN NOT NULL DEFAULT 0"),
+            ("verification_code", "VARCHAR"),
+            ("is_active",         "BOOLEAN NOT NULL DEFAULT 1"),
+            ("is_admin",          "BOOLEAN NOT NULL DEFAULT 0"),
+        ]:
+            if col not in existing_users:
+                conn.execute(text(f"ALTER TABLE users ADD COLUMN {col} {ddl}"))
+
+        # cameras table — created fresh by SQLAlchemy, but guard for old DBs
+        if inspector.has_table("cameras"):
+            existing_cams = {col["name"] for col in inspector.get_columns("cameras")}
+            if "is_active" not in existing_cams:
+                conn.execute(text("ALTER TABLE cameras ADD COLUMN is_active BOOLEAN DEFAULT 0"))
+            if "grid_position" not in existing_cams:
+                conn.execute(text("ALTER TABLE cameras ADD COLUMN grid_position INTEGER DEFAULT 0"))
+            if "is_visible" not in existing_cams:
+                conn.execute(text("ALTER TABLE cameras ADD COLUMN is_visible BOOLEAN NOT NULL DEFAULT 1"))
+
         conn.commit()
 
 _run_migrations()

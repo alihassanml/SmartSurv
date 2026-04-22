@@ -13,6 +13,7 @@ import WatchlistPage from './pages/dashboard/WatchlistPage';
 import SettingsPage from './pages/dashboard/SettingsPage';
 import SystemHealth from './pages/dashboard/SystemHealth';
 import UsersPage from './pages/dashboard/UsersPage';
+import CamerasPage from './pages/dashboard/CamerasPage';
 
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   const token = localStorage.getItem('token');
@@ -42,6 +43,7 @@ const App: React.FC = () => {
           <Route path="analytics" element={<Analytics />} />
           <Route path="watchlist" element={<WatchlistPage />} />
           <Route path="settings" element={<SettingsPage />} />
+          <Route path="cameras" element={<CamerasPage />} />
           <Route path="system" element={<SystemHealth />} />
           <Route path="users" element={<UsersPage />} />
         </Route>

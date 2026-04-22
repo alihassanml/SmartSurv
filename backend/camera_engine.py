@@ -15,7 +15,6 @@ import numpy as np
 # Suppress OpenCV noise
 os.environ["OPENCV_VIDEOIO_PRIORITY_MSMF"] = "0"
 os.environ["OPENCV_LOG_LEVEL"] = "OFF"
-cv2.setLogLevel(0)
 from PIL import Image
 from ultralytics import YOLO
 from concurrent.futures import ThreadPoolExecutor
@@ -34,21 +33,22 @@ with open(os.devnull, 'w') as _devnull, contextlib.redirect_stderr(_devnull):
     import torch
     from facenet_pytorch import MTCNN, InceptionResnetV1
 
-# ─── FaceNet (Optimized for CPU to reduce GPU overhead) ───────────────────────
+# ── CLIP Model for Semantic Search (Safe CPU Mode) ───────────────────────────
+_DEVICE_GPU = torch.device('cpu')
+
+# ─── FaceNet (Forced CPU for stability) ──────────────────────────────────────
 _MTCNN = MTCNN(
     keep_all=True,
     device='cpu',
     post_process=True,
     select_largest=False,
-    min_face_size=40,
+    min_face_size=50, # Slightly larger for faster CPU detection
 )
 _RESNET = InceptionResnetV1(pretrained='vggface2').eval().to('cpu')
 
 FACENET_THRESHOLD = 0.70
-print("[FaceNet] Models initialized on: CPU (Hybrid Optimized)")
+print("[FaceNet] Models initialized on: CPU (Safe Mode)")
 
-# CLIP Model for Semantic Search (Kept on GPU for heavy vector math)
-_DEVICE_GPU = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 print(f"[CLIP] Loading ViT-B-32 on: {_DEVICE_GPU}...")
 _CLIP_MODEL, _, _CLIP_PREPROCESS = open_clip.create_model_and_transforms(
     'ViT-B-32', 
@@ -57,6 +57,8 @@ _CLIP_MODEL, _, _CLIP_PREPROCESS = open_clip.create_model_and_transforms(
 )
 _CLIP_TOKENIZER = open_clip.get_tokenizer('ViT-B-32')
 print("[CLIP] Model initialized.")
+
+DANGER = ["person", "knife", "gun", "fire", "cell phone"]
 
 class CameraFeed:
     """Represents a single camera stream and its processing loop."""
@@ -78,7 +80,9 @@ class CameraFeed:
         self.last_face_box = None
         self.pending_det = None
         self.pending_face = None
-        self.latest_frame = None
+        self.latest_frame = np.zeros((480, 640, 3), dtype=np.uint8)
+        cv2.putText(self.latest_frame, "INITIALIZING FEED...", (160, 240), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (100, 100, 100), 2)
         
         
 
@@ -86,17 +90,38 @@ class CameraFeed:
 
     def start(self):
         if self.running: return
-        if self.source != "remote":
+        if self.source == "remote":
+            pass  # Remote feeds receive frames via push_remote_frame
+        elif isinstance(self.source, int):
+            # Local USB/webcam
             if sys.platform.startswith('win'):
-                # CAP_MSMF (Media Foundation) opens 3-5x faster than CAP_DSHOW on Windows
+                print(f"[Feed-{self.feed_id}] Opening with CAP_MSMF...")
                 self.cap = cv2.VideoCapture(self.source, cv2.CAP_MSMF)
+                if not self.cap or not self.cap.isOpened():
+                    print(f"[Feed-{self.feed_id}] MSMF Failed, trying CAP_DSHOW...")
+                    self.cap = cv2.VideoCapture(self.source, cv2.CAP_DSHOW)
             else:
                 self.cap = cv2.VideoCapture(self.source)
-            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-            self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-            self.cap.set(cv2.CAP_PROP_FPS, 30)
-        
+
+            if self.cap and self.cap.isOpened():
+                self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+                self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+                self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 3)
+                self.cap.set(cv2.CAP_PROP_FPS, 30)
+            else:
+                print(f"[Feed-{self.feed_id}] ERROR: Could not open camera: {self.source}")
+                self.running = False
+                return
+        else:
+            # URL camera (RTSP / HTTP MJPEG)
+            print(f"[Feed-{self.feed_id}] Opening URL: {self.source}")
+            os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp|fflags;nobuffer"
+            self.cap = cv2.VideoCapture(self.source, cv2.CAP_FFMPEG)
+            if not self.cap or not self.cap.isOpened():
+                print(f"[Feed-{self.feed_id}] ERROR: Could not open URL: {self.source}")
+                self.running = False
+                return
+
         self.running = True
         self.thread = threading.Thread(target=self._run, daemon=True)
         self.thread.start()
@@ -113,142 +138,152 @@ class CameraFeed:
 
     def push_remote_frame(self, frame_bytes: bytes):
         if self.source != "remote": return
-        if self.remote_queue.full():
-            try: self.remote_queue.get_nowait()
-            except queue.Empty: pass
-        self.remote_queue.put(frame_bytes)
+        try:
+            if self.remote_queue.full():
+                try: self.remote_queue.get_nowait()
+                except queue.Empty: pass
+            self.remote_queue.put_nowait(frame_bytes)
+        except queue.Full:
+            pass
 
     def _run(self):
         DANGER = {'weapons', 'weapon', 'violence', 'pistol', 'knife', 'guns', 'person with knife'}
         
-        while self.running:
-            self.frame_counter += 1
-            frame = None
+        try:
+            while self.running:
+                self.frame_counter += 1
+                frame = None
 
-            if self.source == "remote":
-                try:
-                    raw_bytes = self.remote_queue.get(timeout=1.0)
-                    frame = cv2.imdecode(np.frombuffer(raw_bytes, np.uint8), cv2.IMREAD_COLOR)
-                except queue.Empty:
-                    continue
-            else:
-                if not self.cap or not self.cap.isOpened():
-                    time.sleep(0.1)
-                    continue
-                ret, frame = self.cap.read()
-                if not ret:
-                    self.consecutive_failures += 1
-                    if self.consecutive_failures > 30:
-                        print(f"[Feed-{self.feed_id}] DISCONNECTED (Max failures).")
-                        self.running = False
-                        break
-                    continue
-                self.consecutive_failures = 0
-
-            if frame is None: continue
-            
-            # ── Measure throughput ──────────────────────────────────────────
-            loop_start = time.time()
-            display_frame = frame.copy()
-
-            # ── Collect inference results when ready (NEVER block) ────────
-            if self.pending_det is not None and self.pending_det.done():
-                try: self.last_detections = self.pending_det.result()
-                except Exception: pass
-                self.pending_det = None
-
-            if self.pending_face is not None and self.pending_face.done():
-                try:
-                    self.last_is_target_match, self.last_face_box = self.pending_face.result()
-                except Exception: pass
-                self.pending_face = None
-
-            # ── Fire new inference every 2nd frame (only when prev is done) ─
-            if self.frame_counter % 2 == 0 and self.pending_det is None and self.pending_face is None:
-                if self.engine.executor:
+                if self.source == "remote":
                     try:
-                        self.pending_det = self.engine.executor.submit(self.engine._process_detections, frame.copy())
-                        self.pending_face = self.engine.executor.submit(self.engine._process_face_search, frame.copy(), self.feed_id)
-                    except (RuntimeError, AttributeError):
-                        if not self.running: break
-
-
-            # ── Draw overlays ─────────────────────────────────────────────
-            for d in self.last_detections:
-                x1, y1, x2, y2 = [int(v) for v in d["box"]]
-                color = (0, 0, 255) if d["label"].lower() in DANGER else (0, 255, 0)
-                cv2.rectangle(display_frame, (x1, y1), (x2, y2), color, 2)
-                cv2.putText(display_frame, f"{d['label']} {d['confidence']:.2f}",
-                            (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
-
-            if self.last_is_target_match and self.last_face_box:
-                # Selective decrypt: If it's a list (all faces), we handle it below.
-                # If it's a single box (legacy compatibility), we handle it.
-                if isinstance(self.last_face_box, list) and not isinstance(self.last_face_box[0], int):
-                    # Selective Privacy Handling
-                    for face in self.last_face_box:
-                        x1, y1, x2, y2 = [int(v) for v in face['box']]
-                        is_target = face.get('is_target', False)
-                        is_focused = face.get('is_focused', False)
-                        
-                        if self.engine.privacy_mode and not (is_target or is_focused):
-                            # Anonymize: Gaussian Blur to ensure privacy compliance
-                            face_roi = display_frame[y1:y2, x1:x2]
-                            if face_roi.size > 0:
-                                blur = cv2.GaussianBlur(face_roi, (51, 51), 30)
-                                display_frame[y1:y2, x1:x2] = blur
-                                # Overlay Shield Icon / "REDACTED" text
-                                cv2.putText(display_frame, "PRIVACY_REDACTED", (x1, y1 - 5), 
-                                            cv2.FONT_HERSHEY_SIMPLEX, 0.35, (100, 100, 100), 1)
-                        
-                        # Draw visual marker for match/focus
-                        if is_target or is_focused:
-                            cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
-                            r = int(max(x2 - x1, y2 - y1) * 0.65)
-                            color = (0, 0, 255) if is_target else (0, 255, 255)
-                            cv2.circle(display_frame, (cx, cy), r, color, 2)
-                            tag = f"TARGET: {face.get('id')}" if is_target else f"FOCUS: {face.get('id')}"
-                            cv2.putText(display_frame, tag, (x1, y1 - 10), 
-                                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+                        raw_bytes = self.remote_queue.get(timeout=1.0)
+                        frame = cv2.imdecode(np.frombuffer(raw_bytes, np.uint8), cv2.IMREAD_COLOR)
+                    except queue.Empty:
+                        continue
                 else:
-                    # Fallback for old loop logic
-                    x1, y1, x2, y2 = self.last_face_box
-                    cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
-                    r = int(max(x2 - x1, y2 - y1) * 0.65)
-                    cv2.circle(display_frame, (cx, cy), r, (0, 255, 0), 2)
+                    if not self.cap or not self.cap.isOpened():
+                        time.sleep(0.5)
+                        self.consecutive_failures += 1
+                        if self.consecutive_failures > 50:
+                            print(f"[Feed-{self.feed_id}] FATAL: Camera not opened.")
+                            break
+                        continue
+                        
+                    ret, frame = self.cap.read()
+                    if not ret:
+                        self.consecutive_failures += 1
+                        if self.consecutive_failures > 150: 
+                            print(f"[Feed-{self.feed_id}] DISCONNECTED (Max failures).")
+                            break
+                        time.sleep(0.01)
+                        continue
+                    self.consecutive_failures = 0
+
+                if frame is None: continue
+                
+                # ── Measure throughput ──────────────────────────────────────────
+                loop_start = time.time()
+                display_frame = frame.copy()
+
+                # ── Collect inference results when ready (NEVER block) ────────
+                if self.pending_det is not None and self.pending_det.done():
+                    try: self.last_detections = self.pending_det.result()
+                    except Exception: pass
+                    self.pending_det = None
+
+                if self.pending_face is not None and self.pending_face.done():
+                    try:
+                        self.last_is_target_match, self.last_face_box = self.pending_face.result()
+                    except Exception: pass
+                    self.pending_face = None
+
+                # ── Fire new inference every 3rd frame (balance lag vs accuracy) ─
+                if self.frame_counter % 3 == 0 and self.pending_det is None and self.pending_face is None:
+                    if self.engine.executor:
+                        try:
+                            self.pending_det = self.engine.executor.submit(self.engine._process_detections, frame.copy())
+                            self.pending_face = self.engine.executor.submit(self.engine._process_face_search, frame.copy(), self.feed_id)
+                        except (RuntimeError, AttributeError):
+                            if not self.running: break
 
 
+                # ── Draw overlays ─────────────────────────────────────────────
+                for d in self.last_detections:
+                    x1, y1, x2, y2 = [int(v) for v in d["box"]]
+                    color = (0, 0, 255) if d["label"].lower() in DANGER else (0, 255, 0)
+                    cv2.rectangle(display_frame, (x1, y1), (x2, y2), color, 2)
+                    cv2.putText(display_frame, f"{d['label']} {d['confidence']:.2f}",
+                                (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
 
-            
-            # ── Handle Alerts & Re-ID ────────────────────────────────────
-            # ── Draw HUD (Latency & Performance) ─────────────────────────
-            latency_ms = (time.time() - loop_start) * 1000
-            inf_tag = f"INF: {latency_ms:.1f}ms"
-            fps_tag = f"SRC: {int(getattr(self.cap, 'get', lambda x: 30)(cv2.CAP_PROP_FPS) or 30)}FPS" if self.source != "remote" else "REMOTE"
-            
-            # Tactical Glass-Style HUD in corner
-            overlay = display_frame.copy()
-            cv2.rectangle(overlay, (5, 5), (170, 32), (30, 20, 10), -1)
-            cv2.addWeighted(overlay, 0.6, display_frame, 0.4, 0, display_frame)
-            cv2.rectangle(display_frame, (5, 5), (170, 32), (150, 100, 50), 1)
-            
-            cv2.putText(display_frame, f"{inf_tag} | {fps_tag}", (12, 22),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.38, (0, 255, 133), 1, cv2.LINE_AA)
+                if self.last_is_target_match and self.last_face_box:
+                    # Selective decrypt: If it's a list (all faces), we handle it below.
+                    # If it's a single box (legacy compatibility), we handle it.
+                    if isinstance(self.last_face_box, list) and len(self.last_face_box) > 0 and not isinstance(self.last_face_box[0], int):
+                        # Selective Privacy Handling
+                        for face in self.last_face_box:
+                            x1, y1, x2, y2 = [int(v) for v in face['box']]
+                            is_target = face.get('is_target', False)
+                            is_focused = face.get('is_focused', False)
+                            
+                            if self.engine.privacy_mode and not (is_target or is_focused):
+                                # Anonymize: Gaussian Blur to ensure privacy compliance
+                                face_roi = display_frame[y1:y2, x1:x2]
+                                if face_roi.size > 0:
+                                    blur = cv2.GaussianBlur(face_roi, (51, 51), 30)
+                                    display_frame[y1:y2, x1:x2] = blur
+                                    # Overlay Shield Icon / "REDACTED" text
+                                    cv2.putText(display_frame, "PRIVACY_REDACTED", (x1, y1 - 5), 
+                                                cv2.FONT_HERSHEY_SIMPLEX, 0.35, (100, 100, 100), 1)
+                            
+                            # Draw visual marker for match/focus
+                            if is_target or is_focused:
+                                cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
+                                r = int(max(x2 - x1, y2 - y1) * 0.65)
+                                color = (0, 0, 255) if is_target else (0, 255, 255)
+                                cv2.circle(display_frame, (cx, cy), r, color, 2)
+                                tag = f"TARGET: {face.get('id')}" if is_target else f"FOCUS: {face.get('id')}"
+                                cv2.putText(display_frame, tag, (x1, y1 - 10), 
+                                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+                    else:
+                        # Fallback for old loop logic
+                        x1, y1, x2, y2 = self.last_face_box
+                        cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
+                        r = int(max(x2 - x1, y2 - y1) * 0.65)
+                        cv2.circle(display_frame, (cx, cy), r, (0, 255, 0), 2)
 
-            self.engine._handle_alerts(self.feed_id, display_frame, self.last_detections, self.last_is_target_match)
 
+                # ── Handle Alerts & Re-ID ────────────────────────────────────
+                # ── Draw HUD (Latency & Performance) ─────────────────────────
+                latency_ms = (time.time() - loop_start) * 1000
+                inf_tag = f"INF: {latency_ms:.1f}ms"
+                fps_tag = f"SRC: {int(getattr(self.cap, 'get', lambda x: 30)(cv2.CAP_PROP_FPS) or 30)}FPS" if self.source != "remote" else "REMOTE"
+                
+                # Tactical Glass-Style HUD in corner
+                overlay = display_frame.copy()
+                cv2.rectangle(overlay, (5, 5), (170, 32), (30, 20, 10), -1)
+                cv2.addWeighted(overlay, 0.6, display_frame, 0.4, 0, display_frame)
+                cv2.rectangle(display_frame, (5, 5), (170, 32), (150, 100, 50), 1)
+                
+                cv2.putText(display_frame, f"{inf_tag} | {fps_tag}", (12, 22),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.38, (0, 255, 133), 1, cv2.LINE_AA)
 
+                self.engine._handle_alerts(self.feed_id, display_frame, self.last_detections, self.last_is_target_match)
 
-            # ── Update latest raw frame for WebRTC ───────────────────────
-            self.latest_frame = display_frame
+                # ── Update latest raw frame for WebRTC ───────────────────────
+                self.latest_frame = display_frame
 
-            # ── Push frame to stream queue ────────────────────────────────
-            _, buf = cv2.imencode('.jpg', display_frame, [cv2.IMWRITE_JPEG_QUALITY, 65])
-            if self.frame_queue.full():
-                try: self.frame_queue.get_nowait()
-                except queue.Empty: pass
-            try: self.frame_queue.put_nowait(buf.tobytes())
-            except queue.Full: pass
+                # ── Push frame to stream queue ────────────────────────────────
+                _, buf = cv2.imencode('.jpg', display_frame, [cv2.IMWRITE_JPEG_QUALITY, 65])
+                if self.frame_queue.full():
+                    try: self.frame_queue.get_nowait()
+                    except queue.Empty: pass
+                try: self.frame_queue.put_nowait(buf.tobytes())
+                except queue.Full: pass
+        except Exception as e:
+            print(f"[Feed-{self.feed_id}] CRITICAL ERROR in loop: {e}")
+        finally:
+            self.running = False
+            print(f"[Feed-{self.feed_id}] Thread exiting.")
 
 
 
@@ -256,11 +291,9 @@ class CameraFeed:
 class CameraEngine:
     def __init__(self, model_path='../model/S2 Model/best.pt', source=0):
         self.model = YOLO(model_path)
-        try:
-            if torch.cuda.is_available():
-                self.model.to('cuda')
-                print("[YOLO] GPU initialised.")
-        except Exception: pass
+        # Force CPU as requested
+        self.model.to('cpu')
+        print("[YOLO] Initialized on: CPU (Safe Mode)")
 
         self.source_config = source # 0, "remote", or "hybrid"
         self.feeds = {} # id -> CameraFeed
@@ -276,7 +309,6 @@ class CameraEngine:
         self.reid_threshold = 0.75
         self.reid_lock = threading.Lock()
         self.focused_person_id = None # PID currently under active monitoring focus
-        self.loitering_threshold = 60.0 # Time in seconds before a person is considered loitering
 
 
         self.sound_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'sound', 'drop.mp3'))
@@ -476,8 +508,8 @@ class CameraEngine:
     def _process_detections(self, frame):
         detections = []
         if self.mode in ["detection", "both"]:
-            # imgsz=416: ultralytics resizes internally & scales boxes back automatically
-            results = self.model(frame, verbose=False, imgsz=416)
+            # imgsz=224: ultra-fast for CPU inference
+            results = self.model(frame, verbose=False, imgsz=224)
             for box in results[0].boxes:
                 label = self.model.names[int(box.cls[0])]
                 conf = float(box.conf[0])
@@ -501,7 +533,8 @@ class CameraEngine:
                 face_tensors = torch.stack([t for t in face_tensors if t is not None])
             if face_tensors.dim() == 3: face_tensors = face_tensors.unsqueeze(0)
             with torch.no_grad():
-                embeddings = _RESNET(face_tensors.to('cpu'))
+                # Ensure input is on same device as model (_DEVICE_GPU)
+                embeddings = _RESNET(face_tensors.to(_DEVICE_GPU))
 
             def _extract_face_crop(box, frame_bgr):
                 """Crop face from frame and return base64 JPEG."""
@@ -530,8 +563,10 @@ class CameraEngine:
                     with self.reid_lock:
                         if self.watchlist:
                             wl_keys = list(self.watchlist.keys())
-                            wl_embs = torch.stack(list(self.watchlist.values())).view(len(wl_keys), -1).to('cpu')
-                            sims = torch.nn.functional.cosine_similarity(wl_embs, embedding.unsqueeze(0))
+                            if not wl_keys: return None
+                            
+                            wl_embs = torch.stack(list(self.watchlist.values())).view(len(wl_keys), -1).to(_DEVICE_GPU)
+                            sims = torch.nn.functional.cosine_similarity(wl_embs, embedding.unsqueeze(0).to(_DEVICE_GPU))
                             best_sim, best_idx = torch.max(sims, dim=0)
                             if best_sim.item() > FACENET_THRESHOLD:
                                 best_match = wl_keys[best_idx.item()]
@@ -629,21 +664,6 @@ class CameraEngine:
                 best_match['last_seen'] = now
                 best_match['last_feed'] = feed_id
                 
-                # ── Loitering Detection ───────────────────────────────────
-                stay_duration = now - best_match['entry_time']
-                if stay_duration > self.loitering_threshold and not best_match.get('loitering_flagged', False):
-                    best_match['loitering_flagged'] = True
-                    # Push a loitering event to the alert queue
-                    self.alert_queue.put({
-                        "feed_id": feed_id,
-                        "timestamp": time.strftime("%H:%M:%S"),
-                        "detections": [{"label": "LOITERING", "confidence": 1.0, "box": box.tolist() if box is not None else [0,0,0,0]}],
-                        "message": f"BEHAVIORAL_ALERT: {best_match['id']} LOITERING ({int(stay_duration)}s)",
-                        "image": face_crop_b64, # Show the person's face in the alert
-                        "is_behavioral": True,
-                        "location": {"id": f"{self.camera_id}-{feed_id}", "lat": self.camera_lat, "lon": self.camera_lon}
-                    })
-
                 # Update semantic traits if new one is better/available
                 if semantic_emb is not None:
                     best_match['semantic_emb'] = semantic_emb
@@ -674,8 +694,6 @@ class CameraEngine:
                     "last_feed": feed_id,
                     "last_seen": now,
                     "last_shown": now,
-                    "entry_time": now,        # NEW: Timestamp of first encounter
-                    "loitering_flagged": False # NEW: Avoid double alerts
                 }
                 self.reid_buffer.append(entry)
                 # Emit new person event
@@ -713,7 +731,9 @@ class CameraEngine:
                 self._sync_feeds()
             except Exception as e:
                 print(f"[Watchdog] Sync error: {e}")
-            time.sleep(5.0) # Scan for new hardware every 5 seconds
+            # If cameras are active, scan less frequently to avoid driver interference
+            interval = 60.0 if self.feeds else 15.0
+            time.sleep(interval)
 
     def stop(self):
         self.running = False
@@ -744,71 +764,105 @@ class CameraEngine:
 
     def _sync_feeds(self):
         """Update active feeds based on source_config."""
-        should_have = []
+        should_have_fids = []
+        should_have_configs = []
         
-        # Dynamic Detection: If source is 0 or "auto", we scan for all available hardware
-        if self.source_config in [0, "0", "auto", "hybrid"]:
+        # 1. Determine which feeds we SHOULD have
+        if self.source_config in ["auto", "hybrid"]:
             indices = self._scan_hardware()
             for idx in indices:
-                should_have.append(("local", idx))
-        
-        if self.source_config == "remote":
-            # Remote only mode - no local cameras
+                fid = f"cam-{idx}"
+                should_have_fids.append(fid)
+                should_have_configs.append(("local", idx))
+        elif self.source_config == "remote":
             pass
-        elif self.source_config != "auto" and self.source_config != "hybrid":
-             # Specific index requested
-             try:
-                 idx = int(self.source_config)
-                 if ("local", idx) not in should_have:
-                     should_have.append(("local", idx))
-             except: pass
+        else:
+            try:
+                idx = int(self.source_config)
+                fid = f"cam-{idx}"
+                should_have_fids.append(fid)
+                should_have_configs.append(("local", idx))
+            except (ValueError, TypeError):
+                pass
 
-        # Create missing local feeds
-        for f_type, f_src in should_have:
+        # 2. Prune feeds that are either dead or no longer requested
+        for fid in list(self.feeds.keys()):
+            # Remote and URL feeds are managed externally — only prune if dead
+            if fid.startswith("remote-") or fid.startswith("url-"):
+                if not self.feeds[fid].running:
+                    print(f"[Engine] Pruning dead feed: {fid}")
+                    del self.feeds[fid]
+                continue
+
+            if fid not in should_have_fids or not self.feeds[fid].running:
+                print(f"[Engine] Pruning feed: {fid} (running={self.feeds[fid].running})")
+                self.feeds[fid].stop()
+                del self.feeds[fid]
+
+        # 3. Start missing feeds
+        for f_type, f_src in should_have_configs:
             fid = f"cam-{f_src}"
             if fid not in self.feeds:
+                print(f"[Engine] Adding new feed: {fid}")
                 f = CameraFeed(fid, f_src, self)
                 self.feeds[fid] = f
-                if self.running: f.start()
-        
-        # Cleanup disconnected feeds
-        for fid in list(self.feeds.keys()):
-            if not self.feeds[fid].running:
-                print(f"[Engine] Pruning dead feed: {fid}")
-                del self.feeds[fid]
+                if self.running: 
+                    f.start()
+                    time.sleep(1.0) 
 
     def _scan_hardware(self):
         """Scan system for available camera indices."""
         available = []
-        # Get indices already in use
         active_indices = [f.source for f in self.feeds.values() if isinstance(f.source, int)]
         
-        # Parallel scan to avoid blocking the engine
-        with ThreadPoolExecutor(max_workers=5) as executor:
-            def check(i):
-                if i in active_indices: return i # Already have it
-                try:
-                    # On Windows, opening a camera that is ALREADY OPEN in another process/thread 
-                    # can cause the MSMF backend to throw a 'can't grab frame' error or warnings.
-                    c = cv2.VideoCapture(i, cv2.CAP_DSHOW) # DSHOW is faster for probing than MSMF
-                    if c.isOpened():
-                        c.release()
-                        return i
-                except: pass
-                return None
+        # Sequential scan: Parallel probing often causes "can't grab frame" on Windows drivers
+        for i in range(5): # Check first 5 indices
+            if i in active_indices:
+                available.append(i)
+                continue
             
-            results = executor.map(check, range(5)) # Check first 5 indices
-            available = [r for r in results if r is not None]
+            try:
+                # Probing can be destructive on Windows if another camera is active.
+                # We use a very fast probe here.
+                c = cv2.VideoCapture(i, cv2.CAP_ANY)
+                if c is not None and c.isOpened():
+                    # Check if we can actually read a frame
+                    ret, _ = c.read()
+                    if ret:
+                        available.append(i)
+                    c.release()
+                elif c is not None:
+                    c.release()
+            except Exception: 
+                pass
+                
         return available
 
     def push_remote_frame(self, frame_bytes: bytes, client_id: str = "remote-1"):
-        if self.source_config not in ["remote", "hybrid"]: return
         fid = f"remote-{client_id}"
         if fid not in self.feeds:
             f = CameraFeed(fid, "remote", self)
             self.feeds[fid] = f
             if self.running: f.start()
         self.feeds[fid].push_remote_frame(frame_bytes)
+
+    def add_url_camera(self, cam_id: str, url: str):
+        """Start an online camera feed by URL (RTSP / HTTP MJPEG)."""
+        if cam_id in self.feeds and self.feeds[cam_id].running:
+            return
+        if not self.running:
+            self.start()
+        f = CameraFeed(cam_id, url, self)
+        self.feeds[cam_id] = f
+        f.start()
+        print(f"[Engine] URL camera added: {cam_id} ({url})")
+
+    def remove_url_camera(self, cam_id: str):
+        """Stop and remove an online camera feed."""
+        if cam_id in self.feeds:
+            self.feeds[cam_id].stop()
+            del self.feeds[cam_id]
+            print(f"[Engine] URL camera removed: {cam_id}")
 
     def get_raw_frame(self, feed_id=None):
         if not feed_id:
@@ -932,7 +986,7 @@ class CameraEngine:
         
         try:
             # Tokenize and encode text
-            text_tokens = _CLIP_TOKENIZER([query_text]).to(_DEVICE)
+            text_tokens = _CLIP_TOKENIZER([query_text]).to(_DEVICE_GPU)
             with torch.no_grad():
                 text_emb = _CLIP_MODEL.encode_text(text_tokens)
                 text_emb /= text_emb.norm(dim=-1, keepdim=True)

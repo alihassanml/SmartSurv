@@ -16,7 +16,7 @@ pcs = set()
 import torch
 
 from camera_engine import CameraEngine
-from database import SessionLocal, Base, engine, User, Setting
+from database import SessionLocal, Base, engine, User, Setting, Camera
 from auth import verify_password, get_password_hash, create_access_token
 import socket
 import smtplib
@@ -264,7 +264,21 @@ async def lifespan(app: FastAPI):
         camera.set_class_sounds(saved_sounds)
         print(f"[DB] Loaded {len(saved_sounds)} class sounds from database.")
 
-    # Camera starts OFF — user turns it on from the dashboard
+    # Seed cameras from JSON if DB is empty
+    _seed_cameras_from_json()
+
+    # Auto-start any URL cameras that were active before restart
+    _db = SessionLocal()
+    try:
+        active_cams = _db.query(Camera).filter(Camera.is_active == True).all()
+        if active_cams:
+            if not camera.running:
+                camera.start()
+            for _cam in active_cams:
+                camera.add_url_camera(f"url-{_cam.id}", _cam.url)
+    finally:
+        _db.close()
+
     yield
     # Shutdown: close all WebRTC peer connections then stop camera
     app.state.is_running = False
@@ -321,6 +335,25 @@ async def offer(params: Offer):
     return JSONResponse(content={"sdp": pc.localDescription.sdp, "type": pc.localDescription.type})
 
 camera = CameraEngine(source="auto")
+
+# ── URL / Online Cameras (SQLite DB, seeded from cameras.json) ───────────────
+def _seed_cameras_from_json():
+    """Seed the cameras table from cameras.json on first startup if table is empty."""
+    json_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'cameras.json'))
+    if not os.path.exists(json_path):
+        return
+    db = SessionLocal()
+    try:
+        if db.query(Camera).count() > 0:
+            return
+        with open(json_path) as f:
+            entries = json.load(f)
+        for entry in entries:
+            db.add(Camera(name=entry['name'], url=entry['url'], is_active=False))
+        db.commit()
+        print(f"[DB] Seeded {len(entries)} cameras from cameras.json")
+    finally:
+        db.close()
 
 # Ensure temp directory for uploads
 TEMP_DIR = "temp_uploads"
@@ -522,6 +555,19 @@ def set_camera_privacy(body: PrivacyUpdate):
         _db_set("ui_person_log_enabled", False)
     return {"status": "success", "privacy_mode": camera.privacy_mode}
 
+@app.get("/api/system/info")
+def api_system_info():
+    """Returns runtime system info used by the frontend AppLayout."""
+    return {
+        "local_ip": get_local_ip(),
+        "port": 8000,
+        "smtp_email": camera.email_sender,
+        "email_enabled": camera.email_enabled,
+        "privacy_mode": camera.privacy_mode,
+        "person_log_enabled": _db_get("ui_person_log_enabled", False),
+        "local_camera_visible": _db_get("local_camera_visible", True),
+    }
+
 @app.get("/api/model/classes")
 def get_model_classes():
     thresholds = camera.get_thresholds()
@@ -554,6 +600,71 @@ def set_camera_source(body: SourceUpdate):
 @app.get("/api/camera/feeds")
 def get_camera_feeds():
     return {"feeds": camera.get_active_feeds()}
+
+@app.post("/api/camera/local/toggle-visibility")
+def toggle_local_camera_visibility():
+    """Toggle and persist the local (webcam) feed visibility in the DB."""
+    current = _db_get("local_camera_visible", True)
+    new_val = not current
+    _db_set("local_camera_visible", new_val)
+    return {"status": "success", "visible": new_val}
+
+@app.get("/api/url-cameras")
+def get_url_cameras(db: Session = Depends(get_db)):
+    cams = db.query(Camera).all()
+    return {"cameras": [
+        {"id": c.id, "name": c.name, "url": c.url, "active": c.is_active,
+         "visible": c.is_visible, "grid_position": c.grid_position}
+        for c in cams
+    ]}
+
+class UrlCameraCreate(BaseModel):
+    name: str
+    url: str
+
+@app.post("/api/url-cameras")
+def add_url_camera_endpoint(body: UrlCameraCreate, db: Session = Depends(get_db)):
+    cam = Camera(name=body.name.strip(), url=body.url.strip(), is_active=False, is_visible=True)
+    db.add(cam)
+    db.commit()
+    db.refresh(cam)
+    return {"id": cam.id, "name": cam.name, "url": cam.url, "active": cam.is_active, "visible": cam.is_visible}
+
+@app.post("/api/url-cameras/{cam_id}/toggle")
+def toggle_url_camera(cam_id: int, db: Session = Depends(get_db)):
+    cam = db.query(Camera).filter(Camera.id == cam_id).first()
+    if not cam:
+        raise HTTPException(status_code=404, detail="Camera not found")
+    cam.is_active = not cam.is_active
+    db.commit()
+    feed_id = f"url-{cam.id}"
+    if cam.is_active:
+        if not camera.running:
+            camera.start()
+        camera.add_url_camera(feed_id, cam.url)
+    else:
+        camera.remove_url_camera(feed_id)
+    return {"status": "success", "active": cam.is_active}
+
+@app.post("/api/url-cameras/{cam_id}/toggle-visibility")
+def toggle_url_camera_visibility(cam_id: int, db: Session = Depends(get_db)):
+    cam = db.query(Camera).filter(Camera.id == cam_id).first()
+    if not cam:
+        raise HTTPException(status_code=404, detail="Camera not found")
+    cam.is_visible = not cam.is_visible
+    db.commit()
+    return {"status": "success", "visible": cam.is_visible}
+
+@app.delete("/api/url-cameras/{cam_id}")
+def delete_url_camera_endpoint(cam_id: int, db: Session = Depends(get_db)):
+    cam = db.query(Camera).filter(Camera.id == cam_id).first()
+    if not cam:
+        raise HTTPException(status_code=404, detail="Camera not found")
+    if cam.is_active:
+        camera.remove_url_camera(f"url-{cam.id}")
+    db.delete(cam)
+    db.commit()
+    return {"status": "success"}
 
 @app.get("/api/watchlist")
 def get_watchlist():
