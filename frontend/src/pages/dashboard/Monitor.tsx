@@ -98,17 +98,22 @@ function LocalCameraCard({
             <button
               onClick={e => { e.stopPropagation(); toggleLocalCameraVisibility(); }}
               title={localCameraVisible ? 'Hide Camera' : 'Show Camera'}
-              className="p-2 transition-all"
+              className="px-2 py-1.5 flex items-center gap-1.5 transition-all text-[9px] font-bold tracking-wider uppercase"
               style={{ background: 'rgba(176,198,255,0.12)', border: '1px solid rgba(176,198,255,0.2)', color: '#b0c6ff', borderRadius: '0.25rem' }}>
-              {localCameraVisible ? <EyeOff size={14} /> : <Eye size={14} />}
+              {localCameraVisible ? <EyeOff size={12} /> : <Eye size={12} />}
+              {localCameraVisible ? 'HIDE' : 'SHOW'}
             </button>
             <button
               onClick={e => { e.stopPropagation(); toggleCamera(); }}
               disabled={isCameraToggling}
               title={cameraActive ? 'Stop Camera' : 'Start Camera'}
-              className="p-2 transition-all"
-              style={{ background: 'rgba(255,68,102,0.12)', border: '1px solid rgba(255,68,102,0.3)', color: '#ffb4ab', borderRadius: '0.25rem' }}>
-              {isCameraToggling ? <Loader2 size={14} className="animate-spin" /> : <Power size={14} />}
+              className="px-2 py-1.5 flex items-center gap-1.5 transition-all text-[9px] font-bold tracking-wider uppercase"
+              style={cameraActive 
+                ? { background: 'rgba(255,68,102,0.15)', border: '1px solid rgba(255,68,102,0.4)', color: '#ffb4ab', borderRadius: '0.25rem' }
+                : { background: 'rgba(10,88,202,0.15)', border: '1px solid rgba(176,198,255,0.4)', color: '#b0c6ff', borderRadius: '0.25rem' }
+              }>
+              {isCameraToggling ? <Loader2 size={12} className="animate-spin" /> : <Power size={12} />}
+              {cameraActive ? 'OFF' : 'ON'}
             </button>
           </div>
           {isStreaming && (
@@ -208,17 +213,22 @@ function UrlCameraCard({
             <button
               onClick={e => { e.stopPropagation(); onToggleVisibility(cam.id); }}
               title={cam.visible ? 'Hide Camera' : 'Show Camera'}
-              className="p-2 transition-all"
+              className="px-2 py-1.5 flex items-center gap-1.5 transition-all text-[9px] font-bold tracking-wider uppercase"
               style={{ background: 'rgba(176,198,255,0.12)', border: '1px solid rgba(176,198,255,0.2)', color: '#b0c6ff', borderRadius: '0.25rem' }}>
-              {cam.visible ? <EyeOff size={14} /> : <Eye size={14} />}
+              {cam.visible ? <EyeOff size={12} /> : <Eye size={12} />}
+              {cam.visible ? 'HIDE' : 'SHOW'}
             </button>
             <button
               onClick={e => { e.stopPropagation(); onToggle(cam.id); }}
               disabled={toggling}
               title={cam.active ? 'Stop Camera' : 'Start Camera'}
-              className="p-2 transition-all"
-              style={{ background: 'rgba(255,68,102,0.12)', border: '1px solid rgba(255,68,102,0.3)', color: '#ffb4ab', borderRadius: '0.25rem' }}>
-              {toggling ? <Loader2 size={14} className="animate-spin" /> : <Power size={14} />}
+              className="px-2 py-1.5 flex items-center gap-1.5 transition-all text-[9px] font-bold tracking-wider uppercase"
+              style={cam.active 
+                ? { background: 'rgba(255,68,102,0.15)', border: '1px solid rgba(255,68,102,0.4)', color: '#ffb4ab', borderRadius: '0.25rem' }
+                : { background: 'rgba(10,88,202,0.15)', border: '1px solid rgba(176,198,255,0.4)', color: '#b0c6ff', borderRadius: '0.25rem' }
+              }>
+              {toggling ? <Loader2 size={12} className="animate-spin" /> : <Power size={12} />}
+              {cam.active ? 'OFF' : 'ON'}
             </button>
           </div>
           {isStreaming && (
