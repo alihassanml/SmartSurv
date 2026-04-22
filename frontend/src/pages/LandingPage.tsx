@@ -126,14 +126,7 @@ const LandingPage: React.FC = () => {
         animate="visible"
         className="relative z-10 max-w-5xl mx-auto px-8 pt-28 pb-20 flex flex-col items-center text-center"
       >
-        {/* Status pill */}
-        <motion.div variants={itemVariants}
-          className="inline-flex items-center gap-2 px-4 py-1.5 mb-8 text-[10px] tracking-widest uppercase"
-          style={{ border: '1px solid rgba(176,198,255,0.25)', background: 'rgba(176,198,255,0.04)', color: '#b0c6ff', borderRadius: '0.25rem' }}>
-          <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#b0c6ff' }} />
-          SYSTEM_STATUS: ONLINE
-        </motion.div>
-
+      
         {/* Headline */}
         <motion.h1 variants={itemVariants}
           className="text-5xl md:text-7xl font-bold tracking-tight leading-[1.05] mb-6"
