@@ -37,7 +37,7 @@ const Sidebar: React.FC = () => {
     <motion.aside
       animate={{ width: sidebarWidth }}
       transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-      className="relative flex flex-col shrink-0 overflow-hidden"
+      className="relative flex flex-col shrink-0"
       style={{
         background: '#1a1c1f',
         borderRight: '1px solid rgba(176,198,255,0.08)',
