@@ -81,6 +81,9 @@ class CameraFeed:
         self.last_face_box = None
         self.pending_det = None
         self.pending_face = None
+        self.quality = 65 # Default starting quality
+        
+        self.last_activity_alert = 0
         self.latest_frame = np.zeros((480, 640, 3), dtype=np.uint8)
         cv2.putText(self.latest_frame, "INITIALIZING FEED...", (160, 240), 
                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (100, 100, 100), 2)
@@ -290,8 +293,16 @@ class CameraFeed:
                 # ── Update latest raw frame for WebRTC ───────────────────────
                 self.latest_frame = display_frame
 
+                # ── Adaptive Quality (Netflix-style) ─────────────────────────
+                # Dynamically adjust JPEG quality based on processing latency
+                elapsed = time.time() - loop_start
+                if elapsed > 0.10: # System is struggling ( < 10 FPS capability )
+                    self.quality = max(25, self.quality - 5)
+                elif elapsed < 0.04: # System is fast ( > 25 FPS capability )
+                    self.quality = min(85, self.quality + 1)
+
                 # ── Push frame to stream queue ────────────────────────────────
-                _, buf = cv2.imencode('.jpg', display_frame, [cv2.IMWRITE_JPEG_QUALITY, 65])
+                _, buf = cv2.imencode('.jpg', display_frame, [cv2.IMWRITE_JPEG_QUALITY, self.quality])
                 if self.frame_queue.full():
                     try: self.frame_queue.get_nowait()
                     except queue.Empty: pass
@@ -714,9 +725,9 @@ class CameraEngine:
             best_match = None
             
             if self.reid_buffer:
-                # Vectorized Cosine Similarity
-                rb_embs = torch.stack([e['embedding'] for e in self.reid_buffer]).view(len(self.reid_buffer), -1).to('cpu')
-                sims = torch.nn.functional.cosine_similarity(rb_embs, embedding.unsqueeze(0))
+                # Vectorized Cosine Similarity on GPU
+                rb_embs = torch.stack([e['embedding'] for e in self.reid_buffer]).view(len(self.reid_buffer), -1).to(_DEVICE_GPU)
+                sims = torch.nn.functional.cosine_similarity(rb_embs, embedding.unsqueeze(0).to(_DEVICE_GPU))
                 best_sim, best_idx = torch.max(sims, dim=0)
                 
                 if best_sim.item() > self.reid_threshold:
@@ -990,7 +1001,7 @@ class CameraEngine:
             if face_tensor is None: return False
             if face_tensor.dim() == 4: face_tensor = face_tensor[0]
             with torch.no_grad():
-                embedding = _RESNET(face_tensor.unsqueeze(0).to('cpu'))
+                embedding = _RESNET(face_tensor.unsqueeze(0).to(_DEVICE_GPU))
             with self.reid_lock:
                 self.watchlist[name] = embedding
             return True
