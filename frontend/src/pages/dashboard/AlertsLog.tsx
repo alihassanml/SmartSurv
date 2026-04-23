@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+﻿import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Shield, AlertTriangle, ShieldAlert, User, MapPin, Download,
@@ -19,10 +19,10 @@ const getSeverity = (alert: Alert): 'match' | 'critical' | 'high' | 'alert' => {
 };
 
 const SEV_MAP = {
-  match:    { color: '#ffb4ab', bg: 'rgba(255,180,171,0.1)',  border: 'rgba(255,180,171,0.4)', label: 'MATCH',    Icon: ShieldAlert },
-  critical: { color: '#ff6b6b', bg: 'rgba(147,0,10,0.15)',   border: 'rgba(255,107,107,0.5)', label: 'CRITICAL', Icon: ShieldAlert },
-  high:     { color: '#ffa94d', bg: 'rgba(255,169,77,0.08)', border: 'rgba(255,169,77,0.35)', label: 'HIGH',     Icon: AlertTriangle },
-  alert:    { color: '#b0c6ff', bg: 'rgba(176,198,255,0.06)', border: 'rgba(176,198,255,0.2)', label: 'ALERT',   Icon: Shield },
+  match:    { color: '#ba1a1a', bg: 'rgba(186,26,26,0.06)',  border: 'rgba(186,26,26,0.25)',  label: 'MATCH',    Icon: ShieldAlert },
+  critical: { color: '#ba1a1a', bg: 'rgba(186,26,26,0.08)',  border: 'rgba(186,26,26,0.3)',   label: 'CRITICAL', Icon: ShieldAlert },
+  high:     { color: '#b45309', bg: 'rgba(180,83,9,0.06)',   border: 'rgba(180,83,9,0.2)',    label: 'HIGH',     Icon: AlertTriangle },
+  alert:    { color: '#2480ff', bg: 'rgba(36,128,255,0.06)', border: 'rgba(36,128,255,0.15)', label: 'ALERT',   Icon: Shield },
 };
 
 const AlertsLog: React.FC = () => {
@@ -198,7 +198,7 @@ const AlertsLog: React.FC = () => {
   ];
 
   return (
-    <div className="h-full flex flex-col" style={{ background: '#0c0e11' }}>
+    <div className="h-full flex flex-col" style={{ background: '#e8ecf0' }}>
 
       {/* ── Fullscreen modal ── */}
       <AnimatePresence>
@@ -216,11 +216,11 @@ const AlertsLog: React.FC = () => {
               transition={{ type: 'spring', damping: 26, stiffness: 220 }}
               onClick={e => e.stopPropagation()}
               className="relative w-full max-w-4xl flex flex-col md:flex-row overflow-hidden z-10"
-              style={{ background: '#111316', border: '1px solid rgba(176,198,255,0.15)', borderRadius: '0.5rem', maxHeight: '85vh' }}
+              style={{ background: '#e0e3e5', border: '1px solid rgba(0,0,0,0.1)', borderRadius: '0.5rem', maxHeight: '85vh' }}
             >
               {/* Corner accents */}
               {[['top-3 left-3 border-t-2 border-l-2',''],['top-3 right-3 border-t-2 border-r-2',''],['bottom-3 left-3 border-b-2 border-l-2',''],['bottom-3 right-3 border-b-2 border-r-2','']].map(([cls], i) => (
-                <div key={i} className={`absolute w-5 h-5 pointer-events-none z-20 ${cls}`} style={{ borderColor: 'rgba(176,198,255,0.4)' }} />
+                <div key={i} className={`absolute w-5 h-5 pointer-events-none z-20 ${cls}`} style={{ borderColor: 'rgba(36,128,255,0.4)' }} />
               ))}
 
               {/* Image */}
@@ -228,7 +228,7 @@ const AlertsLog: React.FC = () => {
                 {viewingAlert.image ? (
                   <img src={`data:image/jpeg;base64,${viewingAlert.image}`} alt="Incident" className="w-full h-full object-contain p-2" />
                 ) : (
-                  <div className="flex flex-col items-center gap-3" style={{ color: 'rgba(176,198,255,0.2)' }}>
+                  <div className="flex flex-col items-center gap-3" style={{ color: '#c4c6cc' }}>
                     <Camera className="w-12 h-12" />
                     <p className="text-[10px] tracking-widest font-bold uppercase">No Image</p>
                   </div>
@@ -236,10 +236,10 @@ const AlertsLog: React.FC = () => {
               </div>
 
               {/* Data panel */}
-              <div className="w-full md:w-72 flex flex-col p-6 gap-5 shrink-0" style={{ borderLeft: '1px solid rgba(176,198,255,0.08)' }}>
+              <div className="w-full md:w-72 flex flex-col p-6 gap-5 shrink-0" style={{ borderLeft: '1px solid rgba(0,0,0,0.1)' }}>
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-[9px] tracking-[0.3em] font-bold mb-1" style={{ color: 'rgba(176,198,255,0.4)' }}>INCIDENT DETAIL</p>
+                    <p className="text-[9px] tracking-[0.3em] font-bold mb-1" style={{ color: '#74777d' }}>INCIDENT DETAIL</p>
                     {(() => {
                       const s = SEV_MAP[getSeverity(viewingAlert)];
                       return (
@@ -252,14 +252,14 @@ const AlertsLog: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     <button onClick={() => handleDownloadPDF()} className="flex items-center gap-1.5 px-3 py-1.5 text-[9px] font-bold tracking-widest uppercase transition-all"
-                      style={{ background: 'rgba(176,198,255,0.08)', border: '1px solid rgba(176,198,255,0.2)', color: '#b0c6ff', borderRadius: '0.25rem' }}
-                      onMouseEnter={e => { (e.currentTarget.style.background = '#b0c6ff'); (e.currentTarget.style.color = '#000') }}
-                      onMouseLeave={e => { (e.currentTarget.style.background = 'rgba(176,198,255,0.08)'); (e.currentTarget.style.color = '#b0c6ff') }}>
+                      style={{ background: 'rgba(0,0,0,0.1)', border: '1px solid rgba(36,128,255,0.15)', color: '#2480ff', borderRadius: '0.25rem' }}
+                      onMouseEnter={e => { (e.currentTarget.style.background = '#2480ff'); (e.currentTarget.style.color = '#000') }}
+                      onMouseLeave={e => { (e.currentTarget.style.background = 'rgba(0,0,0,0.1)'); (e.currentTarget.style.color = '#2480ff') }}>
                       <FileText className="w-3.5 h-3.5" /> PDF
                     </button>
-                    <button onClick={() => setViewingAlert(null)} className="p-1.5 transition-all" style={{ color: 'rgba(176,198,255,0.4)' }}
-                      onMouseEnter={e => (e.currentTarget.style.color = '#ffb4ab')}
-                      onMouseLeave={e => (e.currentTarget.style.color = 'rgba(176,198,255,0.4)')}>
+                    <button onClick={() => setViewingAlert(null)} className="p-1.5 transition-all" style={{ color: '#74777d' }}
+                      onMouseEnter={e => (e.currentTarget.style.color = '#ba1a1a')}
+                      onMouseLeave={e => (e.currentTarget.style.color = 'rgba(36,128,255,0.4)')}>
                       <X className="w-5 h-5" />
                     </button>
                   </div>
@@ -267,15 +267,15 @@ const AlertsLog: React.FC = () => {
 
                 <div className="space-y-4 flex-1">
                   <div>
-                    <p className="text-[8px] mb-1.5" style={{ color: 'rgba(176,198,255,0.35)' }}>TIMESTAMP</p>
-                    <p className="text-sm font-bold" style={{ color: '#b0c6ff' }}>{viewingAlert.timestamp}</p>
+                    <p className="text-[8px] mb-1.5" style={{ color: '#74777d' }}>TIMESTAMP</p>
+                    <p className="text-sm font-bold" style={{ color: '#2480ff' }}>{viewingAlert.timestamp}</p>
                   </div>
                   <div>
-                    <p className="text-[8px] mb-1.5" style={{ color: 'rgba(176,198,255,0.35)' }}>DETECTIONS</p>
+                    <p className="text-[8px] mb-1.5" style={{ color: '#74777d' }}>DETECTIONS</p>
                     <div className="flex flex-wrap gap-1">
                       {viewingAlert.detections.map((d, i) => (
                         <span key={i} className="text-[10px] px-2 py-0.5"
-                          style={{ background: 'rgba(176,198,255,0.08)', color: '#b0c6ff', border: '1px solid rgba(176,198,255,0.15)', borderRadius: '0.125rem' }}>
+                          style={{ background: 'rgba(0,0,0,0.1)', color: '#2480ff', border: '1px solid rgba(0,0,0,0.1)', borderRadius: '0.125rem' }}>
                           {d.label} <span style={{ opacity: 0.5 }}>{Math.round(d.confidence * 100)}%</span>
                         </span>
                       ))}
@@ -283,8 +283,8 @@ const AlertsLog: React.FC = () => {
                   </div>
                   {viewingAlert.location && (
                     <div>
-                      <p className="text-[8px] mb-1.5" style={{ color: 'rgba(176,198,255,0.35)' }}>LOCATION</p>
-                      <div className="flex items-center gap-2 text-xs" style={{ color: '#b0c6ff' }}>
+                      <p className="text-[8px] mb-1.5" style={{ color: '#74777d' }}>LOCATION</p>
+                      <div className="flex items-center gap-2 text-xs" style={{ color: '#2480ff' }}>
                         <MapPin className="w-3 h-3" />
                         {viewingAlert.location.id}
                       </div>
@@ -293,16 +293,16 @@ const AlertsLog: React.FC = () => {
                   {viewingAlert.is_person_search_match && (
                     <div className="p-3" style={{ background: 'rgba(255,180,171,0.08)', border: '1px solid rgba(255,180,171,0.3)', borderRadius: '0.25rem' }}>
                       <div className="flex items-center gap-2">
-                        <User className="w-3.5 h-3.5" style={{ color: '#ffb4ab' }} />
-                        <p className="text-[10px] font-bold tracking-widest" style={{ color: '#ffb4ab' }}>WATCHLIST MATCH</p>
+                        <User className="w-3.5 h-3.5" style={{ color: '#ba1a1a' }} />
+                        <p className="text-[10px] font-bold tracking-widest" style={{ color: '#ba1a1a' }}>WATCHLIST MATCH</p>
                       </div>
                       <p className="text-[9px] mt-1" style={{ color: 'rgba(255,180,171,0.6)' }}>Target identified — immediate verification required.</p>
                     </div>
                   )}
                 </div>
 
-                <div className="pt-4" style={{ borderTop: '1px solid rgba(176,198,255,0.08)' }}>
-                  <p className="text-[8px] text-center tracking-[0.3em] font-mono" style={{ color: 'rgba(176,198,255,0.2)' }}>SMARTSURV // SECURE FEED</p>
+                <div className="pt-4" style={{ borderTop: '1px solid rgba(0,0,0,0.1)' }}>
+                  <p className="text-[8px] text-center tracking-[0.3em] font-mono" style={{ color: '#c4c6cc' }}>SMARTSURV // SECURE FEED</p>
                 </div>
               </div>
             </motion.div>
@@ -311,28 +311,28 @@ const AlertsLog: React.FC = () => {
       </AnimatePresence>
 
       {/* ── Header ── */}
-      <div className="shrink-0 px-6 py-4 flex flex-col gap-4" style={{ borderBottom: '1px solid rgba(176,198,255,0.08)', background: '#111316' }}>
+      <div className="shrink-0 px-6 py-4 flex flex-col gap-4" style={{ borderBottom: '1px solid rgba(0,0,0,0.1)', background: '#e0e3e5' }}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2" style={{ background: 'rgba(176,198,255,0.06)', border: '1px solid rgba(176,198,255,0.12)', borderRadius: '0.25rem' }}>
-              <Activity className="w-4 h-4" style={{ color: '#b0c6ff' }} />
+            <div className="p-2" style={{ background: 'rgba(36,128,255,0.06)', border: '1px solid rgba(0,0,0,0.1)', borderRadius: '0.25rem' }}>
+              <Activity className="w-4 h-4" style={{ color: '#2480ff' }} />
             </div>
             <div>
-              <h2 className="text-xs font-bold tracking-[0.2em] uppercase" style={{ fontFamily: "'Manrope', sans-serif", color: '#ccd8ff' }}>
+              <h2 className="text-xs font-bold tracking-[0.2em] uppercase" style={{ fontFamily: "'Manrope', sans-serif", color: '#191c1e' }}>
                 ALERTS LOG
               </h2>
               <div className="flex items-center gap-2 mt-0.5">
                 <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                <p className="text-[10px]" style={{ color: 'rgba(176,198,255,0.35)' }}>{alerts.length} incidents recorded</p>
+                <p className="text-[10px]" style={{ color: '#74777d' }}>{alerts.length} incidents recorded</p>
               </div>
             </div>
           </div>
           <button
             onClick={handleExportCSV}
             className="flex items-center gap-2 px-4 py-2 text-[10px] font-bold tracking-widest uppercase transition-all"
-            style={{ background: 'rgba(176,198,255,0.06)', border: '1px solid rgba(176,198,255,0.2)', color: '#b0c6ff', borderRadius: '0.25rem' }}
-            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#b0c6ff'; (e.currentTarget as HTMLButtonElement).style.color = '#000'; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(176,198,255,0.06)'; (e.currentTarget as HTMLButtonElement).style.color = '#b0c6ff'; }}
+            style={{ background: 'rgba(36,128,255,0.06)', border: '1px solid rgba(36,128,255,0.15)', color: '#2480ff', borderRadius: '0.25rem' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#2480ff'; (e.currentTarget as HTMLButtonElement).style.color = '#000'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(36,128,255,0.06)'; (e.currentTarget as HTMLButtonElement).style.color = '#2480ff'; }}
           >
             <Download className="w-3.5 h-3.5" /> EXPORT CSV
           </button>
@@ -341,19 +341,19 @@ const AlertsLog: React.FC = () => {
         {/* Metric cards */}
         <div className="grid grid-cols-4 gap-3">
           {[
-            { label: 'Total',    value: metrics.total,    icon: Activity,    color: '#b0c6ff' },
+            { label: 'Total',    value: metrics.total,    icon: Activity,    color: '#2480ff' },
             { label: 'Critical', value: metrics.critical, icon: ShieldAlert, color: '#ff6b6b' },
-            { label: 'Matches',  value: metrics.matches,  icon: User,        color: '#ffb4ab' },
+            { label: 'Matches',  value: metrics.matches,  icon: User,        color: '#ba1a1a' },
             { label: 'Feeds',    value: metrics.feeds,    icon: Camera,      color: '#4dabf7' },
           ].map(({ label, value, icon: Icon, color }) => (
             <div key={label} className="flex items-center gap-3 p-3"
-              style={{ background: '#1a1c1f', border: '1px solid rgba(176,198,255,0.08)', borderRadius: '0.375rem' }}>
+              style={{ background: '#f2f4f6', border: '1px solid rgba(0,0,0,0.1)', borderRadius: '0.375rem' }}>
               <Icon className="w-4 h-4 shrink-0" style={{ color }} />
               <div>
                 <p className="text-lg font-black leading-none" style={{ color, fontFamily: "'Manrope', sans-serif" }}>
                   {String(value).padStart(2, '0')}
                 </p>
-                <p className="text-[8px] font-bold tracking-widest uppercase mt-0.5" style={{ color: 'rgba(176,198,255,0.35)' }}>{label}</p>
+                <p className="text-[8px] font-bold tracking-widest uppercase mt-0.5" style={{ color: '#74777d' }}>{label}</p>
               </div>
             </div>
           ))}
@@ -361,15 +361,15 @@ const AlertsLog: React.FC = () => {
 
         {/* Filter + search bar */}
         <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-1 p-1" style={{ background: 'rgba(176,198,255,0.04)', border: '1px solid rgba(176,198,255,0.08)', borderRadius: '0.25rem' }}>
+          <div className="flex items-center gap-1 p-1" style={{ background: 'rgba(0,0,0,0.03)', border: '1px solid rgba(0,0,0,0.1)', borderRadius: '0.25rem' }}>
             {FILTERS.map(f => (
               <button
                 key={f.key}
                 onClick={() => setFilterSeverity(f.key)}
                 className="px-3 py-1.5 text-[9px] font-bold tracking-widest uppercase transition-all"
                 style={filterSeverity === f.key
-                  ? { background: '#b0c6ff', color: '#000', borderRadius: '0.125rem' }
-                  : { color: 'rgba(176,198,255,0.4)', borderRadius: '0.125rem' }
+                  ? { background: '#2480ff', color: '#000', borderRadius: '0.125rem' }
+                  : { color: '#74777d', borderRadius: '0.125rem' }
                 }
               >
                 {f.label}
@@ -380,7 +380,7 @@ const AlertsLog: React.FC = () => {
             type="text" value={filterQuery} onChange={e => setFilterQuery(e.target.value)}
             placeholder="Search alerts..."
             className="px-3 py-2 text-xs w-48"
-            style={{ background: '#1a1c1f', border: '1px solid rgba(176,198,255,0.12)', color: '#e2e2e6', borderRadius: '0.25rem', outline: 'none' }}
+            style={{ background: '#f2f4f6', border: '1px solid rgba(0,0,0,0.1)', color: '#191c1e', borderRadius: '0.25rem', outline: 'none' }}
           />
         </div>
       </div>
@@ -389,12 +389,12 @@ const AlertsLog: React.FC = () => {
       <div className="flex-1 overflow-auto p-5">
         {filtered.length === 0 ? (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-            className="h-full flex flex-col items-center justify-center gap-4" style={{ color: 'rgba(176,198,255,0.2)' }}>
+            className="h-full flex flex-col items-center justify-center gap-4" style={{ color: '#c4c6cc' }}>
             <Shield className="w-14 h-14" />
             <p className="text-sm tracking-[0.3em] font-bold">
               {filterQuery || filterSeverity !== 'ALL' ? 'NO MATCHING ALERTS' : 'NO ALERTS RECORDED'}
             </p>
-            <p className="text-xs" style={{ color: 'rgba(176,198,255,0.12)' }}>
+            <p className="text-xs" style={{ color: 'rgba(0,0,0,0.1)' }}>
               {filterQuery || filterSeverity !== 'ALL' ? 'Try adjusting your filters.' : 'Alerts appear here when threats are detected.'}
             </p>
           </motion.div>
@@ -418,9 +418,9 @@ const AlertsLog: React.FC = () => {
                     exit={{ opacity: 0, scale: 0.97 }}
                     transition={{ delay: Math.min(idx * 0.02, 0.3) }}
                     className="flex items-center gap-4 p-4 group cursor-pointer transition-all duration-200"
-                    style={{ background: '#1a1c1f', border: `1px solid rgba(176,198,255,0.08)`, borderRadius: '0.375rem' }}
+                    style={{ background: '#f2f4f6', border: `1px solid rgba(0,0,0,0.1)`, borderRadius: '0.375rem' }}
                     onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = s.border; (e.currentTarget as HTMLDivElement).style.background = s.bg; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(176,198,255,0.08)'; (e.currentTarget as HTMLDivElement).style.background = '#1a1c1f'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(0,0,0,0.1)'; (e.currentTarget as HTMLDivElement).style.background = '#f2f4f6'; }}
                     onClick={() => setViewingAlert(alert)}
                   >
                     {/* Severity icon */}
@@ -446,7 +446,7 @@ const AlertsLog: React.FC = () => {
                         </span>
                         {alert.is_person_search_match && (
                           <span className="flex items-center gap-1 text-[9px] font-bold tracking-widest"
-                            style={{ color: '#ffb4ab' }}>
+                            style={{ color: '#ba1a1a' }}>
                             <User className="w-2.5 h-2.5" /> WATCHLIST_MATCH
                           </span>
                         )}
@@ -456,14 +456,14 @@ const AlertsLog: React.FC = () => {
                       <div className="flex flex-wrap gap-1.5 mb-2">
                         {alert.detections.map((d, i) => (
                           <span key={i} className="text-[10px] font-medium px-2 py-0.5"
-                            style={{ background: 'rgba(176,198,255,0.06)', color: '#b0c6ff', border: '1px solid rgba(176,198,255,0.12)', borderRadius: '0.125rem' }}>
+                            style={{ background: 'rgba(36,128,255,0.06)', color: '#2480ff', border: '1px solid rgba(0,0,0,0.1)', borderRadius: '0.125rem' }}>
                             {d.label} <span style={{ opacity: 0.5 }}>({Math.round(d.confidence * 100)}%)</span>
                           </span>
                         ))}
                       </div>
 
                       {/* Meta row */}
-                      <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-[9px] font-bold uppercase tracking-widest" style={{ color: 'rgba(176,198,255,0.35)' }}>
+                      <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-[9px] font-bold uppercase tracking-widest" style={{ color: '#74777d' }}>
                         {maxConf > 0 && (
                           <span className="flex items-center gap-1.5">
                             <CheckCircle className="w-3 h-3" style={{ color: s.color }} />
@@ -472,7 +472,7 @@ const AlertsLog: React.FC = () => {
                         )}
                         {alert.location && (
                           <span className="flex items-center gap-1.5">
-                            <MapPin className="w-3 h-3" style={{ color: '#b0c6ff' }} />
+                            <MapPin className="w-3 h-3" style={{ color: '#2480ff' }} />
                             {alert.location.id}
                           </span>
                         )}
@@ -481,9 +481,9 @@ const AlertsLog: React.FC = () => {
 
                     {/* Centered Timestamp */}
                     <div className="flex-1 flex justify-center pointer-events-none">
-                      <div className="flex items-center gap-2 px-4 py-2 border border-[rgba(176,198,255,0.08)] bg-[rgba(176,198,255,0.02)]" style={{ borderRadius: '0.25rem' }}>
-                        <Clock className="w-3.5 h-3.5" style={{ color: 'rgba(176,198,255,0.4)' }} />
-                        <span className="text-[11px] font-mono font-bold tracking-widest" style={{ color: '#b0c6ff' }}>
+                      <div className="flex items-center gap-2 px-4 py-2 border border-[rgba(0,0,0,0.1)] bg-[rgba(36,128,255,0.02)]" style={{ borderRadius: '0.25rem' }}>
+                        <Clock className="w-3.5 h-3.5" style={{ color: '#74777d' }} />
+                        <span className="text-[11px] font-mono font-bold tracking-widest" style={{ color: '#2480ff' }}>
                           {alert.timestamp.split(' ').pop()}
                         </span>
                         <span className="text-[8px] opacity-30 ml-1 font-bold">{alert.timestamp.split(' ')[0]}</span>
@@ -495,18 +495,18 @@ const AlertsLog: React.FC = () => {
                       <button
                         onClick={e => { e.stopPropagation(); handleDownloadPDF(alert); }}
                         className="flex items-center gap-2 px-4 py-2 text-[9px] font-bold tracking-widest uppercase opacity-0 group-hover:opacity-100 transition-all"
-                        style={{ background: 'rgba(176,198,255,0.06)', border: '1px solid rgba(176,198,255,0.2)', color: '#b0c6ff', borderRadius: '0.25rem' }}
-                        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#b0c6ff'; (e.currentTarget as HTMLButtonElement).style.color = '#000'; }}
-                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(176,198,255,0.06)'; (e.currentTarget as HTMLButtonElement).style.color = '#b0c6ff'; }}
+                        style={{ background: 'rgba(36,128,255,0.06)', border: '1px solid rgba(36,128,255,0.15)', color: '#2480ff', borderRadius: '0.25rem' }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#2480ff'; (e.currentTarget as HTMLButtonElement).style.color = '#000'; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(36,128,255,0.06)'; (e.currentTarget as HTMLButtonElement).style.color = '#2480ff'; }}
                       >
                         <Download className="w-3.5 h-3.5" /> PDF
                       </button>
                       <button
                         onClick={e => { e.stopPropagation(); setViewingAlert(alert); }}
                         className="flex items-center gap-2 px-4 py-2 text-[9px] font-bold tracking-widest uppercase opacity-0 group-hover:opacity-100 transition-all"
-                        style={{ background: 'rgba(176,198,255,0.06)', border: '1px solid rgba(176,198,255,0.2)', color: '#b0c6ff', borderRadius: '0.25rem' }}
-                        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#b0c6ff'; (e.currentTarget as HTMLButtonElement).style.color = '#000'; }}
-                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(176,198,255,0.06)'; (e.currentTarget as HTMLButtonElement).style.color = '#b0c6ff'; }}
+                        style={{ background: 'rgba(36,128,255,0.06)', border: '1px solid rgba(36,128,255,0.15)', color: '#2480ff', borderRadius: '0.25rem' }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#2480ff'; (e.currentTarget as HTMLButtonElement).style.color = '#000'; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(36,128,255,0.06)'; (e.currentTarget as HTMLButtonElement).style.color = '#2480ff'; }}
                       >
                         <Eye className="w-3.5 h-3.5" /> INSPECT
                       </button>
@@ -523,3 +523,7 @@ const AlertsLog: React.FC = () => {
 };
 
 export default AlertsLog;
+
+
+
+

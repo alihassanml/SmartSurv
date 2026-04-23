@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Eye, EyeOff, RefreshCw, Bell, User, LogOut, Power } from 'lucide-react';
@@ -90,7 +90,7 @@ const AppLayout: React.FC = () => {
   const username = localStorage.getItem('username') || 'OPERATOR';
   const userEmail = localStorage.getItem('email') || 'N/A';
 
-  // ── Core state ──
+  // â”€â”€ Core state â”€â”€
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [detectedPersons, setDetectedPersons] = useState<PersonEvent[]>([]);
   const [selectedPerson, setSelectedPerson] = useState<PersonEvent | null>(null);
@@ -106,7 +106,7 @@ const AppLayout: React.FC = () => {
   );
   const [urlCameras, setUrlCameras] = useState<UrlCamera[]>([]);
 
-  // ── Settings state ──
+  // â”€â”€ Settings state â”€â”€
   const [emailEnabled, setEmailEnabled] = useState(true);
   const [privacyMode, setPrivacyMode] = useState(false);
   const [personLogEnabled, setPersonLogEnabled] = useState(false);
@@ -117,24 +117,24 @@ const AppLayout: React.FC = () => {
   const [classThresholds, setClassThresholds] = useState<ClassThreshold[]>([]);
   const [thresholdsLoading, setThresholdsLoading] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  // Local camera visibility — persisted in DB via /api/camera/local/toggle-visibility
+  // Local camera visibility â€” persisted in DB via /api/camera/local/toggle-visibility
   const [localCameraVisible, setLocalCameraVisible] = useState(true);
 
-  // ── Person focus ──
+  // â”€â”€ Person focus â”€â”€
   const [focusedPersonId, setFocusedPersonId] = useState<string | null>(null);
   const [focusedPersonVisible, setFocusedPersonVisible] = useState(false);
 
-  // ── Semantic search ──
+  // â”€â”€ Semantic search â”€â”€
   const [semanticQuery, setSemanticQuery] = useState('');
   const [semanticResults, setSemanticResults] = useState<{ id: string; score: number }[]>([]);
   const [semanticLoading, setSemanticLoading] = useState(false);
   const semanticDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ── Unread alerts badge ──
+  // â”€â”€ Unread alerts badge â”€â”€
   const [unreadAlerts, setUnreadAlerts] = useState(0);
   const [systemLatency, setSystemLatency] = useState<number | null>(null);
 
-  // ── Browser Audio ──
+  // â”€â”€ Browser Audio â”€â”€
   useEffect(() => {
     alertAudioRef.current = new Audio('/alert.mp3');
     alertAudioRef.current.load();
@@ -148,7 +148,7 @@ const AppLayout: React.FC = () => {
     });
   }, [browserSoundEnabled]);
 
-  // ── Init system info ──
+  // â”€â”€ Init system info â”€â”€
   useEffect(() => {
     fetch(`${API}/api/camera/mode`, {
       method: 'POST',
@@ -187,7 +187,7 @@ const AppLayout: React.FC = () => {
       .catch(() => {});
   }, []);
 
-  // ── Role Protection ──
+  // â”€â”€ Role Protection â”€â”€
   useEffect(() => {
     const isAdmin = localStorage.getItem('isAdmin') === 'true';
     if (!isAdmin && (location.pathname === '/dashboard/settings' || location.pathname === '/dashboard/users')) {
@@ -195,7 +195,7 @@ const AppLayout: React.FC = () => {
     }
   }, [location.pathname, navigate]);
 
-  // ── Load thresholds ──
+  // â”€â”€ Load thresholds â”€â”€
   useEffect(() => {
     setThresholdsLoading(true);
     fetch(`${API}/api/model/classes`)
@@ -205,7 +205,7 @@ const AppLayout: React.FC = () => {
       .finally(() => setThresholdsLoading(false));
   }, []);
 
-  // ── Alerts WebSocket ──
+  // â”€â”€ Alerts WebSocket â”€â”€
   useEffect(() => {
     if (isReconnecting) return;
     let ws: WebSocket | null = null;
@@ -230,7 +230,7 @@ const AppLayout: React.FC = () => {
     return () => { dead = true; if (retryTimer) clearTimeout(retryTimer); ws?.close(); };
   }, [isReconnecting]);
 
-  // ── Stats (Heartbeat) WebSocket ──
+  // â”€â”€ Stats (Heartbeat) WebSocket â”€â”€
   useEffect(() => {
     let ws: WebSocket | null = null;
     let dead = false;
@@ -252,7 +252,7 @@ const AppLayout: React.FC = () => {
     return () => { dead = true; ws?.close(); };
   }, []);
 
-  // ── Persons WebSocket ──
+  // â”€â”€ Persons WebSocket â”€â”€
   useEffect(() => {
     if (!cameraActive) return;
     let ws: WebSocket | null = null;
@@ -280,7 +280,7 @@ const AppLayout: React.FC = () => {
     return () => { dead = true; if (retryTimer) clearTimeout(retryTimer); ws?.close(); };
   }, [cameraActive, focusedPersonId]);
 
-  // ── Camera feeds polling — always runs so URL-only setups update correctly ──
+  // â”€â”€ Camera feeds polling â€” always runs so URL-only setups update correctly â”€â”€
   useEffect(() => {
     const fetchFeeds = async () => {
       // Don't override state while the user is actively toggling
@@ -299,7 +299,7 @@ const AppLayout: React.FC = () => {
     return () => clearInterval(interval);
   }, [isCameraToggling]);
 
-  // ── URL Cameras ──
+  // â”€â”€ URL Cameras â”€â”€
   const fetchUrlCameras = useCallback(async () => {
     try {
       const res = await fetch(`${API}/api/url-cameras`);
@@ -338,7 +338,7 @@ const AppLayout: React.FC = () => {
     }
   };
 
-  // ── Watchlist ──
+  // â”€â”€ Watchlist â”€â”€
   const fetchWatchlist = useCallback(async () => {
     try {
       const res = await fetch(`${API}/api/watchlist`);
@@ -348,7 +348,7 @@ const AppLayout: React.FC = () => {
   }, []);
   useEffect(() => { fetchWatchlist(); }, [fetchWatchlist]);
 
-  // ── Handlers ──
+  // â”€â”€ Handlers â”€â”€
   const handleLogout = () => { localStorage.removeItem('token'); navigate('/'); };
 
   const toggleCamera = async () => {
@@ -360,10 +360,10 @@ const AppLayout: React.FC = () => {
       setCameraActive(newState);
       localStorage.setItem('cameraActive', String(newState));
       if (!newState) {
-        // Camera stopped — immediately clear feeds so monitor goes dark
+        // Camera stopped â€” immediately clear feeds so monitor goes dark
         setActiveFeeds([]);
       } else {
-        // Camera started — fetch feeds so monitor shows streams immediately
+        // Camera started â€” fetch feeds so monitor shows streams immediately
         try {
           const res = await fetch(`${API}/api/camera/feeds`);
           const data = await res.json();
@@ -497,19 +497,19 @@ const AppLayout: React.FC = () => {
 
   return (
     <AppContext.Provider value={ctxValue}>
-      <div className="flex h-screen overflow-hidden" style={{ background: '#0c0e11', color: '#e2e2e6', fontFamily: "'Inter', sans-serif" }}>
+      <div className="flex h-screen overflow-hidden" style={{ background: '#e8ecf0', color: '#191c1e', fontFamily: "'Inter', sans-serif" }}>
 
-        {/* ── Sidebar ── */}
+        {/* â”€â”€ Sidebar â”€â”€ */}
         <Sidebar />
 
-        {/* ── Main area ── */}
+        {/* â”€â”€ Main area â”€â”€ */}
         <div className="flex flex-col flex-1 overflow-hidden">
 
-          {/* ── Top header ── */}
+          {/* â”€â”€ Top header â”€â”€ */}
           <header className="shrink-0 flex items-center justify-between px-6"
-            style={{ height: '64px', background: '#111316', borderBottom: '1px solid rgba(176,198,255,0.08)' }}>
+            style={{ height: '64px', background: '#e0e3e5', borderBottom: '1px solid rgba(0,0,0,0.1)', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
             {/* Page title */}
-            <h1 className="text-sm font-bold tracking-wide" style={{ fontFamily: "'Manrope', sans-serif", color: '#ccd8ff' }}>
+            <h1 className="text-sm font-bold tracking-wide" style={{ fontFamily: "'Manrope', sans-serif", color: '#191c1e' }}>
               {pageTitle}
             </h1>
 
@@ -522,11 +522,11 @@ const AppLayout: React.FC = () => {
               <button
                 onClick={toggleCamera}
                 disabled={isCameraToggling}
-                title={cameraActive ? 'System Power ON — click to stop' : 'System Power OFF — click to start'}
+                title={cameraActive ? 'System Power ON â€” click to stop' : 'System Power OFF â€” click to start'}
                 className="px-3 py-1.5 flex items-center gap-2 transition-all duration-300 disabled:opacity-50 text-[10px] font-bold tracking-widest uppercase"
                 style={cameraActive
-                  ? { border: '1px solid rgba(10,88,202,0.5)', color: '#b0c6ff', background: 'rgba(10,88,202,0.15)', borderRadius: '0.25rem' }
-                  : { border: '1px solid rgba(255,68,102,0.5)', color: '#ffb4ab', background: 'rgba(255,68,102,0.15)', borderRadius: '0.25rem' }
+                  ? { border: '1px solid rgba(36,128,255,0.35)', color: '#1a6fef', background: 'rgba(36,128,255,0.08)', borderRadius: '0.375rem' }
+                  : { border: '1px solid rgba(186,26,26,0.35)', color: '#ba1a1a', background: 'rgba(186,26,26,0.06)', borderRadius: '0.375rem' }
                 }
               >
                 {isCameraToggling
@@ -540,14 +540,14 @@ const AppLayout: React.FC = () => {
               <button
                 onClick={() => { navigate('/dashboard/alerts'); setUnreadAlerts(0); }}
                 className="relative p-2 transition-all"
-                style={{ border: '1px solid rgba(176,198,255,0.1)', borderRadius: '0.25rem', color: '#8c909f' }}
-                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#b0c6ff'; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = '#8c909f'; }}
+                style={{ border: '1px solid rgba(0,0,0,0.1)', borderRadius: '0.375rem', color: '#74777d' }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#2480ff'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = '#74777d'; }}
               >
                 <Bell className="w-4 h-4" />
                 {unreadAlerts > 0 && (
                   <span className="absolute -top-1 -right-1 w-4 h-4 text-[9px] font-bold flex items-center justify-center rounded-full"
-                    style={{ background: '#ffb4ab', color: '#690005' }}>
+                    style={{ background: '#ba1a1a', color: '#ffffff' }}>
                     {unreadAlerts > 9 ? '9+' : unreadAlerts}
                   </span>
                 )}
@@ -558,9 +558,9 @@ const AppLayout: React.FC = () => {
                 <button
                   onClick={() => setShowProfileMenu(v => !v)}
                   className="w-8 h-8 rounded-full flex items-center justify-center transition-all"
-                  style={{ background: 'rgba(10,88,202,0.25)', border: '1px solid rgba(176,198,255,0.2)', color: '#b0c6ff' }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#b0c6ff'; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(176,198,255,0.2)'; }}
+                  style={{ background: 'rgba(36,128,255,0.1)', border: '1px solid rgba(36,128,255,0.25)', color: '#2480ff' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#2480ff'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(36,128,255,0.25)'; }}
                 >
                   <User className="w-3.5 h-3.5" />
                 </button>
@@ -574,17 +574,17 @@ const AppLayout: React.FC = () => {
                         exit={{ opacity: 0, y: -8, scale: 0.95 }}
                         transition={{ duration: 0.15 }}
                         className="absolute right-0 top-full mt-2 w-48 z-[100] overflow-hidden"
-                        style={{ background: '#1a1c1f', border: '1px solid rgba(176,198,255,0.15)', borderRadius: '0.375rem' }}
+                        style={{ background: '#e0e3e5', border: '1px solid rgba(0,0,0,0.1)', borderRadius: '0.5rem', boxShadow: '0 4px 20px rgba(0,0,0,0.12)' }}
                       >
-                        <div className="px-4 py-3" style={{ borderBottom: '1px solid rgba(176,198,255,0.08)' }}>
-                          <p className="text-xs font-bold truncate" style={{ color: '#ccd8ff', fontFamily: "'Manrope', sans-serif" }}>{username}</p>
-                          <p className="text-[10px] truncate mt-0.5" style={{ color: 'rgba(176,198,255,0.35)' }}>{userEmail}</p>
+                        <div className="px-4 py-3" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
+                          <p className="text-xs font-bold truncate" style={{ color: '#191c1e', fontFamily: "'Manrope', sans-serif" }}>{username}</p>
+                          <p className="text-[10px] truncate mt-0.5" style={{ color: '#74777d' }}>{userEmail}</p>
                         </div>
                         <button
                           onClick={() => { setShowProfileMenu(false); handleLogout(); }}
                           className="w-full flex items-center gap-2.5 px-4 py-3 text-xs transition-all"
-                          style={{ color: '#ffb4ab' }}
-                          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,180,171,0.08)'; }}
+                          style={{ color: '#ba1a1a' }}
+                          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(186,26,26,0.06)'; }}
                           onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
                         >
                           <LogOut className="w-3.5 h-3.5" />
@@ -598,21 +598,21 @@ const AppLayout: React.FC = () => {
             </div>
           </header>
 
-          {/* ── Reconnecting overlay ── */}
+          {/* â”€â”€ Reconnecting overlay â”€â”€ */}
           <AnimatePresence>
             {isReconnecting && (
               <motion.div
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 className="fixed inset-0 z-[1000] flex flex-col items-center justify-center"
-                style={{ background: '#0c0e11' }}
+                style={{ background: '#e8ecf0' }}
               >
                 <div className="w-full max-w-sm space-y-5 px-8">
                   <div className="space-y-1">
-                    <p className="text-[9px] tracking-[0.3em] font-bold" style={{ color: 'rgba(176,198,255,0.4)' }}>RECONFIGURING</p>
-                    <p className="text-2xl font-bold tracking-tighter" style={{ color: '#b0c6ff', fontFamily: "'Manrope', sans-serif" }}>SWITCHING SOURCE</p>
+                    <p className="text-[9px] tracking-[0.3em] font-bold" style={{ color: '#74777d' }}>RECONFIGURING</p>
+                    <p className="text-2xl font-bold tracking-tighter" style={{ color: '#191c1e', fontFamily: "'Manrope', sans-serif" }}>SWITCHING SOURCE</p>
                   </div>
-                  <div className="h-0.5 w-full overflow-hidden" style={{ background: 'rgba(176,198,255,0.1)' }}>
-                    <motion.div className="h-full" style={{ background: '#b0c6ff' }}
+                  <div className="h-0.5 w-full overflow-hidden" style={{ background: 'rgba(0,0,0,0.08)' }}>
+                    <motion.div className="h-full" style={{ background: '#2480ff' }}
                       initial={{ width: '0%' }} animate={{ width: '100%' }}
                       transition={{ duration: 1.2, ease: 'easeInOut' }} />
                   </div>
@@ -621,7 +621,7 @@ const AppLayout: React.FC = () => {
             )}
           </AnimatePresence>
 
-          {/* ── Page content ── */}
+          {/* â”€â”€ Page content â”€â”€ */}
           <main className="flex-1 overflow-hidden">
             <motion.div
               key={location.pathname}
@@ -640,3 +640,4 @@ const AppLayout: React.FC = () => {
 };
 
 export default AppLayout;
+

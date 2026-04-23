@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+﻿import React, { useEffect, useRef, useState } from 'react';
 import { API } from '../../types/dashboard';
 
 interface CameraStreamProps {
@@ -118,24 +118,24 @@ const CameraStream: React.FC<CameraStreamProps> = ({ feedId, active, onLoaded })
   }, [active, feedId]);
 
   return (
-    <div className="relative w-full h-full" style={{ background: '#0a0b0d' }}>
+    <div className="relative w-full h-full" style={{ background: '#1a1a1a' }}>
 
       {/* Loading overlay */}
       {loading && active && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3"
-          style={{ background: '#0a0b0d', zIndex: 30 }}>
+          style={{ background: 'rgba(25,25,25,0.9)', zIndex: 30 }}>
           <div className="relative w-9 h-9">
             <div className="absolute inset-0 rounded-full border-[1.5px] border-transparent animate-spin"
-              style={{ borderTopColor: '#b0c6ff' }} />
+              style={{ borderTopColor: '#2480ff' }} />
             <div className="absolute inset-[3px] rounded-full border-[1.5px] border-transparent animate-spin"
-              style={{ borderTopColor: 'rgba(176,198,255,0.25)', animationDuration: '1.5s', animationDirection: 'reverse' }} />
+              style={{ borderTopColor: 'rgba(36,128,255,0.2)', animationDuration: '1.5s', animationDirection: 'reverse' }} />
           </div>
           <p className="text-[8px] font-bold tracking-[0.3em] uppercase"
-            style={{ color: 'rgba(176,198,255,0.3)' }}>
+            style={{ color: 'rgba(74,119,125,0.4)' }}>
             ESTABLISHING UPLINK
           </p>
           {feedId && (
-            <p className="text-[7px] font-mono" style={{ color: 'rgba(176,198,255,0.15)' }}>
+            <p className="text-[7px] font-mono" style={{ color: '#c4c6cc' }}>
               FEED_{feedId.toUpperCase()}
             </p>
           )}
@@ -166,3 +166,4 @@ const CameraStream: React.FC<CameraStreamProps> = ({ feedId, active, onLoaded })
 };
 
 export default CameraStream;
+

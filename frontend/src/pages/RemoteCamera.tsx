@@ -117,13 +117,13 @@ const RemoteCamera: React.FC = () => {
     }, [status]);
 
     return (
-        <div className="min-h-screen bg-[#0c0e11] text-[#b0c6ff] font-sans p-6 flex flex-col items-center justify-center relative overflow-hidden">
+        <div className="min-h-screen bg-[#e8ecf0] text-[#191c1e] font-sans p-6 flex flex-col items-center justify-center relative overflow-hidden">
             {/* Background Grid */}
             <div className="absolute inset-0 opacity-10 pointer-events-none"
-              style={{ backgroundImage: 'linear-gradient(rgba(176,198,255,0.06) 1px,transparent 1px),linear-gradient(90deg,rgba(176,198,255,0.06) 1px,transparent 1px)', backgroundSize: '40px 40px' }} />
+              style={{ backgroundImage: 'linear-gradient(rgba(36,128,255,0.06) 1px,transparent 1px),linear-gradient(90deg,rgba(36,128,255,0.06) 1px,transparent 1px)', backgroundSize: '40px 40px' }} />
 
             {/* Header */}
-            <div className="relative z-10 w-full max-w-md mb-8 flex items-center justify-between border-b border-[rgba(176,198,255,0.2)] pb-4">
+            <div className="relative z-10 w-full max-w-md mb-8 flex items-center justify-between border-b border-[rgba(36,128,255,0.15)] pb-4">
                 <div className="flex items-center gap-3">
                     <Shield className="w-6 h-6 animate-pulse" />
                     <div>
@@ -133,7 +133,7 @@ const RemoteCamera: React.FC = () => {
                 </div>
                 <div className="text-right">
                     <div className="flex items-center gap-2 justify-end">
-                        <div className={`w-2 h-2 rounded-full ${status === 'streaming' ? 'bg-[#b0c6ff] animate-ping' : 'bg-red-500'}`} />
+                        <div className={`w-2 h-2 rounded-full ${status === 'streaming' ? 'bg-[#2480ff] animate-ping' : 'bg-red-500'}`} />
                         <span className="text-[10px] font-bold uppercase">{status}</span>
                     </div>
                     {status === 'streaming' && <p className="text-[10px] opacity-40">UPLINK: {fps} FPS</p>}
@@ -141,7 +141,7 @@ const RemoteCamera: React.FC = () => {
             </div>
 
             {/* Secure Context Info (Debug) */}
-            <div className="relative z-10 w-full mb-4 max-w-md p-2 border border-[rgba(176,198,255,0.1)] text-[8px] flex justify-between uppercase opacity-40">
+            <div className="relative z-10 w-full mb-4 max-w-md p-2 border border-[rgba(0,0,0,0.1)] text-[8px] flex justify-between uppercase opacity-40">
                 <span>SECURE_CONTEXT: {isSecure ? 'YES' : 'NO'}</span>
                 <span>MEDIA_DEVICES: {hasMedia ? 'READY' : 'MISSING'}</span>
             </div>
@@ -154,13 +154,13 @@ const RemoteCamera: React.FC = () => {
             )}
 
             {/* Viewfinder */}
-            <div className="relative z-10 w-full max-w-md aspect-[4/3] bg-[#000] border border-[rgba(176,198,255,0.2)] overflow-hidden shadow-[0_0_30px_rgba(176,198,255,0.05)]">
+            <div className="relative z-10 w-full max-w-md aspect-[4/3] bg-[#000] border border-[rgba(36,128,255,0.15)] overflow-hidden shadow-[0_0_30px_rgba(36,128,255,0.05)]">
                 <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover grayscale brightness-125" />
                 <canvas ref={canvasRef} width={640} height={480} className="hidden" />
                 
                 {/* Visual Overlays */}
-                <div className="absolute inset-x-8 top-1/2 -translate-y-1/2 h-0.5 bg-[#b0c6ff]/20 animate-pulse" />
-                <div className="absolute inset-y-8 left-1/2 -translate-x-1/2 w-0.5 bg-[#b0c6ff]/20 animate-pulse" />
+                <div className="absolute inset-x-8 top-1/2 -translate-y-1/2 h-0.5 bg-[rgba(36,128,255,0.2)] animate-pulse" />
+                <div className="absolute inset-y-8 left-1/2 -translate-x-1/2 w-0.5 bg-[rgba(36,128,255,0.2)] animate-pulse" />
                 <div className="absolute top-4 left-4 text-[10px] opacity-30">REC // STREAMING</div>
                 <div className="absolute bottom-4 right-4 text-[10px] opacity-30">{new Date().toLocaleTimeString()}</div>
             </div>
@@ -170,7 +170,7 @@ const RemoteCamera: React.FC = () => {
                 {status === 'idle' ? (
                     <button 
                         onClick={startStreaming}
-                        className="w-full py-4 border-2 border-[#b0c6ff] bg-[rgba(176,198,255,0.05)] font-bold tracking-[0.3em] uppercase hover:bg-[#b0c6ff] hover:text-black transition-all duration-300 flex items-center justify-center gap-3"
+                        className="w-full py-4 border-2 border-[#2480ff] bg-[rgba(36,128,255,0.05)] font-bold tracking-[0.3em] uppercase hover:bg-[#2480ff] hover:text-white transition-all duration-300 flex items-center justify-center gap-3"
                     >
                         <Zap className="w-5 h-5" />
                         Initialize Uplink
@@ -184,7 +184,7 @@ const RemoteCamera: React.FC = () => {
                     </button>
                 )}
                 
-                <div className="p-4 border border-[rgba(176,198,255,0.1)] text-[10px] opacity-50 leading-relaxed text-center">
+                <div className="p-4 border border-[rgba(0,0,0,0.1)] text-[10px] opacity-50 leading-relaxed text-center">
                     This device is now acting as a remote surveillance node. Ensure a stable network connection for optimal detection performance.
                 </div>
             </div>
@@ -197,4 +197,6 @@ const RemoteCamera: React.FC = () => {
 };
 
 export default RemoteCamera;
+
+
 

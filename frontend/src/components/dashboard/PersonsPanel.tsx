@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, Search, RefreshCw, X, Target } from 'lucide-react';
 import type { PersonEvent } from '../../types/dashboard';
@@ -25,27 +25,39 @@ const PersonsPanel: React.FC<PersonsPanelProps> = ({
   setDetectedPersons,
 }) => {
   return (
-    <section className="w-[220px] bg-[#070809] border-l border-[rgba(176,198,255,0.1)] flex flex-col shrink-0">
-      <div className="px-4 py-3 border-b border-[rgba(176,198,255,0.1)] bg-[rgba(6,6,8,0.9)] shrink-0">
-        <h2 className="text-[10px] font-bold tracking-[0.25em] text-[#b0c6ff]">PERSONS_LOG</h2>
-        <p className="text-[8px] opacity-25 uppercase mt-0.5">Re-ID Engine Â· 5min cooldown</p>
+    <section className="w-[220px] flex flex-col shrink-0"
+      style={{ background: '#e0e3e5', borderLeft: '1px solid rgba(0,0,0,0.1)', boxShadow: '-2px 0 10px rgba(0,0,0,0.05)' }}>
+      <div className="px-4 py-3 shrink-0"
+        style={{ borderBottom: '1px solid rgba(0,0,0,0.08)', background: '#f2f4f6' }}>
+        <h2 className="text-[10px] font-bold tracking-[0.2em] uppercase" style={{ color: '#191c1e' }}>Persons Log</h2>
+        <p className="text-[8px] mt-0.5 uppercase" style={{ color: '#74777d' }}>Re-ID Engine Â· 5min cooldown</p>
 
         {/* Semantic Search */}
-        <div className="mt-3 relative group">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-[#b0c6ff]/30 group-focus-within:text-[#b0c6ff]" />
+        <div className="mt-3 relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3" style={{ color: '#c4c6cc' }} />
           <input
             type="text"
-            placeholder="DESC_SEARCH..."
+            placeholder="Search persons..."
             value={semanticQuery}
             onChange={(e) => handleSemanticSearch(e.target.value)}
-            className="w-full bg-black/40 border border-[#b0c6ff]/10 focus:border-[#b0c6ff]/40 pl-8 pr-3 py-1.5 text-[8px] font-bold tracking-widest text-[#b0c6ff] outline-none transition-all placeholder:text-[#b0c6ff]/20"
+            className="w-full pl-8 pr-3 py-1.5 text-[8px] font-semibold tracking-wide outline-none transition-all"
+            style={{
+              background: '#e0e3e5',
+              border: '1px solid rgba(0,0,0,0.1)',
+              color: '#191c1e',
+              borderRadius: '0.375rem',
+            }}
+            onFocus={e => { e.currentTarget.style.borderColor = '#2480ff'; e.currentTarget.style.boxShadow = '0 0 0 2px rgba(36,128,255,0.12)'; }}
+            onBlur={e => { e.currentTarget.style.borderColor = 'rgba(0,0,0,0.1)'; e.currentTarget.style.boxShadow = 'none'; }}
           />
           {semanticQuery && (
             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
               {semanticLoading ? (
-                <RefreshCw className="w-2.5 h-2.5 text-[#b0c6ff] animate-spin" />
+                <RefreshCw className="w-2.5 h-2.5 animate-spin" style={{ color: '#2480ff' }} />
               ) : (
-                <button onClick={() => handleSemanticSearch('')} className="opacity-40 hover:opacity-100 transition-opacity">
+                <button onClick={() => handleSemanticSearch('')}
+                  className="transition-opacity hover:opacity-100 opacity-60"
+                  style={{ color: '#74777d' }}>
                   <X className="w-2.5 h-2.5" />
                 </button>
               )}
@@ -56,9 +68,9 @@ const PersonsPanel: React.FC<PersonsPanelProps> = ({
 
       <div className="flex-1 overflow-y-auto p-2 space-y-2">
         {detectedPersons.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center gap-2 opacity-15">
-            <User className="w-8 h-8" />
-            <span className="text-[8px] tracking-[0.3em]">NO_PERSONS_LOG</span>
+          <div className="h-full flex flex-col items-center justify-center gap-2" style={{ opacity: 0.3 }}>
+            <User className="w-8 h-8" style={{ color: '#74777d' }} />
+            <span className="text-[8px] tracking-[0.3em]" style={{ color: '#74777d' }}>NO PERSONS</span>
           </div>
         ) : (
           <AnimatePresence initial={false}>
@@ -79,50 +91,54 @@ const PersonsPanel: React.FC<PersonsPanelProps> = ({
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.3 }}
                   onClick={() => setSelectedPerson(p)}
-                  className={`relative border overflow-hidden cursor-pointer transition-all group/pcard ${
-                    focusedPersonId === p.person_id
-                      ? 'border-red-500/60 bg-red-900/5 shadow-[0_0_15px_rgba(255,0,0,0.1)]'
-                      : isTopMatch
-                      ? 'border-[#b4c6f8]/60 bg-[#b4c6f8]/5 shadow-[0_0_12px_rgba(180,198,248,0.15)]'
-                      : 'border-[rgba(176,198,255,0.12)] bg-[rgba(12,13,16,0.8)] hover:border-[#b0c6ff]/50'
-                  }`}
+                  className="relative overflow-hidden cursor-pointer transition-all rounded-lg"
+                  style={focusedPersonId === p.person_id
+                    ? { border: '1px solid rgba(186,26,26,0.4)', background: 'rgba(186,26,26,0.04)', boxShadow: '0 1px 6px rgba(186,26,26,0.08)' }
+                    : isTopMatch
+                    ? { border: '1px solid rgba(36,128,255,0.4)', background: 'rgba(36,128,255,0.04)', boxShadow: '0 1px 6px rgba(36,128,255,0.08)' }
+                    : { border: '1px solid rgba(0,0,0,0.1)', background: '#e0e3e5', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }
+                  }
+                  onMouseEnter={e => { if (focusedPersonId !== p.person_id && !isTopMatch) (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(36,128,255,0.25)'; }}
+                  onMouseLeave={e => { if (focusedPersonId !== p.person_id && !isTopMatch) (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(0,0,0,0.1)'; }}
                 >
                   {focusedPersonId === p.person_id && (
                     <div className="absolute top-1.5 right-1.5 z-10">
-                      <Target className="w-2.5 h-2.5 text-red-500 animate-pulse" />
+                      <Target className="w-2.5 h-2.5 animate-pulse" style={{ color: '#ba1a1a' }} />
                     </div>
                   )}
 
                   <div
                     className="absolute top-0 right-0 px-1.5 py-0.5 text-[7px] font-bold z-10"
                     style={p.status === 'NEW'
-                      ? { background: '#b0c6ff', color: '#000' }
-                      : { background: '#b4c6f8', color: '#000' }
+                      ? { background: '#2480ff', color: '#ffffff', borderRadius: '0 0.5rem 0 0.25rem' }
+                      : { background: '#47607e', color: '#ffffff', borderRadius: '0 0.5rem 0 0.25rem' }
                     }
                   >
                     {p.status}
                   </div>
 
                   {semanticQuery && (
-                    <div className="absolute top-4 right-0 px-1.5 py-0.5 bg-black/80 text-[7px] font-bold z-10 border-l border-b border-[#b0c6ff]/30">
-                      {Math.round((semanticResults.find(r => r.id === p.person_id)?.score || 0) * 100)}% MATCH
+                    <div className="absolute top-5 right-0 px-1.5 py-0.5 text-[7px] font-bold z-10"
+                      style={{ background: 'rgba(36,128,255,0.1)', color: '#2480ff', borderRadius: '0 0 0 0.25rem', border: '1px solid rgba(36,128,255,0.2)' }}>
+                      {Math.round((semanticResults.find(r => r.id === p.person_id)?.score || 0) * 100)}%
                     </div>
                   )}
 
-                  <div className="relative w-full aspect-square bg-black overflow-hidden">
+                  <div className="relative w-full aspect-square overflow-hidden bg-gray-100">
                     <img
                       src={`data:image/jpeg;base64,${p.face}`}
                       alt={p.person_id}
                       className="w-full h-full object-cover"
                     />
-                    <div className="absolute inset-x-0 top-0 h-[1px] bg-[#b0c6ff]/50 animate-scanner" />
+                    <div className="absolute inset-x-0 top-0 h-[1px] animate-scanner"
+                      style={{ background: 'rgba(36,128,255,0.5)' }} />
                   </div>
 
                   <div className="px-2 py-1.5">
-                    <p className="text-[10px] font-bold text-[#b0c6ff] tracking-widest">{p.person_id}</p>
-                    <p className="text-[7px] opacity-30 mt-0.5">{p.timestamp} Â· {p.feed_id}</p>
+                    <p className="text-[10px] font-bold tracking-wide" style={{ color: '#2480ff' }}>{p.person_id}</p>
+                    <p className="text-[7px] mt-0.5" style={{ color: '#c4c6cc' }}>{p.timestamp} Â· {p.feed_id}</p>
                     {p.traits && p.traits !== 'ANALYZING...' && (
-                      <p className="text-[7px] text-[#b4c6f8]/50 mt-0.5 truncate">{p.traits}</p>
+                      <p className="text-[7px] mt-0.5 truncate" style={{ color: '#74777d' }}>{p.traits}</p>
                     )}
                   </div>
                 </motion.div>
@@ -133,12 +149,15 @@ const PersonsPanel: React.FC<PersonsPanelProps> = ({
       </div>
 
       {detectedPersons.length > 0 && (
-        <div className="p-2 border-t border-[rgba(176,198,255,0.1)] shrink-0">
+        <div className="p-2 shrink-0" style={{ borderTop: '1px solid rgba(0,0,0,0.07)' }}>
           <button
             onClick={() => setDetectedPersons([])}
-            className="w-full py-1.5 text-[8px] font-bold tracking-widest border border-[rgba(255,68,102,0.3)] text-red-400 hover:bg-red-900/10 transition-all"
+            className="w-full py-1.5 text-[8px] font-bold tracking-widest transition-all rounded"
+            style={{ border: '1px solid rgba(186,26,26,0.25)', color: '#ba1a1a', background: 'rgba(186,26,26,0.04)' }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(186,26,26,0.08)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(186,26,26,0.04)'; }}
           >
-            CLEAR_LOG ({detectedPersons.length})
+            Clear Log ({detectedPersons.length})
           </button>
         </div>
       )}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Camera, Plus, Trash2, Edit2, Search, X, Loader2,
@@ -19,18 +19,18 @@ function ConfirmModal({ open, title, message, onConfirm, onCancel, loading }: {
       <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={onCancel} />
       <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
         className="relative w-full max-w-sm p-8 z-10"
-        style={{ background: '#111316', border: '1px solid rgba(255,68,102,0.3)' }}>
-        <h3 className="text-sm font-bold tracking-widest uppercase mb-2" style={{ color: '#ffb4ab' }}>{title}</h3>
+        style={{ background: '#e0e3e5', border: '1px solid rgba(255,68,102,0.3)' }}>
+        <h3 className="text-sm font-bold tracking-widest uppercase mb-2" style={{ color: '#ba1a1a' }}>{title}</h3>
         <p className="text-[11px] mb-8 leading-relaxed" style={{ color: 'rgba(195,198,214,0.55)' }}>{message}</p>
         <div className="flex gap-3">
           <button onClick={onCancel}
             className="flex-1 py-2.5 text-[10px] font-bold tracking-widest uppercase transition-all"
-            style={{ border: '1px solid rgba(176,198,255,0.15)', color: '#8c909f' }}>
+            style={{ border: '1px solid rgba(0,0,0,0.1)', color: '#74777d' }}>
             Cancel
           </button>
           <button onClick={onConfirm} disabled={loading}
             className="flex-1 py-2.5 text-[10px] font-bold tracking-widest uppercase transition-all flex items-center justify-center gap-2"
-            style={{ background: 'rgba(255,68,102,0.15)', border: '1px solid rgba(255,68,102,0.3)', color: '#ffb4ab' }}>
+            style={{ background: 'rgba(255,68,102,0.15)', border: '1px solid rgba(255,68,102,0.3)', color: '#ba1a1a' }}>
             {loading && <Loader2 className="w-3 h-3 animate-spin" />}
             Confirm
           </button>
@@ -52,19 +52,19 @@ function LocalCameraCard({ active, toggling, onToggle }: {
       variants={{ hidden: { opacity: 0, scale: 0.95, y: 15 }, show: { opacity: 1, scale: 1, y: 0 } }}
       className="flex flex-col overflow-hidden group"
       style={{
-        background: '#111316',
-        border: `1px solid ${active ? 'rgba(176,198,255,0.25)' : 'rgba(176,198,255,0.08)'}`,
+        background: '#e0e3e5',
+        border: `1px solid ${active ? 'rgba(36,128,255,0.25)' : 'rgba(0,0,0,0.1)'}`,
         transition: 'border-color 0.2s',
       }}
     >
       {/* Top row */}
       <div className="flex justify-between items-center px-5 pt-5 pb-2">
         <span className="text-[8px] font-bold tracking-widest uppercase px-2.5 py-1"
-          style={{ background: 'rgba(176,198,255,0.05)', border: '1px solid rgba(176,198,255,0.08)', color: 'rgba(176,198,255,0.4)' }}>
+          style={{ background: 'rgba(36,128,255,0.05)', border: '1px solid rgba(0,0,0,0.1)', color: '#74777d' }}>
           LC-000
         </span>
         <span className="text-[8px] font-bold tracking-widest uppercase px-2.5 py-1"
-          style={{ background: 'rgba(176,198,255,0.04)', border: '1px solid rgba(176,198,255,0.06)', color: 'rgba(176,198,255,0.25)' }}>
+          style={{ background: 'rgba(0,0,0,0.03)', border: '1px solid rgba(36,128,255,0.06)', color: '#74777d' }}>
           BUILT-IN
         </span>
       </div>
@@ -73,28 +73,28 @@ function LocalCameraCard({ active, toggling, onToggle }: {
       <div className="flex items-center gap-4 px-5 pb-4">
         <div className="w-12 h-12 shrink-0 flex items-center justify-center transition-all"
           style={{
-            background: active ? 'rgba(176,198,255,0.1)' : 'rgba(176,198,255,0.04)',
-            border: `1px solid ${active ? 'rgba(176,198,255,0.3)' : 'rgba(176,198,255,0.08)'}`,
-            color: active ? '#b0c6ff' : 'rgba(176,198,255,0.25)',
+            background: active ? 'rgba(0,0,0,0.1)' : 'rgba(0,0,0,0.03)',
+            border: `1px solid ${active ? 'rgba(36,128,255,0.3)' : 'rgba(0,0,0,0.1)'}`,
+            color: active ? '#2480ff' : 'rgba(36,128,255,0.25)',
           }}>
           <Laptop className="w-5 h-5" />
         </div>
         <div className="flex-1 min-w-0">
-          <h4 className="text-sm font-bold uppercase tracking-tight" style={{ color: '#ccd8ff' }}>Local Camera</h4>
-          <p className="text-[9px] font-mono truncate mt-1" style={{ color: 'rgba(176,198,255,0.3)' }}>
+          <h4 className="text-sm font-bold uppercase tracking-tight" style={{ color: '#191c1e' }}>Local Camera</h4>
+          <p className="text-[9px] font-mono truncate mt-1" style={{ color: '#74777d' }}>
             Laptop / USB Webcam · Device 0
           </p>
         </div>
       </div>
 
       {/* Divider */}
-      <div style={{ height: '1px', background: 'rgba(176,198,255,0.05)', margin: '0 20px' }} />
+      <div style={{ height: '1px', background: 'rgba(36,128,255,0.05)', margin: '0 20px' }} />
 
       {/* Bottom: toggle + status */}
       <div className="flex items-center justify-between px-5 py-4 gap-4">
         {/* Stream toggle */}
         <div className="flex flex-col gap-2">
-          <span className="text-[8px] font-bold uppercase tracking-widest" style={{ color: 'rgba(176,198,255,0.25)' }}>
+          <span className="text-[8px] font-bold uppercase tracking-widest" style={{ color: '#74777d' }}>
             Stream
           </span>
           <label className="relative inline-flex items-center cursor-pointer">
@@ -104,7 +104,7 @@ function LocalCameraCard({ active, toggling, onToggle }: {
               disabled={toggling}
             />
             <div className="w-8 h-4 rounded-full transition-all relative"
-              style={{ background: active ? 'rgba(176,198,255,0.5)' : 'rgba(176,198,255,0.1)' }}>
+              style={{ background: active ? 'rgba(36,128,255,0.5)' : 'rgba(0,0,0,0.1)' }}>
               <div className="absolute top-[2px] w-3 h-3 rounded-full bg-white transition-all"
                 style={{ left: active ? '18px' : '2px' }} />
             </div>
@@ -114,15 +114,15 @@ function LocalCameraCard({ active, toggling, onToggle }: {
         {/* Status badge */}
         <span className="text-[8px] font-bold tracking-widest uppercase px-2.5 py-1"
           style={active
-            ? { background: 'rgba(176,198,255,0.08)', border: '1px solid rgba(176,198,255,0.25)', color: '#b0c6ff' }
-            : { background: 'rgba(176,198,255,0.04)', border: '1px solid rgba(176,198,255,0.08)', color: 'rgba(176,198,255,0.3)' }
+            ? { background: 'rgba(0,0,0,0.1)', border: '1px solid rgba(36,128,255,0.25)', color: '#2480ff' }
+            : { background: 'rgba(0,0,0,0.03)', border: '1px solid rgba(0,0,0,0.1)', color: '#74777d' }
           }>
           {toggling ? '...' : active ? 'ONLINE' : 'OFFLINE'}
         </span>
 
         {/* Placeholder to match URL card spacing */}
         <div className="w-8 h-8 flex items-center justify-center"
-          style={{ color: 'rgba(176,198,255,0.1)', fontSize: 9, fontWeight: 700, letterSpacing: '0.1em' }}>
+          style={{ color: 'rgba(0,0,0,0.1)', fontSize: 9, fontWeight: 700, letterSpacing: '0.1em' }}>
           —
         </div>
       </div>
@@ -145,21 +145,21 @@ function CameraCard({ cam, onToggle, onToggleVisibility, onDelete, onEdit, toggl
       variants={{ hidden: { opacity: 0, scale: 0.95, y: 15 }, show: { opacity: 1, scale: 1, y: 0 } }}
       className="flex flex-col overflow-hidden group"
       style={{
-        background: '#111316',
-        border: `1px solid ${cam.active ? 'rgba(0,255,133,0.2)' : 'rgba(176,198,255,0.08)'}`,
+        background: '#e0e3e5',
+        border: `1px solid ${cam.active ? 'rgba(0,255,133,0.2)' : 'rgba(0,0,0,0.1)'}`,
         transition: 'border-color 0.2s',
       }}
     >
       {/* Top row */}
       <div className="flex justify-between items-center px-5 pt-5 pb-2">
         <span className="text-[8px] font-bold tracking-widest uppercase px-2.5 py-1"
-          style={{ background: 'rgba(176,198,255,0.05)', border: '1px solid rgba(176,198,255,0.08)', color: 'rgba(176,198,255,0.4)' }}>
+          style={{ background: 'rgba(36,128,255,0.05)', border: '1px solid rgba(0,0,0,0.1)', color: '#74777d' }}>
           ID-{String(cam.id).padStart(3, '0')}
         </span>
         <button onClick={() => onEdit(cam)} className="transition-colors"
-          style={{ color: 'rgba(176,198,255,0.2)' }}
-          onMouseEnter={e => (e.currentTarget.style.color = '#b0c6ff')}
-          onMouseLeave={e => (e.currentTarget.style.color = 'rgba(176,198,255,0.2)')}>
+          style={{ color: '#c4c6cc' }}
+          onMouseEnter={e => (e.currentTarget.style.color = '#2480ff')}
+          onMouseLeave={e => (e.currentTarget.style.color = 'rgba(36,128,255,0.15)')}>
           <Edit2 className="w-3.5 h-3.5" />
         </button>
       </div>
@@ -168,20 +168,20 @@ function CameraCard({ cam, onToggle, onToggleVisibility, onDelete, onEdit, toggl
       <div className="flex items-center gap-4 px-5 pb-4 cursor-pointer" onClick={() => onEdit(cam)}>
         <div className="w-12 h-12 shrink-0 flex items-center justify-center transition-all"
           style={{
-            background: cam.active ? 'rgba(0,255,133,0.08)' : 'rgba(176,198,255,0.04)',
-            border: `1px solid ${cam.active ? 'rgba(0,255,133,0.3)' : 'rgba(176,198,255,0.08)'}`,
-            color: cam.active ? '#00ff85' : 'rgba(176,198,255,0.25)',
+            background: cam.active ? 'rgba(0,255,133,0.08)' : 'rgba(0,0,0,0.03)',
+            border: `1px solid ${cam.active ? 'rgba(0,255,133,0.3)' : 'rgba(0,0,0,0.1)'}`,
+            color: cam.active ? '#00ff85' : 'rgba(36,128,255,0.25)',
           }}>
           <Camera className="w-5 h-5" />
         </div>
         <div className="flex-1 min-w-0">
-          <h4 className="text-sm font-bold uppercase tracking-tight truncate" style={{ color: '#ccd8ff' }}>{cam.name}</h4>
-          <p className="text-[9px] font-mono truncate mt-1" style={{ color: 'rgba(176,198,255,0.3)' }}>{cam.url}</p>
+          <h4 className="text-sm font-bold uppercase tracking-tight truncate" style={{ color: '#191c1e' }}>{cam.name}</h4>
+          <p className="text-[9px] font-mono truncate mt-1" style={{ color: '#74777d' }}>{cam.url}</p>
         </div>
       </div>
 
       {/* Divider */}
-      <div style={{ height: '1px', background: 'rgba(176,198,255,0.05)', margin: '0 20px' }} />
+      <div style={{ height: '1px', background: 'rgba(36,128,255,0.05)', margin: '0 20px' }} />
 
       {/* Bottom: two toggles + delete */}
       <div className="flex items-center justify-between px-5 py-4 gap-4" onClick={e => e.stopPropagation()}>
@@ -189,7 +189,7 @@ function CameraCard({ cam, onToggle, onToggleVisibility, onDelete, onEdit, toggl
 
           {/* Analysis toggle (active/start) */}
           <div className="flex flex-col gap-2">
-            <span className="text-[8px] font-bold uppercase tracking-widest" style={{ color: 'rgba(176,198,255,0.25)' }}>
+            <span className="text-[8px] font-bold uppercase tracking-widest" style={{ color: '#74777d' }}>
               Analysis
             </span>
             <label className="relative inline-flex items-center cursor-pointer">
@@ -199,19 +199,19 @@ function CameraCard({ cam, onToggle, onToggleVisibility, onDelete, onEdit, toggl
                 disabled={toggling}
               />
               <div className="w-8 h-4 rounded-full transition-all relative"
-                style={{ background: cam.active ? 'rgba(0,255,133,0.6)' : 'rgba(176,198,255,0.1)' }}>
+                style={{ background: cam.active ? 'rgba(0,255,133,0.6)' : 'rgba(0,0,0,0.1)' }}>
                 <div className="absolute top-[2px] w-3 h-3 rounded-full bg-white transition-all"
                   style={{ left: cam.active ? '18px' : '2px' }} />
               </div>
             </label>
           </div>
 
-          <div style={{ width: '1px', height: '32px', background: 'rgba(176,198,255,0.05)' }} />
+          <div style={{ width: '1px', height: '32px', background: 'rgba(36,128,255,0.05)' }} />
 
           {/* Live toggle (visibility) */}
           <div className="flex flex-col gap-2">
             <span className="text-[8px] font-bold uppercase tracking-widest transition-colors"
-              style={{ color: !cam.active ? 'rgba(176,198,255,0.08)' : 'rgba(176,198,255,0.25)' }}>
+              style={{ color: !cam.active ? 'rgba(0,0,0,0.1)' : 'rgba(36,128,255,0.25)' }}>
               Live
             </span>
             <label className={`relative inline-flex items-center ${!cam.active ? 'opacity-20 cursor-not-allowed' : 'cursor-pointer'}`}>
@@ -221,7 +221,7 @@ function CameraCard({ cam, onToggle, onToggleVisibility, onDelete, onEdit, toggl
                 disabled={!cam.active}
               />
               <div className="w-8 h-4 rounded-full transition-all relative"
-                style={{ background: cam.visible && cam.active ? 'rgba(176,198,255,0.4)' : 'rgba(176,198,255,0.1)' }}>
+                style={{ background: cam.visible && cam.active ? 'rgba(36,128,255,0.4)' : 'rgba(0,0,0,0.1)' }}>
                 <div className="absolute top-[2px] w-3 h-3 rounded-full bg-white transition-all"
                   style={{ left: cam.visible && cam.active ? '18px' : '2px' }} />
               </div>
@@ -232,9 +232,9 @@ function CameraCard({ cam, onToggle, onToggleVisibility, onDelete, onEdit, toggl
         {/* Delete */}
         <button onClick={() => onDelete(cam.id)}
           className="p-2 transition-all mt-2"
-          style={{ background: 'rgba(176,198,255,0.04)', border: '1px solid rgba(176,198,255,0.08)', color: 'rgba(176,198,255,0.3)' }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,68,102,0.1)'; e.currentTarget.style.color = '#ffb4ab'; e.currentTarget.style.borderColor = 'rgba(255,68,102,0.2)'; }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(176,198,255,0.04)'; e.currentTarget.style.color = 'rgba(176,198,255,0.3)'; e.currentTarget.style.borderColor = 'rgba(176,198,255,0.08)'; }}>
+          style={{ background: 'rgba(0,0,0,0.03)', border: '1px solid rgba(0,0,0,0.1)', color: '#74777d' }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,68,102,0.1)'; e.currentTarget.style.color = '#ba1a1a'; e.currentTarget.style.borderColor = 'rgba(255,68,102,0.2)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,0,0,0.03)'; e.currentTarget.style.color = 'rgba(36,128,255,0.3)'; e.currentTarget.style.borderColor = 'rgba(0,0,0,0.1)'; }}>
           <Trash2 className="w-3.5 h-3.5" />
         </button>
       </div>
@@ -336,20 +336,20 @@ export default function CamerasPage() {
   };
 
   return (
-    <div className="h-full overflow-y-auto" style={{ background: '#0c0e11', color: '#e2e2e6' }}>
+    <div className="h-full overflow-y-auto" style={{ background: '#e8ecf0', color: '#191c1e' }}>
       <div className="p-6 space-y-6 pb-12">
 
         {/* ── KPI Cards ── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { label: 'Total Nodes',  value: totalNodes,    color: '#b0c6ff', bg: 'rgba(176,198,255,0.05)', border: 'rgba(176,198,255,0.1)' },
+            { label: 'Total Nodes',  value: totalNodes,    color: '#2480ff', bg: 'rgba(36,128,255,0.05)', border: 'rgba(0,0,0,0.1)' },
             { label: 'Active',       value: activeCount,   color: '#00ff85', bg: 'rgba(0,255,133,0.05)',  border: 'rgba(0,255,133,0.15)' },
             { label: 'Feed Live',    value: liveFeedCount, color: '#4dd9ff', bg: 'rgba(77,217,255,0.05)', border: 'rgba(77,217,255,0.15)' },
-            { label: 'Node Offline', value: offlineCount,  color: 'rgba(176,198,255,0.3)', bg: 'rgba(176,198,255,0.03)', border: 'rgba(176,198,255,0.06)' },
+            { label: 'Node Offline', value: offlineCount,  color: '#74777d', bg: 'rgba(0,0,0,0.04)', border: 'rgba(36,128,255,0.06)' },
           ].map(kpi => (
             <div key={kpi.label} className="p-5 flex flex-col justify-between"
               style={{ background: kpi.bg, border: `1px solid ${kpi.border}` }}>
-              <p className="text-[9px] font-bold uppercase tracking-widest mb-3" style={{ color: 'rgba(176,198,255,0.4)' }}>{kpi.label}</p>
+              <p className="text-[9px] font-bold uppercase tracking-widest mb-3" style={{ color: '#74777d' }}>{kpi.label}</p>
               <p className="text-3xl font-bold tracking-tighter" style={{ color: kpi.color, fontFamily: "'Manrope',sans-serif" }}>
                 {kpi.value.toString().padStart(2, '0')}
               </p>
@@ -359,18 +359,18 @@ export default function CamerasPage() {
 
         {/* ── Header bar ── */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-5"
-          style={{ background: '#111316', border: '1px solid rgba(176,198,255,0.08)' }}>
+          style={{ background: '#e0e3e5', border: '1px solid rgba(0,0,0,0.1)' }}>
           <div className="flex items-center gap-4">
             <div className="p-2.5 flex items-center justify-center"
-              style={{ background: 'rgba(10,88,202,0.1)', border: '1px solid rgba(176,198,255,0.1)', color: '#b0c6ff' }}>
+              style={{ background: 'rgba(36,128,255,0.08)', border: '1px solid rgba(0,0,0,0.1)', color: '#2480ff' }}>
               <LayoutGrid className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-sm font-bold uppercase tracking-widest" style={{ color: '#ccd8ff', fontFamily: "'Manrope',sans-serif" }}>
+              <h3 className="text-sm font-bold uppercase tracking-widest" style={{ color: '#191c1e', fontFamily: "'Manrope',sans-serif" }}>
                 Network Topology
               </h3>
-              <p className="text-[9px] font-bold uppercase tracking-widest mt-1 flex items-center gap-2" style={{ color: 'rgba(176,198,255,0.35)' }}>
-                <span className="w-1.5 h-1.5 rounded-full bg-[#b0c6ff] animate-pulse inline-block" />
+              <p className="text-[9px] font-bold uppercase tracking-widest mt-1 flex items-center gap-2" style={{ color: '#74777d' }}>
+                <span className="w-1.5 h-1.5 rounded-full bg-[#2480ff] animate-pulse inline-block" />
                 Source Management — {activeCount} Nodes Online
               </p>
             </div>
@@ -385,15 +385,15 @@ export default function CamerasPage() {
                     autoFocus type="text" placeholder="Search nodes..."
                     value={search} onChange={e => setSearch(e.target.value)}
                     className="text-[10px] font-bold uppercase tracking-widest px-3 py-2 outline-none"
-                    style={{ background: '#1a1c1f', border: '1px solid rgba(176,198,255,0.15)', color: '#b0c6ff' }}
+                    style={{ background: '#f2f4f6', border: '1px solid rgba(0,0,0,0.1)', color: '#2480ff' }}
                   />
                 )}
               </AnimatePresence>
               <button onClick={() => { setSearchOpen(v => !v); if (searchOpen) setSearch(''); }}
                 className="p-2.5 transition-all"
                 style={searchOpen
-                  ? { background: '#0a58ca', color: '#ccd8ff', border: '1px solid #0a58ca' }
-                  : { background: '#1a1c1f', color: '#8c909f', border: '1px solid rgba(176,198,255,0.1)' }}>
+                  ? { background: '#2480ff', color: '#191c1e', border: '1px solid #0a58ca' }
+                  : { background: '#f2f4f6', color: '#74777d', border: '1px solid rgba(0,0,0,0.1)' }}>
                 {searchOpen ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
               </button>
             </div>
@@ -401,9 +401,9 @@ export default function CamerasPage() {
             {/* Add button */}
             <button onClick={() => { setShowAddModal(true); setViewMode('new'); }}
               className="flex items-center gap-2 px-4 py-2.5 text-[10px] font-bold tracking-widest uppercase transition-all"
-              style={{ background: '#0a58ca', color: '#ccd8ff', border: '1px solid rgba(10,88,202,0.5)' }}
+              style={{ background: '#2480ff', color: '#191c1e', border: '1px solid rgba(10,88,202,0.5)' }}
               onMouseEnter={e => (e.currentTarget.style.background = '#0d6efd')}
-              onMouseLeave={e => (e.currentTarget.style.background = '#0a58ca')}>
+              onMouseLeave={e => (e.currentTarget.style.background = '#2480ff')}>
               <Plus className="w-4 h-4" />
               New Node
             </button>
@@ -439,7 +439,7 @@ export default function CamerasPage() {
           {/* Empty state when no URL cameras + search is active */}
           {filtered.length === 0 && search && (
             <div className="col-span-full flex flex-col items-center justify-center py-20"
-              style={{ border: '1px dashed rgba(176,198,255,0.06)', color: 'rgba(176,198,255,0.2)' }}>
+              style={{ border: '1px dashed rgba(36,128,255,0.06)', color: '#c4c6cc' }}>
               <Video className="w-10 h-10 mb-3" />
               <p className="text-[10px] font-bold uppercase tracking-widest">No Matching Nodes</p>
             </div>
@@ -449,22 +449,22 @@ export default function CamerasPage() {
         {/* Empty state when no URL cameras at all */}
         {urlCameras.length === 0 && !search && (
           <div className="flex flex-col items-center justify-center py-20 relative overflow-hidden"
-            style={{ background: '#111316', border: '1px solid rgba(176,198,255,0.06)' }}>
-            <LayoutGrid className="absolute inset-0 m-auto opacity-[0.03] scale-[5] pointer-events-none" style={{ color: '#b0c6ff' }} />
+            style={{ background: '#e0e3e5', border: '1px solid rgba(36,128,255,0.06)' }}>
+            <LayoutGrid className="absolute inset-0 m-auto opacity-[0.03] scale-[5] pointer-events-none" style={{ color: '#2480ff' }} />
             <div className="w-16 h-16 flex items-center justify-center mb-6 cursor-pointer transition-all"
-              style={{ background: 'rgba(176,198,255,0.04)', border: '1px solid rgba(176,198,255,0.08)', color: 'rgba(176,198,255,0.2)' }}
+              style={{ background: 'rgba(0,0,0,0.03)', border: '1px solid rgba(0,0,0,0.1)', color: '#c4c6cc' }}
               onClick={() => { setShowAddModal(true); setViewMode('new'); }}>
               <Plus className="w-8 h-8" />
             </div>
-            <h2 className="text-base font-bold uppercase tracking-widest mb-2" style={{ color: '#ccd8ff', fontFamily: "'Manrope',sans-serif" }}>
+            <h2 className="text-base font-bold uppercase tracking-widest mb-2" style={{ color: '#191c1e', fontFamily: "'Manrope',sans-serif" }}>
               No URL Cameras Added
             </h2>
-            <p className="text-[10px] font-bold uppercase tracking-widest max-w-sm text-center mb-6" style={{ color: 'rgba(176,198,255,0.3)' }}>
+            <p className="text-[10px] font-bold uppercase tracking-widest max-w-sm text-center mb-6" style={{ color: '#74777d' }}>
               Add RTSP / HTTP camera URLs to extend surveillance beyond the local webcam.
             </p>
             <button onClick={() => { setShowAddModal(true); setViewMode('new'); }}
               className="px-8 py-3 text-[10px] font-bold tracking-widest uppercase"
-              style={{ background: '#0a58ca', color: '#ccd8ff', border: '1px solid rgba(10,88,202,0.5)' }}>
+              style={{ background: '#2480ff', color: '#191c1e', border: '1px solid rgba(10,88,202,0.5)' }}>
               ADD URL CAMERA
             </button>
           </div>
@@ -480,42 +480,42 @@ export default function CamerasPage() {
             <motion.div initial={{ scale: 0.95, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0 }}
               className="relative w-full max-w-xl p-10 z-10 overflow-hidden"
-              style={{ background: '#111316', border: '1px solid rgba(176,198,255,0.15)' }}>
+              style={{ background: '#e0e3e5', border: '1px solid rgba(0,0,0,0.1)' }}>
 
               <div className="absolute top-0 right-0 w-64 h-64 rounded-full pointer-events-none"
                 style={{ background: 'rgba(10,88,202,0.06)', filter: 'blur(80px)', transform: 'translate(50%,-50%)' }} />
 
               <div className="flex items-center justify-between mb-8 relative z-10">
                 <div className="flex items-center gap-4">
-                  <div className="p-2.5" style={{ background: 'rgba(10,88,202,0.1)', border: '1px solid rgba(176,198,255,0.1)', color: '#b0c6ff' }}>
+                  <div className="p-2.5" style={{ background: 'rgba(36,128,255,0.08)', border: '1px solid rgba(0,0,0,0.1)', color: '#2480ff' }}>
                     <Plus className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold uppercase tracking-widest" style={{ color: '#ccd8ff', fontFamily: "'Manrope',sans-serif" }}>
+                    <h3 className="text-sm font-bold uppercase tracking-widest" style={{ color: '#191c1e', fontFamily: "'Manrope',sans-serif" }}>
                       Initialize Command Stream
                     </h3>
-                    <p className="text-[9px] font-bold uppercase tracking-widest mt-1" style={{ color: 'rgba(176,198,255,0.25)' }}>
+                    <p className="text-[9px] font-bold uppercase tracking-widest mt-1" style={{ color: '#74777d' }}>
                       NODE_CLASS: SURVEILLANCE_ENDPOINT
                     </p>
                   </div>
                 </div>
                 <button onClick={() => setShowAddModal(false)} className="p-2 transition-all"
-                  style={{ color: 'rgba(176,198,255,0.3)', border: '1px solid transparent' }}
-                  onMouseEnter={e => { e.currentTarget.style.color = '#b0c6ff'; e.currentTarget.style.borderColor = 'rgba(176,198,255,0.1)'; e.currentTarget.style.background = 'rgba(176,198,255,0.05)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.color = 'rgba(176,198,255,0.3)'; e.currentTarget.style.borderColor = 'transparent'; e.currentTarget.style.background = 'transparent'; }}>
+                  style={{ color: '#74777d', border: '1px solid transparent' }}
+                  onMouseEnter={e => { e.currentTarget.style.color = '#2480ff'; e.currentTarget.style.borderColor = 'rgba(0,0,0,0.1)'; e.currentTarget.style.background = 'rgba(36,128,255,0.05)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.color = 'rgba(36,128,255,0.3)'; e.currentTarget.style.borderColor = 'transparent'; e.currentTarget.style.background = 'transparent'; }}>
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
               {/* Tabs */}
               <div className="flex gap-1.5 p-1.5 mb-8 relative z-10"
-                style={{ background: 'rgba(176,198,255,0.04)', border: '1px solid rgba(176,198,255,0.06)' }}>
+                style={{ background: 'rgba(0,0,0,0.03)', border: '1px solid rgba(36,128,255,0.06)' }}>
                 {(['registry', 'new'] as const).map(tab => (
                   <button key={tab} onClick={() => setViewMode(tab)}
                     className="flex-1 py-2.5 text-[10px] font-bold uppercase tracking-widest transition-all"
                     style={viewMode === tab
-                      ? { background: '#0a58ca', color: '#ccd8ff' }
-                      : { color: 'rgba(176,198,255,0.3)', background: 'transparent' }}>
+                      ? { background: '#2480ff', color: '#191c1e' }
+                      : { color: '#74777d', background: 'transparent' }}>
                     {tab === 'registry' ? 'Registry Archive' : 'New Deployment'}
                   </button>
                 ))}
@@ -528,33 +528,33 @@ export default function CamerasPage() {
                       const isToggling = togglingIds.includes(cam.id);
                       return (
                         <div key={cam.id} className="flex items-center justify-between p-4"
-                          style={{ background: 'rgba(176,198,255,0.03)', border: '1px solid rgba(176,198,255,0.07)' }}>
+                          style={{ background: 'rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.06)' }}>
                           <div className="overflow-hidden pr-4">
-                            <h4 className="text-[11px] font-bold uppercase tracking-tight flex items-center gap-2" style={{ color: '#ccd8ff' }}>
+                            <h4 className="text-[11px] font-bold uppercase tracking-tight flex items-center gap-2" style={{ color: '#191c1e' }}>
                               {cam.name}
                               <span className="text-[8px] px-2 py-0.5 font-bold tracking-widest"
                                 style={cam.active
                                   ? { background: 'rgba(0,255,133,0.08)', border: '1px solid rgba(0,255,133,0.2)', color: '#00ff85' }
-                                  : { background: 'rgba(176,198,255,0.04)', border: '1px solid rgba(176,198,255,0.08)', color: 'rgba(176,198,255,0.3)' }}>
+                                  : { background: 'rgba(0,0,0,0.03)', border: '1px solid rgba(0,0,0,0.1)', color: '#74777d' }}>
                                 {cam.active ? 'ONLINE' : 'OFFLINE'}
                               </span>
                             </h4>
-                            <p className="text-[9px] font-mono truncate mt-1" style={{ color: 'rgba(176,198,255,0.3)' }}>
+                            <p className="text-[9px] font-mono truncate mt-1" style={{ color: '#74777d' }}>
                               SOURCE: {cam.url}
                             </p>
                           </div>
                           <button onClick={() => !isToggling && handleToggle(cam.id)} disabled={isToggling}
                             className="shrink-0 px-5 py-2 text-[9px] font-bold uppercase tracking-widest transition-all flex items-center gap-2"
                             style={cam.active
-                              ? { background: 'rgba(255,68,102,0.08)', border: '1px solid rgba(255,68,102,0.2)', color: '#ffb4ab' }
-                              : { background: 'rgba(10,88,202,0.08)', border: '1px solid rgba(176,198,255,0.15)', color: '#b0c6ff' }}>
+                              ? { background: 'rgba(255,68,102,0.08)', border: '1px solid rgba(255,68,102,0.2)', color: '#ba1a1a' }
+                              : { background: 'rgba(36,128,255,0.06)', border: '1px solid rgba(0,0,0,0.1)', color: '#2480ff' }}>
                             {isToggling && <Loader2 className="w-3 h-3 animate-spin" />}
                             {isToggling ? 'SYNCING...' : cam.active ? 'TERMINATE' : 'INITIALIZE'}
                           </button>
                         </div>
                       );
                     }) : (
-                      <div className="flex flex-col items-center py-16 gap-4" style={{ color: 'rgba(176,198,255,0.2)' }}>
+                      <div className="flex flex-col items-center py-16 gap-4" style={{ color: '#c4c6cc' }}>
                         <Video className="w-10 h-10" />
                         <p className="text-[10px] font-bold uppercase tracking-widest">Registry Empty</p>
                       </div>
@@ -563,26 +563,26 @@ export default function CamerasPage() {
                 ) : (
                   <form onSubmit={handleAdd} className="space-y-6">
                     <div className="space-y-2">
-                      <label className="text-[9px] font-bold uppercase tracking-widest" style={{ color: 'rgba(176,198,255,0.35)' }}>
+                      <label className="text-[9px] font-bold uppercase tracking-widest" style={{ color: '#74777d' }}>
                         Stream Designation
                       </label>
                       <input type="text" required placeholder="E.G. SECTOR_SOUTH_GATE"
                         value={newCam.name} onChange={e => setNewCam({ ...newCam, name: e.target.value })}
                         className="w-full px-4 py-3 text-[10px] font-bold uppercase tracking-widest outline-none"
-                        style={{ background: '#1a1c1f', border: '1px solid rgba(176,198,255,0.12)', color: '#ccd8ff' }} />
+                        style={{ background: '#f2f4f6', border: '1px solid rgba(0,0,0,0.1)', color: '#191c1e' }} />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-[9px] font-bold uppercase tracking-widest" style={{ color: 'rgba(176,198,255,0.35)' }}>
+                      <label className="text-[9px] font-bold uppercase tracking-widest" style={{ color: '#74777d' }}>
                         Source Protocol (RTSP / HTTP)
                       </label>
                       <input type="text" required placeholder="rtsp://admin:pass@192.168.1.100:554/ch1"
                         value={newCam.url} onChange={e => setNewCam({ ...newCam, url: e.target.value })}
                         className="w-full px-4 py-3 text-[10px] font-mono outline-none"
-                        style={{ background: '#1a1c1f', border: '1px solid rgba(176,198,255,0.12)', color: '#ccd8ff' }} />
+                        style={{ background: '#f2f4f6', border: '1px solid rgba(0,0,0,0.1)', color: '#191c1e' }} />
                     </div>
                     <button type="submit" disabled={saving}
                       className="w-full py-4 text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-3 transition-all"
-                      style={{ background: '#0a58ca', color: '#ccd8ff', border: '1px solid rgba(10,88,202,0.5)' }}>
+                      style={{ background: '#2480ff', color: '#191c1e', border: '1px solid rgba(10,88,202,0.5)' }}>
                       {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                       {saving ? 'EXECUTING PROTOCOL...' : 'DEPLOY SURVEILLANCE NODE'}
                     </button>
@@ -602,43 +602,43 @@ export default function CamerasPage() {
               className="absolute inset-0 bg-black/85 backdrop-blur-md" onClick={() => setEditCam(null)} />
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
               className="relative w-full max-w-lg p-10 z-10"
-              style={{ background: '#111316', border: '1px solid rgba(176,198,255,0.15)' }}>
+              style={{ background: '#e0e3e5', border: '1px solid rgba(0,0,0,0.1)' }}>
               <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center gap-4">
-                  <div className="p-2.5" style={{ background: 'rgba(10,88,202,0.1)', border: '1px solid rgba(176,198,255,0.1)', color: '#b0c6ff' }}>
+                  <div className="p-2.5" style={{ background: 'rgba(36,128,255,0.08)', border: '1px solid rgba(0,0,0,0.1)', color: '#2480ff' }}>
                     <Edit2 className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold uppercase tracking-widest" style={{ color: '#ccd8ff', fontFamily: "'Manrope',sans-serif" }}>
+                    <h3 className="text-sm font-bold uppercase tracking-widest" style={{ color: '#191c1e', fontFamily: "'Manrope',sans-serif" }}>
                       Update Node Manifest
                     </h3>
-                    <p className="text-[9px] uppercase tracking-widest mt-1" style={{ color: 'rgba(176,198,255,0.25)' }}>NODE_CLASS: SURVEILLANCE_ENDPOINT</p>
+                    <p className="text-[9px] uppercase tracking-widest mt-1" style={{ color: '#74777d' }}>NODE_CLASS: SURVEILLANCE_ENDPOINT</p>
                   </div>
                 </div>
-                <button onClick={() => setEditCam(null)} className="p-2" style={{ color: 'rgba(176,198,255,0.3)' }}
-                  onMouseEnter={e => (e.currentTarget.style.color = '#b0c6ff')}
-                  onMouseLeave={e => (e.currentTarget.style.color = 'rgba(176,198,255,0.3)')}>
+                <button onClick={() => setEditCam(null)} className="p-2" style={{ color: '#74777d' }}
+                  onMouseEnter={e => (e.currentTarget.style.color = '#2480ff')}
+                  onMouseLeave={e => (e.currentTarget.style.color = 'rgba(36,128,255,0.3)')}>
                   <X className="w-5 h-5" />
                 </button>
               </div>
               <form onSubmit={handleEditSave} className="space-y-6">
                 <div className="space-y-2">
-                  <label className="text-[9px] font-bold uppercase tracking-widest" style={{ color: 'rgba(176,198,255,0.35)' }}>Stream Designation</label>
+                  <label className="text-[9px] font-bold uppercase tracking-widest" style={{ color: '#74777d' }}>Stream Designation</label>
                   <input type="text" required value={editCam.name}
                     onChange={e => setEditCam({ ...editCam, name: e.target.value })}
                     className="w-full px-4 py-3 text-[10px] font-bold uppercase tracking-widest outline-none"
-                    style={{ background: '#1a1c1f', border: '1px solid rgba(176,198,255,0.12)', color: '#ccd8ff' }} />
+                    style={{ background: '#f2f4f6', border: '1px solid rgba(0,0,0,0.1)', color: '#191c1e' }} />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[9px] font-bold uppercase tracking-widest" style={{ color: 'rgba(176,198,255,0.35)' }}>Source Protocol</label>
+                  <label className="text-[9px] font-bold uppercase tracking-widest" style={{ color: '#74777d' }}>Source Protocol</label>
                   <input type="text" required value={editCam.url}
                     onChange={e => setEditCam({ ...editCam, url: e.target.value })}
                     className="w-full px-4 py-3 text-[10px] font-mono outline-none"
-                    style={{ background: '#1a1c1f', border: '1px solid rgba(176,198,255,0.12)', color: '#ccd8ff' }} />
+                    style={{ background: '#f2f4f6', border: '1px solid rgba(0,0,0,0.1)', color: '#191c1e' }} />
                 </div>
                 <button type="submit" disabled={saving}
                   className="w-full py-4 text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-3"
-                  style={{ background: '#0a58ca', color: '#ccd8ff', border: '1px solid rgba(10,88,202,0.5)' }}>
+                  style={{ background: '#2480ff', color: '#191c1e', border: '1px solid rgba(10,88,202,0.5)' }}>
                   {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                   {saving ? 'APPLYING CHANGES...' : 'APPLY MANIFEST CHANGES'}
                 </button>
@@ -660,3 +660,7 @@ export default function CamerasPage() {
     </div>
   );
 }
+
+
+
+

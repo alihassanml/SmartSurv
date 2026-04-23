@@ -33,30 +33,31 @@ with open(os.devnull, 'w') as _devnull, contextlib.redirect_stderr(_devnull):
     import torch
     from facenet_pytorch import MTCNN, InceptionResnetV1
 
-# ── CLIP Model for Semantic Search (Safe CPU Mode) ───────────────────────────
-_DEVICE_GPU = torch.device('cpu')
+# ── Device selection: GPU if available, else CPU ─────────────────────────────
+_DEVICE_GPU = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+print(f"[Device] Using: {_DEVICE_GPU}" + (f" ({torch.cuda.get_device_name(0)})" if _DEVICE_GPU.type == 'cuda' else ""))
 
-# ─── FaceNet (Forced CPU for stability) ──────────────────────────────────────
+# ─── FaceNet (CPU — small batches, GPU overhead not worth it) ─────────────────
 _MTCNN = MTCNN(
     keep_all=True,
     device='cpu',
     post_process=True,
     select_largest=False,
-    min_face_size=50, # Slightly larger for faster CPU detection
+    min_face_size=50,
 )
 _RESNET = InceptionResnetV1(pretrained='vggface2').eval().to('cpu')
 
 FACENET_THRESHOLD = 0.70
-print("[FaceNet] Models initialized on: CPU (Safe Mode)")
+print("[FaceNet] Models initialized on: CPU")
 
 print(f"[CLIP] Loading ViT-B-32 on: {_DEVICE_GPU}...")
 _CLIP_MODEL, _, _CLIP_PREPROCESS = open_clip.create_model_and_transforms(
-    'ViT-B-32', 
-    pretrained='laion2b_s34b_b79k', 
+    'ViT-B-32',
+    pretrained='laion2b_s34b_b79k',
     device=_DEVICE_GPU
 )
 _CLIP_TOKENIZER = open_clip.get_tokenizer('ViT-B-32')
-print("[CLIP] Model initialized.")
+print(f"[CLIP] Model initialized on: {_DEVICE_GPU}")
 
 DANGER = ["person", "knife", "gun", "fire", "cell phone"]
 
@@ -289,7 +290,7 @@ class CameraFeed:
 
 
 class CameraEngine:
-    def __init__(self, model_path='../model/S2 Model/best.pt', source=0):
+    def __init__(self, model_path='../model/N Model/best.pt', source=0):
         self.model = YOLO(model_path)
         # Initialize on GPU if available
         self.model.to(_DEVICE_GPU)

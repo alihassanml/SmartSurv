@@ -10,5 +10,5 @@ else:
     model = YOLO(model_path)
     print("Exporting to ONNX...")
     # opset 12 is widely compatible
-    model.export(format="onnx", imgsz=416, opset=12)
+    model.export(format="onnx", imgsz=320, opset=12)
     print("Export complete.")

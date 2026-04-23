@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+﻿import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, UploadCloud, Search, Pencil, Check, AlertTriangle,
@@ -273,27 +273,27 @@ const WatchlistManager: React.FC<WatchlistManagerProps> = ({
           <motion.div
             initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 28, stiffness: 260 }}
-            className="fixed top-0 right-0 h-full w-[440px] bg-[#111316] border-l border-[#b0c6ff]/20 z-[301] shadow-2xl flex flex-col"
+            className="fixed top-0 right-0 h-full w-[440px] bg-white border-l border-[#2480ff]/20 z-[301] shadow-2xl flex flex-col"
           >
             {/* Header */}
-            <div className="flex justify-between items-center px-8 py-6 border-b border-[#b0c6ff]/10 shrink-0">
+            <div className="flex justify-between items-center px-8 py-6 border-b border-[#2480ff]/10 shrink-0">
               <div>
-                <h3 className="text-xl font-bold tracking-widest text-[#b0c6ff]">WATCHLIST_DB</h3>
+                <h3 className="text-xl font-bold tracking-widest text-[#2480ff]">Watchlist</h3>
                 <p className="text-[10px] opacity-40 uppercase font-bold mt-1">Personnel Authorization Management</p>
               </div>
               <button
                 onClick={() => { setIsAddingTarget(false); cancelEdit(); }}
-                className="p-2 hover:bg-white/5 border border-transparent hover:border-[#b0c6ff]/30 transition-all"
+                className="p-2 hover:bg-[rgba(0,0,0,0.04)] border border-transparent hover:border-[#2480ff]/30 transition-all"
               >
-                <X className="w-5 h-5 text-[#b0c6ff]" />
+                <X className="w-5 h-5 text-[#2480ff]" />
               </button>
             </div>
 
             <div className="flex-1 overflow-y-auto px-8 py-6 space-y-8">
 
               {/* ── Add New Target ── */}
-              <div className="space-y-4 bg-[#0c0e12] p-5 border border-[#b0c6ff]/10">
-                <p className="text-[10px] font-bold text-[#b0c6ff]/60 tracking-widest uppercase">Add New Target</p>
+              <div className="space-y-4 bg-[#f2f4f6] p-5 border border-[#2480ff]/10">
+                <p className="text-[10px] font-bold text-[#2480ff]/60 tracking-widest uppercase">Add New Target</p>
 
                 {/* Name Input */}
                 <input
@@ -301,7 +301,7 @@ const WatchlistManager: React.FC<WatchlistManagerProps> = ({
                   placeholder="ENTER_NAME... (auto: target1, target2…)"
                   value={newTargetName}
                   onChange={(e) => setNewTargetName(e.target.value)}
-                  className="w-full bg-black/40 border border-[#b0c6ff]/20 text-[#b0c6ff] text-xs px-4 py-3 placeholder:text-[#b0c6ff]/20 focus:outline-none focus:border-[#b0c6ff]/50 transition-all font-bold"
+                  className="w-full bg-white/80 border border-[#2480ff]/20 text-[#2480ff] text-xs px-4 py-3 placeholder:text-[#2480ff]/20 focus:outline-none focus:border-[#2480ff]/50 transition-all font-bold"
                 />
 
                 {/* Mode Tabs */}
@@ -310,8 +310,8 @@ const WatchlistManager: React.FC<WatchlistManagerProps> = ({
                     onClick={() => setAddMode('upload')}
                     className={`flex items-center justify-center gap-2 py-2.5 text-[10px] font-bold tracking-widest uppercase border transition-all ${
                       addMode === 'upload'
-                        ? 'border-[#b0c6ff]/60 bg-[#b0c6ff]/10 text-[#b0c6ff]'
-                        : 'border-[#b0c6ff]/15 text-[#b0c6ff]/30 hover:border-[#b0c6ff]/30 hover:text-[#b0c6ff]/60'
+                        ? 'border-[#2480ff]/60 bg-[#2480ff]/10 text-[#2480ff]'
+                        : 'border-[#2480ff]/15 text-[#2480ff]/30 hover:border-[#2480ff]/30 hover:text-[#2480ff]/60'
                     }`}
                   >
                     <ImageIcon className="w-3.5 h-3.5" />
@@ -321,8 +321,8 @@ const WatchlistManager: React.FC<WatchlistManagerProps> = ({
                     onClick={() => setAddMode('camera')}
                     className={`flex items-center justify-center gap-2 py-2.5 text-[10px] font-bold tracking-widest uppercase border transition-all ${
                       addMode === 'camera'
-                        ? 'border-[#b0c6ff]/60 bg-[#b0c6ff]/10 text-[#b0c6ff]'
-                        : 'border-[#b0c6ff]/15 text-[#b0c6ff]/30 hover:border-[#b0c6ff]/30 hover:text-[#b0c6ff]/60'
+                        ? 'border-[#2480ff]/60 bg-[#2480ff]/10 text-[#2480ff]'
+                        : 'border-[#2480ff]/15 text-[#2480ff]/30 hover:border-[#2480ff]/30 hover:text-[#2480ff]/60'
                     }`}
                   >
                     <Camera className="w-3.5 h-3.5" />
@@ -334,20 +334,20 @@ const WatchlistManager: React.FC<WatchlistManagerProps> = ({
                 {addMode === 'upload' && (
                   <label className="block">
                     {newTargetPreview ? (
-                      <div className="relative w-full aspect-square border border-[#b0c6ff]/30 bg-black/40 overflow-hidden">
+                      <div className="relative w-full aspect-square border border-[#2480ff]/30 bg-white/80 overflow-hidden">
                         <img src={newTargetPreview} className="w-full h-full object-cover grayscale" alt="Preview" />
-                        <div className="absolute inset-0 bg-[#b0c6ff]/10 animate-pulse" />
-                        <div className="absolute top-0 left-0 w-full h-0.5 bg-[#b0c6ff] animate-scanner" />
+                        <div className="absolute inset-0 bg-[#2480ff]/10 animate-pulse" />
+                        <div className="absolute top-0 left-0 w-full h-0.5 bg-[#2480ff] animate-scanner" />
                         <button
                           onClick={(e) => { e.preventDefault(); setNewTargetPreview(null); }}
-                          className="absolute top-2 right-2 p-1 bg-black/60 text-white hover:text-red-500"
+                          className="absolute top-2 right-2 p-1 bg-white/90 text-white hover:text-red-500"
                         >
                           <X className="w-4 h-4" />
                         </button>
                       </div>
                     ) : (
                       <div
-                        className="w-full py-10 border-2 border-dashed border-[#b0c6ff]/40 hover:bg-[#b0c6ff]/5 cursor-pointer text-[#b0c6ff] font-bold text-[10px] tracking-widest uppercase text-center transition-all flex flex-col items-center gap-3"
+                        className="w-full py-10 border-2 border-dashed border-[#2480ff]/40 hover:bg-[#2480ff]/5 cursor-pointer text-[#2480ff] font-bold text-[10px] tracking-widest uppercase text-center transition-all flex flex-col items-center gap-3"
                         onClick={() => {
                           // Auto-set name before the file dialog opens so parent state is ready
                           if (!newTargetName.trim()) setNewTargetName(getAutoName());
@@ -365,7 +365,7 @@ const WatchlistManager: React.FC<WatchlistManagerProps> = ({
                 {addMode === 'camera' && (
                   <div className="space-y-3">
                     {/* Video / Preview area */}
-                    <div className="relative w-full aspect-video bg-black border border-[#b0c6ff]/20 overflow-hidden">
+                    <div className="relative w-full aspect-video bg-black border border-[#2480ff]/20 overflow-hidden">
                       {/* Live video */}
                       <video
                         ref={videoRef}
@@ -388,28 +388,28 @@ const WatchlistManager: React.FC<WatchlistManagerProps> = ({
 
                       {/* Loading overlay */}
                       {camLoading && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/70">
-                          <RefreshCw className="w-6 h-6 text-[#b0c6ff] animate-spin" />
+                        <div className="absolute inset-0 flex items-center justify-center bg-white/95">
+                          <RefreshCw className="w-6 h-6 text-[#2480ff] animate-spin" />
                         </div>
                       )}
 
                       {/* Scan line when live */}
                       {stream && !capturedPreview && (
-                        <div className="absolute top-0 left-0 w-full h-0.5 bg-[#b0c6ff]/60 animate-scanner" />
+                        <div className="absolute top-0 left-0 w-full h-0.5 bg-[#2480ff]/60 animate-scanner" />
                       )}
 
                       {/* Captured badge */}
                       {capturedPreview && (
-                        <div className="absolute top-2 left-2 bg-[#b0c6ff]/20 border border-[#b0c6ff]/40 px-2 py-0.5 text-[9px] font-bold text-[#b0c6ff] tracking-widest">
+                        <div className="absolute top-2 left-2 bg-[#2480ff]/20 border border-[#2480ff]/40 px-2 py-0.5 text-[9px] font-bold text-[#2480ff] tracking-widest">
                           CAPTURED
                         </div>
                       )}
 
                       {/* Corner brackets */}
-                      <div className="absolute top-1 left-1 w-4 h-4 border-t border-l border-[#b0c6ff]/40" />
-                      <div className="absolute top-1 right-1 w-4 h-4 border-t border-r border-[#b0c6ff]/40" />
-                      <div className="absolute bottom-1 left-1 w-4 h-4 border-b border-l border-[#b0c6ff]/40" />
-                      <div className="absolute bottom-1 right-1 w-4 h-4 border-b border-r border-[#b0c6ff]/40" />
+                      <div className="absolute top-1 left-1 w-4 h-4 border-t border-l border-[#2480ff]/40" />
+                      <div className="absolute top-1 right-1 w-4 h-4 border-t border-r border-[#2480ff]/40" />
+                      <div className="absolute bottom-1 left-1 w-4 h-4 border-b border-l border-[#2480ff]/40" />
+                      <div className="absolute bottom-1 right-1 w-4 h-4 border-b border-r border-[#2480ff]/40" />
                     </div>
 
                     {/* Camera error */}
@@ -425,7 +425,7 @@ const WatchlistManager: React.FC<WatchlistManagerProps> = ({
                       <button
                         onClick={captureFrame}
                         disabled={camLoading}
-                        className="w-full py-3 flex items-center justify-center gap-2 text-[11px] font-bold tracking-widest uppercase border-2 border-[#b0c6ff]/60 text-[#b0c6ff] bg-[#b0c6ff]/08 hover:bg-[#b0c6ff]/15 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                        className="w-full py-3 flex items-center justify-center gap-2 text-[11px] font-bold tracking-widest uppercase border-2 border-[#2480ff]/60 text-[#2480ff] bg-[#2480ff]/08 hover:bg-[#2480ff]/15 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                       >
                         <ZapIcon className="w-4 h-4" />
                         {camLoading ? 'Starting camera...' : 'Capture Photo'}
@@ -434,7 +434,7 @@ const WatchlistManager: React.FC<WatchlistManagerProps> = ({
                       <div className="grid grid-cols-2 gap-2">
                         <button
                           onClick={retake}
-                          className="py-2.5 text-[10px] font-bold tracking-widest uppercase border border-[#b0c6ff]/30 text-[#b0c6ff]/60 hover:border-[#b0c6ff]/60 hover:text-[#b0c6ff] transition-all flex items-center justify-center gap-2"
+                          className="py-2.5 text-[10px] font-bold tracking-widest uppercase border border-[#2480ff]/30 text-[#2480ff]/60 hover:border-[#2480ff]/60 hover:text-[#2480ff] transition-all flex items-center justify-center gap-2"
                         >
                           <RefreshCw className="w-3 h-3" />
                           Retake
@@ -442,7 +442,7 @@ const WatchlistManager: React.FC<WatchlistManagerProps> = ({
                         <button
                           onClick={submitCameraCapture}
                           disabled={submitLoading}
-                          className="py-2.5 text-[10px] font-bold tracking-widest uppercase border-2 border-[#b0c6ff] text-[#b0c6ff] bg-[#b0c6ff]/10 hover:bg-[#b0c6ff] hover:text-black transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                          className="py-2.5 text-[10px] font-bold tracking-widest uppercase border-2 border-[#2480ff] text-[#2480ff] bg-[#2480ff]/10 hover:bg-[#2480ff] hover:text-white transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                         >
                           {submitLoading
                             ? <><RefreshCw className="w-3 h-3 animate-spin" /> Saving...</>
@@ -465,7 +465,7 @@ const WatchlistManager: React.FC<WatchlistManagerProps> = ({
 
               {/* ── Active Watchlist ── */}
               <div className="space-y-4">
-                <p className="text-[10px] font-bold text-[#b0c6ff]/60 tracking-widest uppercase">
+                <p className="text-[10px] font-bold text-[#2480ff]/60 tracking-widest uppercase">
                   Active Targets ({watchlist.length})
                 </p>
                 <div className="grid grid-cols-2 gap-3">
@@ -477,7 +477,7 @@ const WatchlistManager: React.FC<WatchlistManagerProps> = ({
                     watchlist.map(name => (
                       <div
                         key={name}
-                        className="relative border border-[#b0c6ff]/15 bg-black/50 group hover:border-[#b0c6ff]/40 transition-all overflow-hidden"
+                        className="relative border border-[#2480ff]/15 bg-white group hover:border-[#2480ff]/40 transition-all overflow-hidden"
                       >
                         {/* Thumbnail */}
                         <div className="relative w-full aspect-square bg-black overflow-hidden">
@@ -487,13 +487,13 @@ const WatchlistManager: React.FC<WatchlistManagerProps> = ({
                             onError={(e) => { e.currentTarget.style.display = 'none'; }}
                             alt={name}
                           />
-                          <div className="absolute inset-0 bg-[#b0c6ff]/0 group-hover:bg-[#b0c6ff]/5 transition-all duration-300" />
-                          <div className="absolute top-0 left-0 w-full h-[1px] bg-[#b0c6ff]/40 opacity-0 group-hover:opacity-100 animate-scanner" />
+                          <div className="absolute inset-0 bg-[#2480ff]/0 group-hover:bg-[#2480ff]/5 transition-all duration-300" />
+                          <div className="absolute top-0 left-0 w-full h-[1px] bg-[#2480ff]/40 opacity-0 group-hover:opacity-100 animate-scanner" />
 
                           {/* Delete */}
                           <button
                             onClick={() => removeTarget(name)}
-                            className="absolute top-1 right-1 p-1 bg-black/70 text-[#b0c6ff]/30 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                            className="absolute top-1 right-1 p-1 bg-white/95 text-[#2480ff]/30 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
                             title="Remove target"
                           >
                             <X className="w-3 h-3" />
@@ -503,7 +503,7 @@ const WatchlistManager: React.FC<WatchlistManagerProps> = ({
                           {editingName !== name && (
                             <button
                               onClick={() => startEdit(name)}
-                              className="absolute top-1 left-1 p-1 bg-black/70 text-[#b0c6ff]/30 hover:text-[#b0c6ff] opacity-0 group-hover:opacity-100 transition-all"
+                              className="absolute top-1 left-1 p-1 bg-white/95 text-[#2480ff]/30 hover:text-[#2480ff] opacity-0 group-hover:opacity-100 transition-all"
                               title="Rename target"
                             >
                               <Pencil className="w-3 h-3" />
@@ -524,19 +524,19 @@ const WatchlistManager: React.FC<WatchlistManagerProps> = ({
                                     if (e.key === 'Enter')  submitRename(name);
                                     if (e.key === 'Escape') cancelEdit();
                                   }}
-                                  className="flex-1 min-w-0 bg-black/60 border border-[#b0c6ff]/40 text-[#b0c6ff] text-[9px] px-1.5 py-1 focus:outline-none font-bold w-0"
+                                  className="flex-1 min-w-0 bg-white/90 border border-[#2480ff]/40 text-[#2480ff] text-[9px] px-1.5 py-1 focus:outline-none font-bold w-0"
                                 />
                                 <button
                                   onClick={() => submitRename(name)}
                                   disabled={editLoading}
-                                  className="p-1 text-[#b0c6ff] hover:text-green-400 transition-all shrink-0"
+                                  className="p-1 text-[#2480ff] hover:text-green-400 transition-all shrink-0"
                                   title="Save"
                                 >
                                   <Check className="w-3 h-3" />
                                 </button>
                                 <button
                                   onClick={cancelEdit}
-                                  className="p-1 text-[#b0c6ff]/40 hover:text-red-400 transition-all shrink-0"
+                                  className="p-1 text-[#2480ff]/40 hover:text-red-400 transition-all shrink-0"
                                   title="Cancel"
                                 >
                                   <X className="w-3 h-3" />
@@ -551,10 +551,10 @@ const WatchlistManager: React.FC<WatchlistManagerProps> = ({
                             </div>
                           ) : (
                             <div className="flex items-center justify-between">
-                              <span className="text-[9px] font-bold tracking-wider text-[#b0c6ff] truncate">
+                              <span className="text-[9px] font-bold tracking-wider text-[#2480ff] truncate">
                                 {name.toUpperCase()}
                               </span>
-                              <Search className="w-3 h-3 text-[#b0c6ff]/30 shrink-0" />
+                              <Search className="w-3 h-3 text-[#2480ff]/30 shrink-0" />
                             </div>
                           )}
                         </div>

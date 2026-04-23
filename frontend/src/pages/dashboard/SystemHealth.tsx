@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Shield, Cpu, Zap, HardDrive, Layout, AlertCircle, CheckCircle2, Monitor } from 'lucide-react';
+import { Shield, Cpu, Zap, HardDrive, AlertCircle, Monitor } from 'lucide-react';
 import { API } from '../../types/dashboard';
 
 interface SystemSpecs {
@@ -20,17 +20,14 @@ const SystemHealth: React.FC = () => {
   useEffect(() => {
     fetch(`${API}/api/system/check`)
       .then(res => res.json())
-      .then(data => {
-        setSpecs(data);
-        setLoading(false);
-      })
+      .then(data => { setSpecs(data); setLoading(false); })
       .catch(() => setLoading(false));
   }, []);
 
   if (loading) return (
-    <div className="h-full flex items-center justify-center bg-[#0c0e11]">
+    <div className="h-full flex items-center justify-center" style={{ background: '#e8ecf0' }}>
       <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}>
-        <Zap className="w-8 h-8 text-[#b0c6ff] opacity-20" />
+        <Zap className="w-8 h-8" style={{ color: '#2480ff', opacity: 0.4 }} />
       </motion.div>
     </div>
   );
@@ -40,176 +37,188 @@ const SystemHealth: React.FC = () => {
   const isInsufficient = specs.capacity === 0;
 
   return (
-    <div className="h-full overflow-y-auto bg-[#0c0e11] font-sans relative">
-      {/* Decorative Background Elements */}
-      <div className="absolute inset-0 pointer-events-none opacity-[0.03]" 
-        style={{ backgroundImage: 'radial-gradient(#b0c6ff 1px, transparent 1px)', backgroundSize: '30px 30px' }} />
-      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#0a58ca]/5 blur-[120px] rounded-full pointer-events-none" />
+    <div className="h-full overflow-y-auto font-sans" style={{ background: '#e8ecf0' }}>
+      <div className="p-8 space-y-6 max-w-5xl mx-auto">
 
-      <div className="p-8 space-y-8 relative z-10">
-        
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
-            <p className="text-[9px] tracking-[0.5em] text-[#b0c6ff]/40 font-black uppercase mb-2">Diagnostic Terminal / v2.4.0</p>
-            <h1 className="text-4xl font-black tracking-tighter text-[#ccd8ff] flex items-center gap-4">
-              SYSTEM_INTEGRITY_CHECK
-              <div className={`w-3.5 h-3.5 rounded-full ${isInsufficient ? 'bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.5)]' : 'bg-[#00ff85] shadow-[0_0_15px_rgba(0,255,133,0.5)]'} animate-pulse`} />
+            <p className="text-[9px] tracking-[0.4em] font-bold uppercase mb-2" style={{ color: '#74777d' }}>
+              Diagnostic Terminal / v2.4.0
+            </p>
+            <h1 className="text-3xl font-black tracking-tighter flex items-center gap-3" style={{ color: '#191c1e', fontFamily: "'Manrope', sans-serif" }}>
+              SYSTEM INTEGRITY
+              <div className={`w-3 h-3 rounded-full animate-pulse ${isInsufficient ? 'bg-red-500' : 'bg-green-500'}`} />
             </h1>
           </div>
-          <div className="px-4 py-2 border border-white/5 bg-white/5 backdrop-blur-sm rounded flex items-center gap-6">
-             <div className="flex flex-col">
-                <span className="text-[7px] text-white/30 uppercase font-black">Uptime</span>
-                <span className="text-[10px] font-mono text-[#b0c6ff]">02:14:55:09</span>
-             </div>
-             <div className="flex flex-col">
-                <span className="text-[7px] text-white/30 uppercase font-black">Auth_Level</span>
-                <span className="text-[10px] font-mono text-[#00ff85]">SUPER_USER</span>
-             </div>
+
+          {/* Info badges */}
+          <div className="flex items-center gap-3 px-4 py-2.5 rounded"
+            style={{ background: '#e0e3e5', border: '1px solid rgba(0,0,0,0.1)' }}>
+            <div className="flex flex-col">
+              <span className="text-[7px] font-bold uppercase tracking-widest" style={{ color: '#74777d' }}>Uptime</span>
+              <span className="text-[11px] font-mono font-bold" style={{ color: '#191c1e' }}>02:14:55:09</span>
+            </div>
+            <div style={{ width: '1px', height: '28px', background: 'rgba(0,0,0,0.1)' }} />
+            <div className="flex flex-col">
+              <span className="text-[7px] font-bold uppercase tracking-widest" style={{ color: '#74777d' }}>Auth Level</span>
+              <span className="text-[11px] font-mono font-bold" style={{ color: '#16a34a' }}>SUPER_USER</span>
+            </div>
           </div>
         </div>
 
-        {/* Capacity Verdict Card */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-          className="p-8 relative overflow-hidden"
-          style={{ 
-            background: isInsufficient ? 'rgba(147,0,10,0.1)' : 'rgba(10,88,202,0.1)', 
-            border: `1px solid ${isInsufficient ? 'rgba(255,180,171,0.2)' : 'rgba(176,198,255,0.2)'}`,
-            borderRadius: '0.5rem'
+        {/* Capacity Verdict */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+          className="p-6 rounded-xl"
+          style={{
+            background: isInsufficient ? 'rgba(186,26,26,0.06)' : 'rgba(36,128,255,0.06)',
+            border: `1px solid ${isInsufficient ? 'rgba(186,26,26,0.2)' : 'rgba(36,128,255,0.2)'}`,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
           }}
         >
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="space-y-2">
-              <p className="text-[10px] font-bold tracking-widest text-[#b0c6ff]/50 uppercase">Analysis Results</p>
-              <h2 className="text-4xl font-black text-[#ccd8ff] tracking-tighter">
-                {isInsufficient ? 'UNSUPPORTED_HARDWARE' : `${specs.capacity} CAMERAS SUPPORTED`}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="space-y-1.5">
+              <p className="text-[9px] font-bold tracking-widest uppercase" style={{ color: '#74777d' }}>Analysis Results</p>
+              <h2 className="text-3xl font-black tracking-tighter" style={{ color: '#191c1e', fontFamily: "'Manrope', sans-serif" }}>
+                {isInsufficient ? 'UNSUPPORTED HARDWARE' : `${specs.capacity} CAMERAS SUPPORTED`}
               </h2>
-              <p className="text-sm font-medium" style={{ color: isInsufficient ? '#ffb4ab' : '#b0c6ff' }}>
+              <p className="text-sm font-semibold" style={{ color: isInsufficient ? '#ba1a1a' : '#2480ff' }}>
                 System Status: <span className="font-bold">{specs.status}</span>
               </p>
             </div>
-            
-            <div className="flex items-center gap-4">
-              {isInsufficient ? (
-                <AlertCircle className="w-16 h-16 text-red-500 opacity-50" />
-              ) : (
-                <div className="flex gap-2">
-                   {[...Array(6)].map((_, i) => (
-                     <div key={i} className={`w-3 h-10 rounded-sm ${i < specs.capacity ? 'bg-[#00ff85]' : 'bg-white/5'}`} />
-                   ))}
-                </div>
-              )}
-            </div>
+
+            {isInsufficient ? (
+              <AlertCircle className="w-14 h-14 text-red-500 opacity-40" />
+            ) : (
+              <div className="flex gap-2 items-end">
+                {[...Array(6)].map((_, i) => (
+                  <div key={i} className="w-3 rounded-sm transition-all"
+                    style={{
+                      height: `${24 + i * 4}px`,
+                      background: i < specs.capacity ? '#16a34a' : 'rgba(0,0,0,0.1)',
+                    }} />
+                ))}
+              </div>
+            )}
           </div>
-          
-          {/* Subtle grid background */}
-          <div className="absolute inset-0 opacity-5 pointer-events-none" 
-            style={{ backgroundImage: 'radial-gradient(#b0c6ff 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
         </motion.div>
 
-        {/* Requirements Table */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          
-          {/* CPU & OS */}
-          <div className="p-6 bg-[#111316] border border-white/5 rounded-md space-y-4">
-            <div className="flex items-center gap-3 text-[#b0c6ff]">
-              <Cpu className="w-5 h-5" />
-              <h3 className="text-xs font-bold tracking-widest uppercase">Process Unit</h3>
+        {/* Spec Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+          {/* CPU */}
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
+            className="p-5 rounded-xl space-y-3"
+            style={{ background: '#e0e3e5', border: '1px solid rgba(0,0,0,0.1)', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+            <div className="flex items-center gap-2.5" style={{ color: '#2480ff' }}>
+              <Cpu className="w-4 h-4" />
+              <h3 className="text-[10px] font-bold tracking-widest uppercase">Process Unit</h3>
             </div>
-            <div className="space-y-1">
-              <p className="text-lg font-bold text-[#ccd8ff]">{specs.cpu}</p>
-              <p className="text-[10px] text-white/30 uppercase font-bold">{specs.cores} LOGICAL CORES | {specs.os} PLATFORM</p>
-            </div>
-          </div>
+            <p className="text-lg font-bold" style={{ color: '#191c1e' }}>{specs.cpu}</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: '#74777d' }}>
+              {specs.cores} Logical Cores · {specs.os}
+            </p>
+          </motion.div>
 
           {/* Memory */}
-          <div className="p-6 bg-[#111316] border border-white/5 rounded-md space-y-4">
-            <div className="flex items-center gap-3 text-[#b0c6ff]">
-              <HardDrive className="w-5 h-5" />
-              <h3 className="text-xs font-bold tracking-widest uppercase">Memory Resources</h3>
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+            className="p-5 rounded-xl space-y-3"
+            style={{ background: '#e0e3e5', border: '1px solid rgba(0,0,0,0.1)', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+            <div className="flex items-center gap-2.5" style={{ color: '#2480ff' }}>
+              <HardDrive className="w-4 h-4" />
+              <h3 className="text-[10px] font-bold tracking-widest uppercase">Memory Resources</h3>
             </div>
-            <div className="space-y-1">
-              <p className="text-3xl font-bold text-[#ccd8ff]">{specs.ram} GB</p>
-              <p className="text-[10px] text-white/30 uppercase font-bold">TOTAL SYSTEM RAM</p>
-            </div>
-          </div>
+            <p className="text-3xl font-black" style={{ color: '#191c1e', fontFamily: "'Manrope', sans-serif" }}>{specs.ram} <span className="text-lg">GB</span></p>
+            <p className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: '#74777d' }}>Total System RAM</p>
+          </motion.div>
 
           {/* GPU */}
-          <div className="p-6 bg-[#111316] border border-white/5 rounded-md space-y-4 md:col-span-2">
-            <div className="flex items-center gap-3 text-[#b0c6ff]">
-              <Zap className="w-5 h-5" />
-              <h3 className="text-xs font-bold tracking-widest uppercase">Neural Acceleration (GPU)</h3>
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+            className="p-5 rounded-xl space-y-3 md:col-span-2"
+            style={{ background: '#e0e3e5', border: '1px solid rgba(0,0,0,0.1)', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+            <div className="flex items-center gap-2.5" style={{ color: '#2480ff' }}>
+              <Zap className="w-4 h-4" />
+              <h3 className="text-[10px] font-bold tracking-widest uppercase">Neural Acceleration (GPU)</h3>
             </div>
             {specs.gpu ? (
               <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
                 <div>
-                  <p className="text-xl font-bold text-[#ccd8ff]">{specs.gpu.name}</p>
-                  <p className="text-[10px] text-white/30 uppercase font-bold">NVIDIA CUDA COMPATIBLE</p>
+                  <p className="text-xl font-bold" style={{ color: '#191c1e' }}>{specs.gpu.name}</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wide mt-1" style={{ color: '#74777d' }}>NVIDIA CUDA Compatible</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-2xl font-bold text-[#00ff85]">{specs.gpu.vram} GB</p>
-                  <p className="text-[10px] text-white/30 uppercase font-bold">DEDICATED VRAM</p>
+                  <p className="text-2xl font-black" style={{ color: '#16a34a', fontFamily: "'Manrope', sans-serif" }}>{specs.gpu.vram} <span className="text-base">GB VRAM</span></p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wide mt-1" style={{ color: '#74777d' }}>Dedicated Memory</p>
                 </div>
               </div>
             ) : (
-              <div className="py-2 flex items-center gap-3 text-amber-500/60">
-                <AlertCircle className="w-4 h-4" />
-                <p className="text-xs font-bold uppercase tracking-widest">NO GPU DETECTED - SYSTEM RUNNING IN CPU FALLBACK MODE</p>
+              <div className="flex items-center gap-3 py-1" style={{ color: '#b45309' }}>
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <p className="text-xs font-bold uppercase tracking-widest">No GPU Detected — Running in CPU Fallback Mode</p>
               </div>
             )}
-          </div>
+          </motion.div>
         </div>
 
-        {/* Recommendations & Log */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 p-6 border border-white/5 bg-black/20 rounded-md space-y-4">
-            <h4 className="text-[9px] font-black uppercase tracking-[0.3em] text-[#0a58ca] flex items-center gap-2">
-              <Shield className="w-3 h-3" /> SECURITY_RECOMMENDATIONS
+        {/* Recommendations & Terminal */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+          {/* Recommendations */}
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+            className="lg:col-span-2 p-5 rounded-xl space-y-4"
+            style={{ background: '#e0e3e5', border: '1px solid rgba(0,0,0,0.1)', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+            <h4 className="text-[9px] font-black uppercase tracking-[0.3em] flex items-center gap-2" style={{ color: '#191c1e' }}>
+              <Shield className="w-3 h-3" style={{ color: '#2480ff' }} /> Security Recommendations
             </h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {specs.ram < 16 && (
-                <div className="p-3 bg-white/5 border-l-2 border-amber-500/50">
-                  <p className="text-[10px] font-bold text-amber-500 mb-1 uppercase">Memory Bottleneck</p>
-                  <p className="text-[10px] text-white/40">Upgrade to 16GB RAM for faster indexing.</p>
+                <div className="p-3 rounded" style={{ background: 'rgba(180,83,9,0.07)', borderLeft: '2px solid #b45309' }}>
+                  <p className="text-[10px] font-bold mb-1 uppercase" style={{ color: '#b45309' }}>Memory Bottleneck</p>
+                  <p className="text-[10px]" style={{ color: '#74777d' }}>Upgrade to 16GB RAM for faster indexing.</p>
                 </div>
               )}
               {!specs.gpu && (
-                <div className="p-3 bg-white/5 border-l-2 border-red-500/50">
-                  <p className="text-[10px] font-bold text-red-500 mb-1 uppercase">Inference Lag</p>
-                  <p className="text-[10px] text-white/40">NVIDIA GPU recommended for AI detection.</p>
+                <div className="p-3 rounded" style={{ background: 'rgba(186,26,26,0.06)', borderLeft: '2px solid #ba1a1a' }}>
+                  <p className="text-[10px] font-bold mb-1 uppercase" style={{ color: '#ba1a1a' }}>Inference Lag</p>
+                  <p className="text-[10px]" style={{ color: '#74777d' }}>NVIDIA GPU recommended for AI detection.</p>
                 </div>
               )}
-              <div className="p-3 bg-white/5 border-l-2 border-[#00ff85]/50">
-                <p className="text-[10px] font-bold text-[#00ff85] mb-1 uppercase">Resolution Check</p>
-                <p className="text-[10px] text-white/40">Feeds locked at 640x480 for stability.</p>
+              <div className="p-3 rounded" style={{ background: 'rgba(22,163,74,0.07)', borderLeft: '2px solid #16a34a' }}>
+                <p className="text-[10px] font-bold mb-1 uppercase" style={{ color: '#16a34a' }}>Resolution Check</p>
+                <p className="text-[10px]" style={{ color: '#74777d' }}>Feeds locked at 640×480 for stability.</p>
               </div>
-              <div className="p-3 bg-white/5 border-l-2 border-[#b0c6ff]/50">
-                <p className="text-[10px] font-bold text-[#b0c6ff] mb-1 uppercase">Multi-Camera</p>
-                <p className="text-[10px] text-white/40">Hardware scan active on all USB ports.</p>
+              <div className="p-3 rounded" style={{ background: 'rgba(36,128,255,0.06)', borderLeft: '2px solid #2480ff' }}>
+                <p className="text-[10px] font-bold mb-1 uppercase" style={{ color: '#2480ff' }}>Multi-Camera</p>
+                <p className="text-[10px]" style={{ color: '#74777d' }}>Hardware scan active on all USB ports.</p>
               </div>
             </div>
-          </div>
+          </motion.div>
 
-          <div className="p-4 bg-black border border-white/10 rounded-md font-mono text-[9px] overflow-hidden relative">
-            <div className="absolute top-0 right-0 p-2 opacity-20"><Monitor className="w-3 h-3" /></div>
-            <p className="text-white/20 mb-2 border-b border-white/5 pb-1 uppercase tracking-tighter">Live Diagnostics Log</p>
+          {/* Terminal — intentionally dark */}
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
+            className="p-4 rounded-xl font-mono text-[9px] overflow-hidden relative"
+            style={{ background: '#1a1d21', border: '1px solid rgba(255,255,255,0.08)' }}>
+            <div className="absolute top-0 right-0 p-2 opacity-20"><Monitor className="w-3 h-3 text-white" /></div>
+            <p className="mb-2 pb-1 uppercase tracking-tighter" style={{ color: 'rgba(255,255,255,0.25)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+              Live Diagnostics Log
+            </p>
             <div className="space-y-1">
-              <p className="text-[#00ff85]">[OK] CUDA_INITIALIZED_SUCCESS</p>
-              <p className="text-[#b0c6ff]">[INFO] SCANNING_LOCAL_DRIVES...</p>
-              <p className="text-white/40">[INFO] MEMORY_PAGING_STABLE</p>
-              <p className="text-[#b0c6ff]">[INFO] DETECTING_PERIPHERALS...</p>
-              <p className="text-[#00ff85]">[OK] MULTI_CAMERA_WATCHDOG_UP</p>
-              <motion.p 
+              <p style={{ color: '#4ade80' }}>[OK] CUDA_INITIALIZED_SUCCESS</p>
+              <p style={{ color: '#60a5fa' }}>[INFO] SCANNING_LOCAL_DRIVES...</p>
+              <p style={{ color: 'rgba(255,255,255,0.4)' }}>[INFO] MEMORY_PAGING_STABLE</p>
+              <p style={{ color: '#60a5fa' }}>[INFO] DETECTING_PERIPHERALS...</p>
+              <p style={{ color: '#4ade80' }}>[OK] MULTI_CAMERA_WATCHDOG_UP</p>
+              <motion.p
                 animate={{ opacity: [1, 0.4, 1] }} transition={{ repeat: Infinity, duration: 1.5 }}
-                className="text-white/60"
+                style={{ color: 'rgba(255,255,255,0.55)' }}
               >
                 &gt; LISTENING_FOR_HARDWARE_CHANGES_
               </motion.p>
             </div>
-          </div>
-        </div>
+          </motion.div>
 
+        </div>
       </div>
     </div>
   );
