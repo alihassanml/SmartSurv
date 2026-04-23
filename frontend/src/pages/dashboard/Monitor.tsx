@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Camera, Power, Eye, EyeOff, Activity, Video,
@@ -11,9 +11,7 @@ import PersonsPanel from '../../components/dashboard/PersonsPanel';
 import type { Alert } from '../../types/dashboard';
 import type { UrlCamera } from '../../layouts/AppLayout';
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   LOCAL CAMERA CARD
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+
 function LocalCameraCard({
   cameraActive, isCameraToggling, toggleCamera,
   localCameraVisible, toggleLocalCameraVisibility,
@@ -332,7 +330,6 @@ const Monitor: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* â”€â”€â”€ MAXIMIZE MODAL â”€â”€â”€ */}
       <AnimatePresence>
         {maximizedFeed && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8">
@@ -393,7 +390,6 @@ const Monitor: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* â”€â”€â”€ PERSON DETAIL MODAL â”€â”€â”€ */}
       {personLogEnabled && (
         <AnimatePresence>
           {selectedPerson && (
@@ -497,7 +493,9 @@ const Monitor: React.FC = () => {
                   <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#2480ff' }} />
                   {activeNodes} Nodes Online
                   {systemLatency !== null && (
-                    <span style={{ color: '#16a34a' }}>â€” {systemLatency}ms</span>
+                    <span style={{ color: '#16a34a' }}>
+                      | LATENCY: {Number(systemLatency).toFixed(1)}ms
+                    </span>
                   )}
                 </p>
               </div>
