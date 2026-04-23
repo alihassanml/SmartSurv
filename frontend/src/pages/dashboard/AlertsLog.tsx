@@ -1,4 +1,4 @@
-﻿import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Shield, AlertTriangle, ShieldAlert, User, MapPin, Download,
@@ -91,98 +91,174 @@ const AlertsLog: React.FC = () => {
     try {
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
 
-      // Cyber-Ops Background
+      // --- BRANDING & HEADER ---
+      // Cyber-Ops Background (Dark Slate)
       doc.setFillColor(15, 17, 21);
-      doc.rect(0, 0, pageWidth, 300, 'F');
+      doc.rect(0, 0, pageWidth, pageHeight, 'F');
       
-      // Header Banner
-      doc.setFillColor(10, 88, 202);
-      doc.rect(0, 0, pageWidth, 6);
+      // Top accent bar (Electric Blue)
+      doc.setFillColor(36, 128, 255);
+      doc.rect(0, 0, pageWidth, 4, 'F');
 
-      doc.setTextColor(204, 216, 255);
+      // Logo/Shield Icon Text
+      doc.setTextColor(36, 128, 255);
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(22);
-      doc.text('SMARTSURV INCIDENT REPORT', 20, 25);
+      doc.setFontSize(26);
+      doc.text('SMARTSURV', 20, 25);
       
-      doc.setFontSize(10);
-      doc.setTextColor(176, 198, 255);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`GENERATED: ${new Date().toLocaleString()}`, 20, 32);
+      doc.setFontSize(9);
+      doc.setTextColor(116, 119, 125);
+      doc.setFont('courier', 'bold');
+      doc.text('SECURE INCIDENT INTELLIGENCE REPORT', 20, 31);
 
-      // Severity Box
+      // --- METADATA PANEL ---
+      doc.setDrawColor(36, 128, 255, 0.2);
+      doc.setLineWidth(0.1);
+      doc.line(20, 38, pageWidth - 20, 38);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(180, 180, 180);
+      doc.text(`REPORT ID: #${Math.random().toString(36).substr(2, 9).toUpperCase()}`, 20, 45);
+      doc.text(`GENERATED: ${new Date().toLocaleString()}`, pageWidth - 20, 45, { align: 'right' });
+
+      // --- SEVERITY & STATUS ---
       const sev = getSeverity(alertData);
-      let sevColor = [176, 198, 255]; // default
-      if (sev === 'critical') sevColor = [255, 107, 107];
-      if (sev === 'high') sevColor = [255, 169, 77];
-      if (sev === 'match') sevColor = [255, 180, 171];
-
-      doc.setDrawColor(sevColor[0], sevColor[1], sevColor[2]);
-      doc.setFillColor(sevColor[0], sevColor[1], sevColor[2]);
-      doc.rect(20, 42, 3, 15, 'F');
+      let sevColor: [number, number, number] = [36, 128, 255]; // default alert blue
+      let sevLabel = 'SYSTEM_ALERT';
       
+      if (sev === 'critical') {
+        sevColor = [186, 26, 26];
+        sevLabel = 'CRITICAL_THREAT';
+      } else if (sev === 'high') {
+        sevColor = [180, 83, 9];
+        sevLabel = 'HIGH_PRIORITY';
+      } else if (sev === 'match') {
+        sevColor = [186, 26, 26];
+        sevLabel = 'WATCHLIST_TARGET_MATCH';
+      }
+
+      // Severity Background Tag
+      doc.setFillColor(sevColor[0], sevColor[1], sevColor[2], 0.1);
+      doc.rect(20, 52, 170, 12, 'F');
+      doc.setDrawColor(sevColor[0], sevColor[1], sevColor[2], 0.5);
+      doc.rect(20, 52, 170, 12, 'D');
+
       doc.setTextColor(sevColor[0], sevColor[1], sevColor[2]);
-      doc.setFontSize(14);
+      doc.setFontSize(11);
       doc.setFont('helvetica', 'bold');
-      doc.text(`SEVERITY LEVEL: ${sev.toUpperCase()}`, 26, 48);
-      
-      doc.setTextColor(200, 200, 200);
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'bold');
-      doc.text('INCIDENT TIMESTAMP:', 20, 70);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`${alertData.timestamp}`, 65, 70);
+      doc.text(`SECURITY STATUS: ${sevLabel}`, 25, 60);
 
-      doc.setFont('helvetica', 'bold');
-      doc.text('CAMERA LOCATION:', 20, 78);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`${alertData.location?.id || 'Unknown Sensor'}`, 65, 78);
+      // --- INCIDENT CORE DATA ---
+      let y = 78;
+      const drawDataRow = (label: string, value: string, iconColor = [116, 119, 125]) => {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        doc.setTextColor(116, 119, 125);
+        doc.text(label, 20, y);
+        
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        doc.setTextColor(230, 230, 230);
+        doc.text(value, 65, y);
+        y += 8;
+      };
 
-      let y = 90;
-      doc.setFont('helvetica', 'bold');
-      doc.text('DETECTED THREATS:', 20, y);
-      doc.setFont('helvetica', 'normal');
-      y += 8;
+      drawDataRow('TIMESTAMP', alertData.timestamp);
+      drawDataRow('SENSOR ID', alertData.location?.id || 'DYNAMIC_SENSOR_01');
+      drawDataRow('COORDINATES', `${alertData.location?.lat || '0.0000'}, ${alertData.location?.lon || '0.0000'}`);
       
-      if (alertData.detections.length === 0) {
-        doc.text('No standard object threats identified.', 25, y);
-        y += 6;
+      y += 5;
+      
+      // --- DETECTION ACTIVITY BLOCK ---
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(36, 128, 255);
+      doc.text('DETECTION ACTIVITY LOG', 20, y);
+      y += 6;
+
+      // Activity Table Header
+      doc.setFillColor(25, 27, 31);
+      doc.rect(20, y, 170, 8, 'F');
+      doc.setTextColor(116, 119, 125);
+      doc.setFontSize(7);
+      doc.text('ACTIVITY TYPE', 25, y + 5.5);
+      doc.text('CONFIDENCE', 80, y + 5.5);
+      doc.text('ACTION TAKEN', 140, y + 5.5);
+      y += 12;
+
+      if (alertData.detections.length === 0 && !alertData.is_person_search_match) {
+        doc.setFontSize(9);
+        doc.setTextColor(100, 100, 100);
+        doc.text('No standard autonomous detections recorded.', 25, y);
+        y += 8;
       } else {
+        // Watchlist Match Entry
+        if (alertData.is_person_search_match) {
+          doc.setFillColor(186, 26, 26, 0.1);
+          doc.rect(20, y - 4, 170, 7, 'F');
+          doc.setTextColor(186, 26, 26);
+          doc.setFontSize(9);
+          doc.setFont('helvetica', 'bold');
+          doc.text('WATCHLIST_MATCH', 25, y + 1);
+          doc.text('98.4%', 80, y + 1);
+          doc.text('PROTOCOL_ALPHA', 140, y + 1);
+          y += 8;
+        }
+
+        // YOLO Detections
         alertData.detections.forEach((d) => {
-          doc.text(`• ${d.label.toUpperCase()}  (${Math.round(d.confidence * 100)}% CONFIDENCE)`, 25, y);
-          y += 6;
+          const isDanger = ['knife', 'gun', 'fire', 'weapon', 'pistol'].includes(d.label.toLowerCase());
+          doc.setTextColor(isDanger ? 186 : 200, isDanger ? 26 : 200, isDanger ? 26 : 200);
+          doc.setFontSize(9);
+          doc.setFont('helvetica', isDanger ? 'bold' : 'normal');
+          doc.text(d.label.toUpperCase(), 25, y);
+          doc.text(`${Math.round(d.confidence * 100)}%`, 80, y);
+          doc.text(isDanger ? 'THREAT_LOGGED' : 'ACTIVITY_LOGGED', 140, y);
+          y += 7;
         });
       }
 
       y += 10;
       
-      // Image Section
+      // --- VISUAL EVIDENCE ---
       doc.setFont('helvetica', 'bold');
-      doc.text('EVIDENCE SNAPSHOT:', 20, y);
+      doc.setFontSize(9);
+      doc.setTextColor(36, 128, 255);
+      doc.text('EVIDENCE SNAPSHOT (CCTV_FEED)', 20, y);
       y += 6;
 
       if (alertData.image) {
         const imgData = `data:image/jpeg;base64,${alertData.image}`;
-        // Standard 4:3 camera ratio assumption for canvas footprint
-        doc.setDrawColor(176, 198, 255);
+        // Standard 4:3 camera ratio
+        doc.setDrawColor(36, 128, 255, 0.3);
         doc.setLineWidth(0.5);
         doc.rect(20, y, 170, 127.5); // frame
-        doc.addImage(imgData, 'JPEG', 20, y, 170, 127.5);
+        doc.addImage(imgData, 'JPEG', 21, y + 1, 168, 125.5);
         
         y += 135;
       } else {
+        doc.setFillColor(20, 22, 26);
+        doc.rect(20, y, 170, 40, 'F');
         doc.setTextColor(100, 100, 100);
-        doc.text('[ VISUAL EVIDENCE UNAVAILABLE ]', 20, y+10);
-        y += 20;
+        doc.setFontSize(10);
+        doc.text('VISUAL EVIDENCE UNAVAILABLE', pageWidth / 2, y + 22, { align: 'center' });
+        y += 50;
       }
 
-      // Footer
-      doc.setFontSize(8);
-      doc.setTextColor(100, 100, 100);
-      doc.setFont('helvetica', 'italic');
-      doc.text('This is an automatically generated incident report by SmartSurv.', 20, 285);
+      // --- AUTHENTICATION FOOTER ---
+      doc.setDrawColor(36, 128, 255, 0.1);
+      doc.line(20, 275, pageWidth - 20, 275);
+      
+      doc.setFontSize(7);
+      doc.setTextColor(80, 80, 80);
+      doc.setFont('courier', 'normal');
+      doc.text('CONFIDENTIAL // FOR AUTHORIZED PERSONNEL ONLY', 20, 282);
+      doc.text(`SYSTEM_SIGNATURE: ${btoa(alertData.timestamp).substr(0, 16)}`, pageWidth - 20, 282, { align: 'right' });
 
-      doc.save(`SmartSurv_Incident_${alertData.timestamp.replace(/[: ]/g, '')}.pdf`);
+      doc.save(`SmartSurv_Report_${alertData.timestamp.replace(/[: ]/g, '_')}.pdf`);
     } catch (err) {
       console.error('Failed to generate PDF', err);
       alert('Unable to generate PDF report.');

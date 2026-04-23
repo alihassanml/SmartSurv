@@ -37,18 +37,18 @@ with open(os.devnull, 'w') as _devnull, contextlib.redirect_stderr(_devnull):
 _DEVICE_GPU = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f"[Device] Using: {_DEVICE_GPU}" + (f" ({torch.cuda.get_device_name(0)})" if _DEVICE_GPU.type == 'cuda' else ""))
 
-# ─── FaceNet (CPU — small batches, GPU overhead not worth it) ─────────────────
+# ─── FaceNet (Moved to GPU for maximum speed) ───────────────────────────────
 _MTCNN = MTCNN(
     keep_all=True,
-    device='cpu',
+    device=_DEVICE_GPU, 
     post_process=True,
     select_largest=False,
-    min_face_size=50,
+    min_face_size=40, # Slightly smaller for better range
 )
-_RESNET = InceptionResnetV1(pretrained='vggface2').eval().to('cpu')
+_RESNET = InceptionResnetV1(pretrained='vggface2').eval().to(_DEVICE_GPU)
 
 FACENET_THRESHOLD = 0.70
-print("[FaceNet] Models initialized on: CPU")
+print(f"[FaceNet] Models initialized on: {_DEVICE_GPU}")
 
 print(f"[CLIP] Loading ViT-B-32 on: {_DEVICE_GPU}...")
 _CLIP_MODEL, _, _CLIP_PREPROCESS = open_clip.create_model_and_transforms(
@@ -170,6 +170,11 @@ class CameraFeed:
                             break
                         continue
                         
+                    # Buffer clearing logic for local cameras to prevent lag
+                    if isinstance(self.source, int):
+                        # Skip older frames in the buffer to stay real-time
+                        for _ in range(5): self.cap.grab()
+                    
                     ret, frame = self.cap.read()
                     if not ret:
                         self.consecutive_failures += 1
@@ -198,11 +203,23 @@ class CameraFeed:
                     except Exception: pass
                     self.pending_face = None
 
-                # ── Fire new inference every 2nd frame (reduced skip for better motion tracking) ─
-                if self.frame_counter % 2 == 0 and self.pending_det is None and self.pending_face is None:
+                # ── Fire new inference every 5th frame (optimized for performance) ──
+                # This reduces CPU/GPU load significantly in multi-camera setups.
+                if self.frame_counter % 5 == 0 and self.pending_det is None:
                     if self.engine.executor:
                         try:
+                            # YOLO always runs to detect threats/people
                             self.pending_det = self.engine.executor.submit(self.engine._process_detections, frame.copy())
+                        except (RuntimeError, AttributeError):
+                            if not self.running: break
+
+                # ── Face Search (FAST GPU MODE) ──
+                # We reduced skip to 3 frames because GPU acceleration is now active.
+                # This provides near-instant detection without slowing down the system.
+                is_local = isinstance(self.source, int)
+                if is_local and self.frame_counter % 3 == 0 and self.pending_face is None:
+                    if self.engine.executor:
+                        try:
                             self.pending_face = self.engine.executor.submit(self.engine._process_face_search, frame.copy(), self.feed_id)
                         except (RuntimeError, AttributeError):
                             if not self.running: break
@@ -290,7 +307,7 @@ class CameraFeed:
 
 
 class CameraEngine:
-    def __init__(self, model_path='../model/N Model/best.pt', source=0):
+    def __init__(self, model_path='../model/S2 Model/best.pt', source=0):
         self.model = YOLO(model_path)
         # Initialize on GPU if available
         self.model.to(_DEVICE_GPU)
@@ -417,14 +434,59 @@ class CameraEngine:
         if not self.email_sender or not self.email_password: return
         try:
             msg = MIMEMultipart()
-            subject = f"🚨 SmartSurv [{feed_id}]: SECURITY ALERT 🚨"
-            if is_search_match: subject = f"🎯 SmartSurv [{feed_id}]: TARGET LOCATED 🎯"
+            timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+            
+            # Dynamic Subject based on detection type
+            if is_search_match:
+                subject = f"🎯 TARGET LOCATED | {feed_id} | SmartSurv"
+            elif any(d['label'].lower() in ["knife", "gun"] for d in detections):
+                subject = f"🚨 CRITICAL THREAT: WEAPON | {feed_id} | SmartSurv"
+            else:
+                subject = f"🔔 Activity Detected | {feed_id} | SmartSurv"
+                
             msg['Subject'], msg['From'], msg['To'] = subject, self.email_sender, self.email_sender
             
-            threats = [d['label'] for d in detections]
-            body = f"<h2>Alert from Feed: {feed_id}</h2><p><b>Detectors:</b> {', '.join(threats) if threats else 'Search'}</p>"
+            threats = [f"{d['label'].upper()} ({round(d['confidence'] * 100)}%)" for d in detections]
+            threat_list_html = "".join([f"<li><b>{t}</b></li>" for t in threats])
+            
+            body = f"""
+            <div style="font-family: sans-serif; max-width: 600px; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+                <div style="background: #191c1e; padding: 20px; color: #2480ff; text-align: center;">
+                    <h1 style="margin: 0; font-size: 24px;">SmartSurv Security</h1>
+                    <p style="margin: 5px 0 0; color: #74777d; font-size: 12px; letter-spacing: 2px;">AUTOMATED INCIDENT ALERT</p>
+                </div>
+                <div style="padding: 24px; background: #ffffff;">
+                    <div style="margin-bottom: 20px;">
+                        <span style="display: inline-block; padding: 4px 12px; background: #f0f4f8; color: #191c1e; font-size: 10px; font-weight: bold; border-radius: 4px; text-transform: uppercase;">
+                            {"WATCHLIST_MATCH" if is_search_match else "AUTONOMOUS_DETECTION"}
+                        </span>
+                    </div>
+                    <p style="color: #44474c; font-size: 14px; line-height: 1.6;">
+                        An incident was captured on <b>{feed_id}</b> at <b>{timestamp}</b>.
+                    </p>
+                    
+                    <h3 style="color: #191c1e; font-size: 16px; margin-top: 24px;">Detected Activity:</h3>
+                    <ul style="color: #44474c; font-size: 14px;">
+                        {threat_list_html if threats else "<li>Biometric Match (Watchlist)</li>"}
+                    </ul>
+                    
+                    <p style="color: #74777d; font-size: 12px; margin-top: 20px; font-style: italic;">
+                        Please log in to the SmartSurv Control Center for real-time verification and response.
+                    </p>
+                </div>
+                <div style="background: #f8f9fa; padding: 15px; border-top: 1px solid #e0e0e0; text-align: center;">
+                    <p style="margin: 0; color: #adb5bd; font-size: 10px;">
+                        &copy; SmartSurv AI Surveillance System | Confidential Information
+                    </p>
+                </div>
+            </div>
+            """
             msg.attach(MIMEText(body, 'html'))
-            msg.attach(MIMEImage(frame_buf, name="incident.jpg"))
+            
+            # Attach evidence image
+            image = MIMEImage(frame_buf, name="incident.jpg")
+            image.add_header('Content-ID', '<incident_image>')
+            msg.attach(image)
 
             if self.smtp_port == 465:
                 with smtplib.SMTP_SSL(self.smtp_server, self.smtp_port, timeout=10) as s:
@@ -432,6 +494,7 @@ class CameraEngine:
             else:
                 with smtplib.SMTP(self.smtp_server, self.smtp_port, timeout=10) as s:
                     s.starttls(); s.login(self.email_sender, self.email_password); s.send_message(msg)
+            print(f"[Email] Alert sent for {feed_id}")
         except Exception as e: print(f"[Email] Error: {e}")
 
     def _handle_alerts(self, feed_id, display_frame, detections, is_search_match):
@@ -738,8 +801,9 @@ class CameraEngine:
                 self._sync_feeds()
             except Exception as e:
                 print(f"[Watchdog] Sync error: {e}")
-            # If cameras are active, scan less frequently to avoid driver interference
-            interval = 60.0 if self.feeds else 15.0
+            # If cameras are active, scan much less frequently to avoid driver interference
+            # Hardware probing is a heavy blocking operation on Windows
+            interval = 300.0 if self.feeds else 30.0 
             time.sleep(interval)
 
     def stop(self):

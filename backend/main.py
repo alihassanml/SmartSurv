@@ -267,20 +267,9 @@ async def lifespan(app: FastAPI):
     # Seed cameras from JSON if DB is empty
     _seed_cameras_from_json()
 
-    # Load system camera state
-    system_camera_active = _db_get("system_camera_active", False)
-
-    # Auto-start any URL cameras that were active before restart
-    _db = SessionLocal()
-    try:
-        active_cams = _db.query(Camera).filter(Camera.is_active == True).all()
-        if system_camera_active or active_cams:
-            if not camera.running:
-                camera.start()
-            for _cam in active_cams:
-                camera.add_url_camera(f"url-{_cam.id}", _cam.url)
-    finally:
-        _db.close()
+    # System starts with cameras IDLE to save resources and prevent startup lag.
+    # User must explicitly start monitoring from the UI.
+    print("SMARTSURV_READY. System idle.")
 
     yield
     # Shutdown: close all WebRTC peer connections then stop camera
@@ -617,7 +606,7 @@ def toggle_local_camera_visibility():
 @app.get("/api/url-cameras")
 def get_url_cameras(db: Session = Depends(get_db)):
     cams = db.query(Camera).all()
-    return {"cameras": [
+    return {"cameras": [   
         {"id": c.id, "name": c.name, "url": c.url, "active": c.is_active,
          "visible": c.is_visible, "grid_position": c.grid_position}
         for c in cams
