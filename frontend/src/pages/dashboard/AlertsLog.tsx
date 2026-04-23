@@ -94,39 +94,39 @@ const AlertsLog: React.FC = () => {
       const pageHeight = doc.internal.pageSize.getHeight();
 
       // --- BRANDING & HEADER ---
-      // Cyber-Ops Background (Dark Slate)
-      doc.setFillColor(15, 17, 21);
+      // Clean White Background
+      doc.setFillColor(255, 255, 255);
       doc.rect(0, 0, pageWidth, pageHeight, 'F');
       
-      // Top accent bar (Electric Blue)
+      // Top accent bar (Primary Blue)
       doc.setFillColor(36, 128, 255);
-      doc.rect(0, 0, pageWidth, 4, 'F');
+      doc.rect(0, 0, pageWidth, 5, 'F');
 
       // Logo/Shield Icon Text
       doc.setTextColor(36, 128, 255);
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(26);
+      doc.setFontSize(24);
       doc.text('SMARTSURV', 20, 25);
       
       doc.setFontSize(9);
-      doc.setTextColor(116, 119, 125);
+      doc.setTextColor(80, 80, 80);
       doc.setFont('courier', 'bold');
       doc.text('SECURE INCIDENT INTELLIGENCE REPORT', 20, 31);
 
       // --- METADATA PANEL ---
-      doc.setDrawColor(36, 128, 255, 0.2);
-      doc.setLineWidth(0.1);
+      doc.setDrawColor(220, 220, 220);
+      doc.setLineWidth(0.2);
       doc.line(20, 38, pageWidth - 20, 38);
 
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8);
-      doc.setTextColor(180, 180, 180);
+      doc.setTextColor(120, 120, 120);
       doc.text(`REPORT ID: #${Math.random().toString(36).substr(2, 9).toUpperCase()}`, 20, 45);
       doc.text(`GENERATED: ${new Date().toLocaleString()}`, pageWidth - 20, 45, { align: 'right' });
 
       // --- SEVERITY & STATUS ---
       const sev = getSeverity(alertData);
-      let sevColor: [number, number, number] = [36, 128, 255]; // default alert blue
+      let sevColor: [number, number, number] = [36, 128, 255]; // default blue
       let sevLabel = 'SYSTEM_ALERT';
       
       if (sev === 'critical') {
@@ -140,10 +140,10 @@ const AlertsLog: React.FC = () => {
         sevLabel = 'WATCHLIST_TARGET_MATCH';
       }
 
-      // Severity Background Tag
-      doc.setFillColor(sevColor[0], sevColor[1], sevColor[2], 0.1);
+      // Severity Background Tag (Light version)
+      doc.setFillColor(sevColor[0], sevColor[1], sevColor[2], 0.05);
       doc.rect(20, 52, 170, 12, 'F');
-      doc.setDrawColor(sevColor[0], sevColor[1], sevColor[2], 0.5);
+      doc.setDrawColor(sevColor[0], sevColor[1], sevColor[2], 0.3);
       doc.rect(20, 52, 170, 12, 'D');
 
       doc.setTextColor(sevColor[0], sevColor[1], sevColor[2]);
@@ -153,15 +153,15 @@ const AlertsLog: React.FC = () => {
 
       // --- INCIDENT CORE DATA ---
       let y = 78;
-      const drawDataRow = (label: string, value: string, iconColor = [116, 119, 125]) => {
+      const drawDataRow = (label: string, value: string) => {
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(9);
-        doc.setTextColor(116, 119, 125);
+        doc.setTextColor(100, 100, 100);
         doc.text(label, 20, y);
         
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(10);
-        doc.setTextColor(230, 230, 230);
+        doc.setTextColor(30, 30, 30);
         doc.text(value, 65, y);
         y += 8;
       };
@@ -180,9 +180,9 @@ const AlertsLog: React.FC = () => {
       y += 6;
 
       // Activity Table Header
-      doc.setFillColor(25, 27, 31);
+      doc.setFillColor(245, 247, 250);
       doc.rect(20, y, 170, 8, 'F');
-      doc.setTextColor(116, 119, 125);
+      doc.setTextColor(100, 100, 100);
       doc.setFontSize(7);
       doc.text('ACTIVITY TYPE', 25, y + 5.5);
       doc.text('CONFIDENCE', 80, y + 5.5);
@@ -191,13 +191,13 @@ const AlertsLog: React.FC = () => {
 
       if (alertData.detections.length === 0 && !alertData.is_person_search_match) {
         doc.setFontSize(9);
-        doc.setTextColor(100, 100, 100);
+        doc.setTextColor(150, 150, 150);
         doc.text('No standard autonomous detections recorded.', 25, y);
         y += 8;
       } else {
         // Watchlist Match Entry
         if (alertData.is_person_search_match) {
-          doc.setFillColor(186, 26, 26, 0.1);
+          doc.setFillColor(186, 26, 26, 0.05);
           doc.rect(20, y - 4, 170, 7, 'F');
           doc.setTextColor(186, 26, 26);
           doc.setFontSize(9);
@@ -211,10 +211,11 @@ const AlertsLog: React.FC = () => {
         // YOLO Detections
         alertData.detections.forEach((d) => {
           const isDanger = ['knife', 'gun', 'fire', 'weapon', 'pistol'].includes(d.label.toLowerCase());
-          doc.setTextColor(isDanger ? 186 : 200, isDanger ? 26 : 200, isDanger ? 26 : 200);
+          doc.setTextColor(isDanger ? 186 : 50, isDanger ? 26 : 50, isDanger ? 26 : 50);
           doc.setFontSize(9);
           doc.setFont('helvetica', isDanger ? 'bold' : 'normal');
           doc.text(d.label.toUpperCase(), 25, y);
+          doc.setTextColor(80, 80, 80);
           doc.text(`${Math.round(d.confidence * 100)}%`, 80, y);
           doc.text(isDanger ? 'THREAT_LOGGED' : 'ACTIVITY_LOGGED', 140, y);
           y += 7;
@@ -232,28 +233,27 @@ const AlertsLog: React.FC = () => {
 
       if (alertData.image) {
         const imgData = `data:image/jpeg;base64,${alertData.image}`;
-        // Standard 4:3 camera ratio
-        doc.setDrawColor(36, 128, 255, 0.3);
+        doc.setDrawColor(220, 220, 220);
         doc.setLineWidth(0.5);
         doc.rect(20, y, 170, 127.5); // frame
         doc.addImage(imgData, 'JPEG', 21, y + 1, 168, 125.5);
         
         y += 135;
       } else {
-        doc.setFillColor(20, 22, 26);
+        doc.setFillColor(245, 245, 245);
         doc.rect(20, y, 170, 40, 'F');
-        doc.setTextColor(100, 100, 100);
+        doc.setTextColor(150, 150, 150);
         doc.setFontSize(10);
         doc.text('VISUAL EVIDENCE UNAVAILABLE', pageWidth / 2, y + 22, { align: 'center' });
         y += 50;
       }
 
       // --- AUTHENTICATION FOOTER ---
-      doc.setDrawColor(36, 128, 255, 0.1);
+      doc.setDrawColor(230, 230, 230);
       doc.line(20, 275, pageWidth - 20, 275);
       
       doc.setFontSize(7);
-      doc.setTextColor(80, 80, 80);
+      doc.setTextColor(150, 150, 150);
       doc.setFont('courier', 'normal');
       doc.text('CONFIDENTIAL // FOR AUTHORIZED PERSONNEL ONLY', 20, 282);
       doc.text(`SYSTEM_SIGNATURE: ${btoa(alertData.timestamp).substr(0, 16)}`, pageWidth - 20, 282, { align: 'right' });
