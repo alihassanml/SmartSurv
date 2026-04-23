@@ -13,3 +13,4 @@ kaggle.json
 .env.local
 frontend/public/models/vosk-model
 Testing
+videos
