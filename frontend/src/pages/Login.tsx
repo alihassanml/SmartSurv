@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Shield, User, Lock, ChevronRight, AlertCircle } from 'lucide-react';
@@ -26,6 +26,7 @@ const Login: React.FC = () => {
         localStorage.setItem('token', data.access_token);
         localStorage.setItem('username', username);
         localStorage.setItem('email', data.email);
+        localStorage.setItem('role', data.role || 'admin');
         localStorage.setItem('isAdmin', data.is_admin ? 'true' : 'false');
         navigate('/dashboard');
       } else {

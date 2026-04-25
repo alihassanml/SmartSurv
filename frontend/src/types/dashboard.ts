@@ -6,6 +6,7 @@ export interface Detection {
 
 export interface Alert {
   timestamp: string;
+  backend_ts?: number;
   detections: Detection[];
   image: string;
   is_person_search_match?: boolean | string;
@@ -17,6 +18,7 @@ export interface PersonEvent {
   feed_id: string;
   face: string;
   timestamp: string;
+  backend_ts?: number;
   status: 'NEW' | 'REAPPEARED';
   is_focused?: boolean;
   traits?: string;

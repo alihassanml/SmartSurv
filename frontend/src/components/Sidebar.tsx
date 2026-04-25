@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -16,6 +16,7 @@ const navItems = [
 
 const bottomItems = [
   { icon: Activity, label: 'System Health', path: '/dashboard/system' },
+  { icon: Shield,   label: 'Organizations', path: '/dashboard/organization-controls' },
   { icon: Settings, label: 'Settings',      path: '/dashboard/settings' },
   { icon: Users,    label: 'Users',         path: '/dashboard/users' },
 ];
@@ -45,7 +46,7 @@ const Sidebar: React.FC = () => {
         height: '100%',
       }}
     >
-      {/* â”€â”€ Logo header â”€â”€ */}
+      {/* --- Logo header --- */}
       <div className="flex items-center gap-3 px-4 shrink-0"
         style={{ height: '64px', borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
         <div className="w-9 h-9 flex items-center justify-center shrink-0"
@@ -67,7 +68,7 @@ const Sidebar: React.FC = () => {
         </AnimatePresence>
       </div>
 
-      {/* â”€â”€ Collapse button â”€â”€ */}
+      {/* --- Collapse button --- */}
       <button
         onClick={() => setCollapsed(c => !c)}
         className="absolute flex items-center justify-center w-5 h-5 transition-colors duration-200 z-20"
@@ -84,7 +85,7 @@ const Sidebar: React.FC = () => {
         {collapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronLeft className="w-3 h-3" />}
       </button>
 
-      {/* â”€â”€ Primary nav â”€â”€ */}
+      {/* --- Primary nav --- */}
       <nav className="flex-1 py-4 px-2 flex flex-col gap-0.5 overflow-hidden">
         {navItems.map(item => {
           const active = isActive(item.path);
@@ -134,7 +135,7 @@ const Sidebar: React.FC = () => {
         })}
       </nav>
 
-      {/* â”€â”€ Bottom section â”€â”€ */}
+      {/* --- Bottom nav --- */}
       <div className="px-2 pb-4 flex flex-col gap-0.5"
         style={{ borderTop: '1px solid rgba(0,0,0,0.07)', paddingTop: '12px' }}>
         {isAdmin && bottomItems.map(item => {

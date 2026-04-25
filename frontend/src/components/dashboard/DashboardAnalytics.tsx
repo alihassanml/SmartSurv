@@ -74,12 +74,18 @@ const DashboardAnalytics: React.FC<Props> = ({ alerts, detectedPersons, isConnec
     // Activity type breakdown
     const activityMap: Record<string, { count: number; confidences: number[] }> = {};
     alerts.forEach(alert => {
-      alert.detections.forEach(d => {
+      (alert.detections ?? []).forEach(d => {
         const lbl = d.label.toLowerCase();
         if (!activityMap[lbl]) activityMap[lbl] = { count: 0, confidences: [] };
         activityMap[lbl].count++;
         activityMap[lbl].confidences.push(d.confidence * 100);
       });
+      // Treat person-search-match alerts with no YOLO detections as a PERSON detection
+      if (alert.is_person_search_match && (!alert.detections || alert.detections.length === 0)) {
+        if (!activityMap['person']) activityMap['person'] = { count: 0, confidences: [] };
+        activityMap['person'].count++;
+        activityMap['person'].confidences.push(100);
+      }
     });
 
     const activityBreakdown = Object.entries(activityMap)
@@ -91,17 +97,20 @@ const DashboardAnalytics: React.FC<Props> = ({ alerts, detectedPersons, isConnec
       }))
       .sort((a, b) => b.count - a.count);
 
-    // Scatter data: confidence vs time-of-day
     const scatterData = alerts.flatMap(a => {
-        const d = new Date(a.timestamp.replace(' ', 'T'));
-        const hour = d.getHours() + d.getMinutes() / 60;
-        return a.detections.map(det => ({
+        const timestamp = a.backend_ts ? new Date(a.backend_ts) : new Date(a.timestamp.replace(' ', 'T'));
+        const hour = timestamp.getHours() + timestamp.getMinutes() / 60;
+        const dets = a.detections ?? [];
+        if (dets.length === 0 && a.is_person_search_match) {
+          return [{ hour, confidence: 100, size: 30, label: 'PERSON' }];
+        }
+        return dets.map(det => ({
             hour,
             confidence: Math.round(det.confidence * 100),
             size: 10 + (det.confidence * 20),
             label: det.label.toUpperCase()
         }));
-    }).slice(-100); // Limit to last 100 points
+    }).slice(-100);
 
     const totalDetections = activityBreakdown.reduce((a, b) => a + b.count, 0);
 
@@ -119,13 +128,19 @@ const DashboardAnalytics: React.FC<Props> = ({ alerts, detectedPersons, isConnec
 
     alerts.forEach(alert => {
       try {
-        const d = new Date(alert.timestamp.replace(' ', 'T'));
+        let d = alert.backend_ts ? new Date(alert.backend_ts) : new Date(alert.timestamp.replace(' ', 'T'));
+        if (isNaN(d.getTime()) || d.getFullYear() < 2000) {
+            const parts = alert.timestamp.split(':').map(Number);
+            d = new Date();
+            d.setHours(parts[0] || 0, parts[1] || 0, parts[2] || 0, 0);
+        }
         if (!isNaN(d.getTime())) {
           const hoursAgo = Math.floor((now.getTime() - d.getTime()) / 3600000);
           if (hoursAgo >= 0 && hoursAgo < 24) {
             const idx = 23 - hoursAgo;
             hourlyData[idx].alerts++;
-            if (alert.detections.some(det => ['weapon', 'pistol', 'knife', 'fire'].includes(det.label.toLowerCase()))) {
+            // New classes: gun, knife, smoking, violence
+            if ((alert.detections ?? []).some(det => ['gun', 'knife', 'smoking', 'violence'].includes(det.label.toLowerCase()))) {
                 hourlyData[idx].critical++;
             }
           }
@@ -135,16 +150,24 @@ const DashboardAnalytics: React.FC<Props> = ({ alerts, detectedPersons, isConnec
 
     detectedPersons.forEach(p => {
       try {
-        const d = new Date(p.timestamp.replace(' ', 'T'));
+        let d = p.backend_ts ? new Date(p.backend_ts) : new Date(p.timestamp.replace(' ', 'T'));
+        if (isNaN(d.getTime()) || d.getFullYear() < 2000) {
+            const parts = p.timestamp.split(':').map(Number);
+            d = new Date();
+            d.setHours(parts[0] || 0, parts[1] || 0, parts[2] || 0, 0);
+        }
         if (!isNaN(d.getTime())) {
           const hoursAgo = Math.floor((now.getTime() - d.getTime()) / 3600000);
-          if (hoursAgo >= 0 && hoursAgo < 24) hourlyData[23 - hoursAgo].persons++;
+          if (hoursAgo >= 0 && hoursAgo < 24) {
+            const idx = 23 - hoursAgo;
+            if (hourlyData[idx]) hourlyData[idx].persons++;
+          }
         }
       } catch (_) {}
     });
 
     // Overall confidence
-    const allConf = alerts.flatMap(a => a.detections.map(d => d.confidence * 100));
+    const allConf = alerts.flatMap(a => (a.detections ?? []).map(d => d.confidence * 100));
     const avgConf = allConf.length > 0
       ? Math.round(allConf.reduce((a, b) => a + b, 0) / allConf.length)
       : 0;
@@ -272,7 +295,7 @@ const DashboardAnalytics: React.FC<Props> = ({ alerts, detectedPersons, isConnec
               </div>
             </div>
             <div className="flex-1 min-h-[260px]">
-              {data.activityBreakdown.length < 3 ? (
+              {data.activityBreakdown.length === 0 ? (
                   <div className="h-full flex items-center justify-center opacity-30 text-[10px] font-bold tracking-[0.3em] uppercase">Awaiting Signature Map...</div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
@@ -325,7 +348,7 @@ const DashboardAnalytics: React.FC<Props> = ({ alerts, detectedPersons, isConnec
                         <div className="h-1.5 bg-[rgba(0,0,0,0.05)] rounded-full overflow-hidden">
                             <motion.div
                                 initial={{ width: 0 }}
-                                animate={{ width: `${Math.round((act.count / data.totalDetections) * 100)}%` }}
+                                animate={{ width: data.totalDetections > 0 ? `${Math.round((act.count / data.totalDetections) * 100)}%` : '0%' }}
                                 transition={{ duration: 1, delay: 0.5 + i * 0.05 }}
                                 className="h-full rounded-full"
                                 style={{ background: COLORS[i % COLORS.length] }}
@@ -350,24 +373,30 @@ const DashboardAnalytics: React.FC<Props> = ({ alerts, detectedPersons, isConnec
                     </div>
                 </div>
             </div>
+            {data.scatterData.length === 0 ? (
+              <div className="h-[220px] flex flex-col items-center justify-center gap-2 opacity-30">
+                <p className="text-[10px] font-bold tracking-[0.3em] uppercase">Awaiting Detection Data...</p>
+                <p className="text-[8px] font-bold tracking-widest" style={{ color: '#74777d' }}>No inference events in current window</p>
+              </div>
+            ) : (
             <ResponsiveContainer width="100%" height={220}>
                 <ScatterChart margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.03)" vertical={false} />
-                    <XAxis 
-                        type="number" 
-                        dataKey="hour" 
-                        name="Time" 
-                        domain={[0, 24]} 
+                    <XAxis
+                        type="number"
+                        dataKey="hour"
+                        name="Time"
+                        domain={[0, 24]}
                         tick={{ fill: '#74777d', fontSize: 7, fontWeight: 700 }}
                         axisLine={false}
                         tickLine={false}
                         tickFormatter={(v) => `${Math.floor(v)}h`}
                     />
-                    <YAxis 
-                        type="number" 
-                        dataKey="confidence" 
-                        name="Confidence" 
-                        domain={[0, 100]} 
+                    <YAxis
+                        type="number"
+                        dataKey="confidence"
+                        name="Confidence"
+                        domain={[0, 100]}
                         unit="%"
                         tick={{ fill: '#74777d', fontSize: 7, fontWeight: 700 }}
                         axisLine={false}
@@ -375,10 +404,10 @@ const DashboardAnalytics: React.FC<Props> = ({ alerts, detectedPersons, isConnec
                     />
                     <ZAxis type="number" dataKey="size" range={[50, 400]} />
                     <Tooltip cursor={{ strokeDasharray: '3 3' }} content={<CustomTooltip />} />
-                    <Scatter 
-                        name="Detections" 
-                        data={data.scatterData} 
-                        fill="#2480ff" 
+                    <Scatter
+                        name="Detections"
+                        data={data.scatterData}
+                        fill="#2480ff"
                         fillOpacity={0.6}
                     >
                         {data.scatterData.map((entry, index) => (
@@ -387,6 +416,7 @@ const DashboardAnalytics: React.FC<Props> = ({ alerts, detectedPersons, isConnec
                     </Scatter>
                 </ScatterChart>
             </ResponsiveContainer>
+            )}
           </motion.div>
         </div>
 

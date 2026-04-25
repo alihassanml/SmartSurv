@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Shield, Mail, Trash2, RefreshCw, UserPlus, X, AlertCircle, CheckCircle } from 'lucide-react';
 import { API } from '../../types/dashboard';
@@ -10,6 +10,8 @@ interface User {
   is_verified: boolean;
   is_active: boolean;
   is_admin: boolean;
+  is_approved: boolean;
+  role: string;
   created_at?: string;
 }
 
@@ -22,6 +24,21 @@ const UsersPage: React.FC = () => {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const token = localStorage.getItem('token');
+
+  const handleApprove = async (user: User) => {
+    setActionLoading(user.id);
+    try {
+      const res = await fetch(`${API}/api/auth/users/${user.id}/approve`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        setUsers(prev => prev.map(u => u.id === user.id ? { ...u, is_approved: true } : u));
+        showSuccess(`User "${user.username}" approved`);
+      }
+    } catch (_) {}
+    finally { setActionLoading(null); }
+  };
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -262,9 +279,25 @@ const UsersPage: React.FC = () => {
                         ADMIN
                       </span>
                     )}
+                    {!user.is_approved && (
+                      <span className="text-[9px] font-bold px-2 py-0.5 w-fit bg-[#ffd941] text-[#2c2b00] rounded-sm">
+                        PENDING_APPROVAL
+                      </span>
+                    )}
                   </div>
 
                   <div className="col-span-2 flex items-center justify-end gap-1.5">
+                    {!user.is_approved && (
+                      <button
+                        onClick={() => handleApprove(user)}
+                        disabled={actionLoading === user.id}
+                        title="Grant Access / Approve Admin"
+                        className="p-1.5 transition-all disabled:opacity-50"
+                        style={{ border: '1px solid #16a34a', color: '#16a34a', background: 'rgba(22,163,74,0.1)', borderRadius: '0.25rem' }}
+                      >
+                        <CheckCircle className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                     {!user.is_verified && (
                       <button
                         onClick={() => handleVerify(user)}

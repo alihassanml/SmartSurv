@@ -16,8 +16,9 @@ pcs = set()
 import torch
 
 from camera_engine import CameraEngine
-from database import SessionLocal, Base, engine, User, Setting, Camera
-from auth import verify_password, get_password_hash, create_access_token
+from database import SessionLocal, Base, engine, User, Setting, Camera, Alert
+from auth import verify_password, get_password_hash, create_access_token, SECRET_KEY, ALGORITHM
+import jwt
 import socket
 import smtplib
 import random
@@ -209,7 +210,7 @@ def get_local_ip():
         s.close()
     return IP
 
-# ── DB helpers ────────────────────────────────────────────────────────────────
+# --- DB helpers ---
 def _db_get(key: str, default=None):
     """Read a JSON-encoded value from the settings table."""
     db = SessionLocal()
@@ -245,6 +246,73 @@ def get_db():
     finally:
         db.close()
 
+# --- WEBSOCKET BROADCASTER ---
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: List[dict] = []
+
+    async def connect(self, websocket: WebSocket, role: str, allowed: List[str]):
+        await websocket.accept()
+        self.active_connections.append({
+            "ws": websocket,
+            "role": role,
+            "allowed": [a.lower() for a in allowed]
+        })
+
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections = [c for c in self.active_connections if c["ws"] != websocket]
+
+    async def broadcast(self, alert: dict):
+        for conn in list(self.active_connections):
+            try:
+                # Apply role-based filtering
+                if conn["role"] == "organization":
+                    allowed = conn["allowed"]
+                    alert_labels = [d["label"].lower() for d in alert["detections"]]
+                    
+                    # Check for normal detection match OR watchlist match
+                    is_allowed_detection = any(label in allowed for label in alert_labels)
+                    is_allowed_watchlist = ("watchlist_match" in allowed and alert.get("is_person_search_match"))
+                    
+                    if not (is_allowed_detection or is_allowed_watchlist):
+                        continue
+                        
+                await conn["ws"].send_text(json.dumps(alert, default=str))
+            except Exception:
+                self.disconnect(conn["ws"])
+
+manager = ConnectionManager()
+
+async def alert_broadcaster():
+    from fastapi.concurrency import run_in_threadpool
+    while True:
+        try:
+            alerts = await run_in_threadpool(camera.get_alerts)
+            if alerts:
+                db = SessionLocal()
+                for alert in alerts:
+                    try:
+                        # Save to history for Dashboard Analytics
+                        new_alert = Alert(
+                            timestamp=alert["timestamp"],
+                            backend_ts=alert.get("backend_ts"),
+                            feed_id=alert["feed_id"],
+                            detections=json.dumps(alert["detections"]),
+                            is_person_search_match=alert["is_person_search_match"],
+                            image_base64=alert.get("image"),
+                            location_lat=str(alert["location"].get("lat", "")),
+                            location_lon=str(alert["location"].get("lon", ""))
+                        )
+                        db.add(new_alert)
+                    except: pass
+                    await manager.broadcast(alert)
+                db.commit()
+                db.close()
+            await asyncio.sleep(0.05)
+        except Exception as e:
+            print(f"[Broadcaster] Error: {e}")
+            await asyncio.sleep(1)
+
 # --- LIFESPAN MANAGEMENT ---
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -267,9 +335,11 @@ async def lifespan(app: FastAPI):
     # Seed cameras from JSON if DB is empty
     _seed_cameras_from_json()
 
-    # System starts with cameras IDLE to save resources and prevent startup lag.
     # User must explicitly start monitoring from the UI.
     print("SMARTSURV_READY. System idle.")
+
+    # Start the background broadcaster task
+    asyncio.create_task(alert_broadcaster())
 
     yield
     # Shutdown: close all WebRTC peer connections then stop camera
@@ -328,7 +398,7 @@ async def offer(params: Offer):
 
 camera = CameraEngine(source="auto")
 
-# ── URL / Online Cameras (SQLite DB, seeded from cameras.json) ───────────────
+# --- URL / Online Cameras ---
 def _seed_cameras_from_json():
     """Seed the cameras table from cameras.json on first startup if table is empty."""
     json_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'cameras.json'))
@@ -355,6 +425,9 @@ class UserCreate(BaseModel):
     username: str
     email: str
     password: str
+    role: Optional[str] = "admin"
+    organization_type: Optional[str] = None
+    organization_address: Optional[str] = None
 
 class UserLogin(BaseModel):
     username: str
@@ -400,13 +473,20 @@ def signup(user: UserCreate, db: Session = Depends(get_db)):
 
     code = _generate_verification_code()
     hashed_password = get_password_hash(user.password)
+    # Admins need approval (except the first one)
+    needs_approval = (user.role == "admin" and not is_first_user)
+
     new_user = User(
         username=user.username,
         email=user.email,
         hashed_password=hashed_password,
         is_verified=False,
         verification_code=code,
-        is_admin=is_first_user,
+        is_admin=is_first_user or (user.role == "admin"),
+        role=user.role if user.role else ("admin" if is_first_user else "user"),
+        is_approved=not needs_approval,
+        organization_type=user.organization_type,
+        organization_address=user.organization_address
     )
     db.add(new_user)
     db.commit()
@@ -449,20 +529,52 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Incorrect username or password")
     if not db_user.is_verified:
         raise HTTPException(status_code=403, detail="Email not verified. Please check your email for the verification code.")
+    
+    if not db_user.is_approved:
+        raise HTTPException(status_code=403, detail="Account pending admin approval. Please contact a system administrator.")
 
     access_token = create_access_token(data={"sub": db_user.username, "email": db_user.email})
     return {
         "access_token": access_token, 
         "token_type": "bearer", 
         "email": db_user.email,
+        "username": db_user.username,
+        "role": db_user.role,
         "is_admin": db_user.is_admin
     }
 
-# ── User Management Endpoints ─────────────────────────────────────────────────
+# --- API Endpoints ---
 @app.get("/api/auth/users")
 def get_users(db: Session = Depends(get_db)):
     users = db.query(User).all()
     return {"users": users}
+
+@app.post("/api/auth/users/{user_id}/approve")
+def approve_user(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.is_approved = True
+    db.commit()
+    return {"status": "success", "message": f"User {user.username} approved"}
+
+class OrgSettingsUpdate(BaseModel):
+    allowed_notifications: List[str]
+    organization_type: Optional[str] = None
+    organization_address: Optional[str] = None
+
+@app.post("/api/auth/users/{user_id}/org-settings")
+def update_org_settings(user_id: int, body: OrgSettingsUpdate, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    user.allowed_notifications = json.dumps(body.allowed_notifications)
+    if body.organization_type: user.organization_type = body.organization_type
+    if body.organization_address: user.organization_address = body.organization_address
+    
+    db.commit()
+    return {"status": "success", "message": "Organization settings updated"}
 
 @app.delete("/api/auth/users/{user_id}")
 def delete_user(user_id: int, db: Session = Depends(get_db)):
@@ -512,6 +624,22 @@ def stop_camera():
     camera.stop()
     _db_set("system_camera_active", False)
     return {"status": "stopped"}
+
+@app.get("/api/alerts/history")
+def get_alert_history(db: Session = Depends(get_db)):
+    """Fetch last 24 hours of alerts for the dashboard graph."""
+    one_day_ago = (time.time() - 86400) * 1000
+    alerts = db.query(Alert).filter(Alert.backend_ts >= one_day_ago).order_by(Alert.backend_ts.desc()).limit(1000).all()
+    
+    return [{
+        "timestamp": a.timestamp,
+        "backend_ts": a.backend_ts,
+        "feed_id": a.feed_id,
+        "detections": json.loads(a.detections),
+        "is_person_search_match": a.is_person_search_match,
+        "image": a.image_base64,
+        "location": {"lat": float(a.location_lat or 0), "lon": float(a.location_lon or 0)}
+    } for a in alerts]
 
 @app.post("/api/camera/mode")
 def set_camera_mode(body: ModeUpdate):
@@ -796,28 +924,32 @@ def update_ui_setting(body: UiSettingUpdate):
     return {"status": "saved", "key": body.key, "value": body.value}
 
 @app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    from fastapi.concurrency import run_in_threadpool
-    await websocket.accept()
+async def websocket_endpoint(websocket: WebSocket, token: Optional[str] = Query(None)):
+    role = "admin"
+    allowed = []
+    
+    if token:
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            username: str = payload.get("sub")
+            db = SessionLocal()
+            user = db.query(User).filter(User.username == username).first()
+            if user:
+                role = user.role
+                allowed = json.loads(user.allowed_notifications or '[]')
+            db.close()
+        except Exception:
+            pass
+
+    await manager.connect(websocket, role, allowed)
     try:
-        while getattr(app.state, 'is_running', True):
-            alerts = await run_in_threadpool(camera.get_alerts)
-            if alerts:
-                for alert in alerts:
-                    try:
-                        await websocket.send_text(json.dumps(alert, default=str))
-                    except Exception:
-                        pass  # skip un-serializable alerts rather than crash the loop
-                await asyncio.sleep(0)
-            else:
-                await asyncio.sleep(0.05)
-    except (WebSocketDisconnect, asyncio.CancelledError, RuntimeError):
-        pass
-    except Exception:
+        while True:
+            # Keep connection alive; broadcast is handled by manager
+            await websocket.receive_text()
+    except (WebSocketDisconnect, asyncio.CancelledError):
         pass
     finally:
-        try: await websocket.close()
-        except: pass
+        manager.disconnect(websocket)
 
 @app.websocket("/ws/stats")
 async def stats_endpoint(websocket: WebSocket):

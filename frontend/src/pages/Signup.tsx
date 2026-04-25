@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Shield, User, Mail, Lock, ChevronRight, AlertCircle, CheckCircle } from 'lucide-react';
@@ -8,6 +8,9 @@ const Signup: React.FC = () => {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [role, setRole] = useState('admin');
+  const [orgType, setOrgType] = useState('Police Station');
+  const [orgAddress, setOrgAddress] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -21,7 +24,11 @@ const Signup: React.FC = () => {
       const response = await fetch(`${API}/api/auth/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, email, password }),
+        body: JSON.stringify({ 
+          username, email, password, role,
+          organization_type: role === 'organization' ? orgType : null,
+          organization_address: role === 'organization' ? orgAddress : null
+        }),
       });
       if (response.ok) {
         setSuccess(true);
@@ -164,6 +171,61 @@ const Signup: React.FC = () => {
               </div>
             </div>
 
+            {/* Role */}
+            <div>
+              <label className="block text-[10px] uppercase tracking-[0.15em] mb-2 font-semibold"
+                style={{ color: '#74777d' }}>Account Type</label>
+              <div className="relative">
+                <Shield className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5"
+                  style={{ color: '#c4c6cc' }} />
+                <select 
+                  value={role}
+                  onChange={e => setRole(e.target.value)}
+                  onFocus={(e) => { e.currentTarget.style.borderColor = '#2480ff'; }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = 'rgba(0,0,0,0.12)'; }}
+                  className="w-full pl-9 pr-3 py-3 text-sm transition-all duration-200 appearance-none bg-[#e8ecf0]"
+                  style={inputStyle}
+                >
+                  <option value="admin">ADMIN (MASTER_CONTROL)</option>
+                  <option value="user">USER (OPERATOR)</option>
+                  <option value="organization">ORGANIZATION (ALERT_FEED)</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Organization Details */}
+            {role === 'organization' && (
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="space-y-4 mb-4">
+                <div>
+                  <label className="block text-[10px] uppercase tracking-[0.15em] mb-2 font-semibold"
+                    style={{ color: '#74777d' }}>Organization Type</label>
+                  <div className="relative">
+                    <Shield className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: '#c4c6cc' }} />
+                    <select 
+                      value={orgType}
+                      onChange={e => setOrgType(e.target.value)}
+                      className="w-full pl-9 pr-3 py-3 text-sm transition-all duration-200 appearance-none bg-[#e8ecf0]"
+                      style={inputStyle}
+                    >
+                      <option value="Police Station">POLICE_STATION</option>
+                      <option value="Hospital">HOSPITAL_FACILITY</option>
+                      <option value="Security Agency">SECURITY_AGENCY</option>
+                      <option value="Corporate Office">CORPORATE_OFFICE</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[10px] uppercase tracking-[0.15em] mb-2 font-semibold"
+                    style={{ color: '#74777d' }}>Physical Address</label>
+                  <input type="text" value={orgAddress}
+                    onChange={e => setOrgAddress(e.target.value)}
+                    onFocus={handleFocus} onBlur={handleBlur}
+                    className="w-full px-3 py-3 text-sm transition-all duration-200"
+                    style={inputStyle} placeholder="Enter full address" required />
+                </div>
+              </motion.div>
+            )}
+
             {/* Password */}
             <div>
               <label className="block text-[10px] uppercase tracking-[0.15em] mb-2 font-semibold"
@@ -175,7 +237,7 @@ const Signup: React.FC = () => {
                   onChange={e => setPassword(e.target.value)}
                   onFocus={handleFocus} onBlur={handleBlur}
                   className="w-full pl-9 pr-3 py-3 text-sm transition-all duration-200"
-                  style={inputStyle} placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" required />
+                  style={inputStyle} placeholder="**********" required />
               </div>
             </div>
 

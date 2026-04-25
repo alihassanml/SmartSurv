@@ -565,7 +565,7 @@ class CameraEngine:
 
                     alert = {
                         "feed_id": feed_id,
-                        "timestamp": time.strftime("%H:%M:%S"),
+                        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
                         "detections": [{"label": d["label"], "confidence": float(d["confidence"]), "box": [float(v) for v in d["box"]]} for d in detections],
                         "image": base64.b64encode(buf).decode('utf-8'),
                         "is_person_search_match": bool(is_search_match),

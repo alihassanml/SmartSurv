@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Shield, Eye, Bell, Activity, Zap, Lock } from 'lucide-react';
@@ -57,7 +57,7 @@ const LandingPage: React.FC = () => {
       <div className="fixed inset-0 z-0 pointer-events-none"
         style={{ background: 'radial-gradient(ellipse 60% 40% at 50% 0%, rgba(36,128,255,0.06) 0%, transparent 70%)' }} />
 
-      {/* â”€â”€ NAV â”€â”€ */}
+      {/* --- NAV --- */}
       <motion.nav
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -98,7 +98,7 @@ const LandingPage: React.FC = () => {
         </div>
       </motion.nav>
 
-      {/* â”€â”€ HERO â”€â”€ */}
+      {/* --- HERO --- */}
       <motion.main
         variants={containerVariants}
         initial="hidden"

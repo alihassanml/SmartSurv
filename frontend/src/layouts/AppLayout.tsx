@@ -1,7 +1,7 @@
-﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Eye, EyeOff, RefreshCw, Bell, User, LogOut, Power } from 'lucide-react';
+import { Eye, EyeOff, RefreshCw, Bell, User, LogOut, Power, Shield, Activity, MapPin, X } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import type { Alert, PersonEvent, ClassThreshold } from '../types/dashboard';
 import { API } from '../types/dashboard';
@@ -63,6 +63,7 @@ export interface AppContextValue {
   isReconnecting: boolean;
   username: string;
   userEmail: string;
+  role: string;
   handleLogout: () => void;
 }
 
@@ -81,6 +82,8 @@ const pageTitles: Record<string, string> = {
   '/dashboard/watchlist': 'Watchlist',
   '/dashboard/settings': 'Settings',
   '/dashboard/users': 'User Management',
+  '/dashboard/organization': 'Organization Feed',
+  '/dashboard/organization-controls': 'Organization Management',
 };
 
 const AppLayout: React.FC = () => {
@@ -89,8 +92,16 @@ const AppLayout: React.FC = () => {
 
   const username = localStorage.getItem('username') || 'OPERATOR';
   const userEmail = localStorage.getItem('email') || 'N/A';
+  const role = localStorage.getItem('role') || 'admin';
 
-  // â”€â”€ Core state â”€â”€
+  // Redirection for Organization role
+  useEffect(() => {
+    if (role === 'organization' && !location.pathname.includes('/dashboard/organization')) {
+      navigate('/dashboard/organization', { replace: true });
+    }
+  }, [role, location.pathname, navigate]);
+
+  // --- Core state ---
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [detectedPersons, setDetectedPersons] = useState<PersonEvent[]>([]);
   const [selectedPerson, setSelectedPerson] = useState<PersonEvent | null>(null);
@@ -117,17 +128,18 @@ const AppLayout: React.FC = () => {
   const [classThresholds, setClassThresholds] = useState<ClassThreshold[]>([]);
   const [thresholdsLoading, setThresholdsLoading] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  // Local camera visibility â€” persisted in DB via /api/camera/local/toggle-visibility
+  // Local camera visibility — persisted in DB via /api/camera/local/toggle-visibility
   const [localCameraVisible, setLocalCameraVisible] = useState(true);
 
-  // â”€â”€ Person focus â”€â”€
+  // --- Person focus ---
   const [focusedPersonId, setFocusedPersonId] = useState<string | null>(null);
   const [focusedPersonVisible, setFocusedPersonVisible] = useState(false);
 
-  // â”€â”€ Semantic search â”€â”€
+  // --- Semantic search ---
   const [semanticQuery, setSemanticQuery] = useState('');
   const [semanticResults, setSemanticResults] = useState<{ id: string; score: number }[]>([]);
   const [semanticLoading, setSemanticLoading] = useState(false);
+  const [lastAlert, setLastAlert] = useState<Alert | null>(null);
   const semanticDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // â”€â”€ Unread alerts badge â”€â”€
@@ -148,7 +160,7 @@ const AppLayout: React.FC = () => {
     });
   }, [browserSoundEnabled]);
 
-  // â”€â”€ Init system info â”€â”€
+  // --- Init system info ---
   useEffect(() => {
     fetch(`${API}/api/camera/mode`, {
       method: 'POST',
@@ -164,6 +176,11 @@ const AppLayout: React.FC = () => {
         localStorage.setItem('cameraActive', String(active));
         setActiveFeeds(d.feeds || []);
       })
+      .catch(() => {});
+
+    fetch(`${API}/api/alerts/history`)
+      .then(r => r.json())
+      .then(d => { if (Array.isArray(d)) setAlerts(d); })
       .catch(() => {});
   }, []);
 
@@ -187,7 +204,7 @@ const AppLayout: React.FC = () => {
       .catch(() => {});
   }, []);
 
-  // â”€â”€ Role Protection â”€â”€
+  // --- Role Protection ---
   useEffect(() => {
     const isAdmin = localStorage.getItem('isAdmin') === 'true';
     if (!isAdmin && (location.pathname === '/dashboard/settings' || location.pathname === '/dashboard/users')) {
@@ -195,7 +212,7 @@ const AppLayout: React.FC = () => {
     }
   }, [location.pathname, navigate]);
 
-  // â”€â”€ Load thresholds â”€â”€
+  // --- Load thresholds ---
   useEffect(() => {
     setThresholdsLoading(true);
     fetch(`${API}/api/model/classes`)
@@ -205,7 +222,7 @@ const AppLayout: React.FC = () => {
       .finally(() => setThresholdsLoading(false));
   }, []);
 
-  // â”€â”€ Alerts WebSocket â”€â”€
+  // --- Alerts WebSocket ---
   useEffect(() => {
     if (isReconnecting) return;
     let ws: WebSocket | null = null;
@@ -213,16 +230,19 @@ const AppLayout: React.FC = () => {
     let dead = false;
     const connect = () => {
       if (dead) return;
-      ws = new WebSocket(`ws://${window.location.hostname}:8000/ws`);
+      const token = localStorage.getItem('token');
+      ws = new WebSocket(`ws://${window.location.hostname}:8000/ws?token=${token}`);
       ws.onopen = () => setIsConnected(true);
       ws.onclose = () => { setIsConnected(false); if (!dead) retryTimer = setTimeout(connect, 1000); };
       ws.onerror = () => ws?.close();
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          setAlerts(prev => [data, ...prev].slice(0, 10));
+          setAlerts(prev => [data, ...prev].slice(0, 50));
           setUnreadAlerts(n => n + 1);
+          setLastAlert(data);
           playAlertSound();
+          setTimeout(() => setLastAlert(null), 6000);
         } catch (_) {}
       };
     };
@@ -230,7 +250,7 @@ const AppLayout: React.FC = () => {
     return () => { dead = true; if (retryTimer) clearTimeout(retryTimer); ws?.close(); };
   }, [isReconnecting]);
 
-  // â”€â”€ Stats (Heartbeat) WebSocket â”€â”€
+  // --- Stats (Heartbeat) WebSocket ---
   useEffect(() => {
     let ws: WebSocket | null = null;
     let dead = false;
@@ -491,7 +511,7 @@ const AppLayout: React.FC = () => {
     saveStatus, handleSoundToggle, smtpEmail, systemIp,
     focusedPersonId, handleSetFocus, focusedPersonVisible,
     semanticQuery, semanticResults, semanticLoading, handleSemanticSearch,
-    isReconnecting, username, userEmail, handleLogout,
+    isReconnecting, username, userEmail, role, handleLogout,
     systemLatency,
   };
 
@@ -499,13 +519,13 @@ const AppLayout: React.FC = () => {
     <AppContext.Provider value={ctxValue}>
       <div className="flex h-screen overflow-hidden" style={{ background: '#e8ecf0', color: '#191c1e', fontFamily: "'Inter', sans-serif" }}>
 
-        {/* â”€â”€ Sidebar â”€â”€ */}
-        <Sidebar />
+        {/* --- Sidebar --- */}
+        {role !== 'organization' && <Sidebar />}
 
-        {/* â”€â”€ Main area â”€â”€ */}
+        {/* --- Main area --- */}
         <div className="flex flex-col flex-1 overflow-hidden">
 
-          {/* â”€â”€ Top header â”€â”€ */}
+          {/* --- Top header --- */}
           <header className="shrink-0 flex items-center justify-between px-6"
             style={{ height: '64px', background: '#e0e3e5', borderBottom: '1px solid rgba(0,0,0,0.1)', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
             {/* Page title */}
@@ -598,7 +618,7 @@ const AppLayout: React.FC = () => {
             </div>
           </header>
 
-          {/* â”€â”€ Reconnecting overlay â”€â”€ */}
+          {/* --- Reconnecting overlay --- */}
           <AnimatePresence>
             {isReconnecting && (
               <motion.div
@@ -621,7 +641,7 @@ const AppLayout: React.FC = () => {
             )}
           </AnimatePresence>
 
-          {/* â”€â”€ Page content â”€â”€ */}
+          {/* --- Page content --- */}
           <main className="flex-1 overflow-hidden">
             <motion.div
               key={location.pathname}
@@ -633,9 +653,72 @@ const AppLayout: React.FC = () => {
               <Outlet />
             </motion.div>
           </main>
-        </div>
       </div>
-    </AppContext.Provider>
+
+      </div>
+
+      {/* --- Global Alert Toast --- */}
+    <AnimatePresence>
+      {lastAlert && (
+        <motion.div
+          initial={{ opacity: 0, x: 100, y: 0 }}
+          animate={{ opacity: 1, x: 0, y: 0 }}
+          exit={{ opacity: 0, scale: 0.9, x: 50 }}
+          onClick={() => setLastAlert(null)}
+          className="fixed bottom-8 right-8 z-[9999] w-[380px] cursor-pointer overflow-hidden group"
+          style={{
+            background: '#191c1e',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: '1rem',
+            boxShadow: '0 20px 50px rgba(0,0,0,0.6)',
+          }}
+        >
+          {/* Progress bar timer */}
+          <motion.div 
+            initial={{ width: '100%' }} animate={{ width: '0%' }} transition={{ duration: 6, ease: 'linear' }}
+            className="h-1 bg-[#2480ff]" 
+          />
+          
+          <div className="p-5 flex gap-4">
+            <div className={`shrink-0 w-12 h-12 rounded-xl flex items-center justify-center ${lastAlert.is_person_search_match ? 'bg-[#ba1a1a] shadow-[0_0_20px_rgba(186,26,26,0.4)]' : 'bg-[#2480ff]'}`}>
+              <Shield size={24} color="white" />
+            </div>
+            
+            <div className="flex-1 min-w-0">
+              <div className="flex justify-between items-start mb-1">
+                <span className={`text-[10px] font-black tracking-[0.2em] uppercase ${lastAlert.is_person_search_match ? 'text-[#ffb4ab]' : 'text-[#2480ff]'}`}>
+                  {lastAlert.is_person_search_match ? 'Watchlist Match' : 'Security Alert'}
+                </span>
+                <span className="text-[10px] text-white/30 font-bold">{lastAlert.timestamp}</span>
+              </div>
+              
+              <h4 className="text-sm font-black text-white uppercase tracking-tight truncate">
+                {lastAlert.is_person_search_match ? 'Target Identified' : lastAlert.detections.map(d => d.label).join(', ')}
+              </h4>
+              
+              <div className="flex items-center gap-2 mt-3">
+                <div className="flex items-center gap-1.5 px-2 py-0.5 bg-white/5 rounded text-[10px] font-bold text-white/60">
+                  <MapPin size={10} />
+                  {lastAlert.location?.id || 'Main Entrance'}
+                </div>
+                <div className="flex items-center gap-1.5 px-2 py-0.5 bg-white/5 rounded text-[10px] font-bold text-white/60">
+                  <Activity size={10} />
+                  {(lastAlert.detections[0]?.confidence * 100).toFixed(0)}% CONF
+                </div>
+              </div>
+            </div>
+            
+            <button className="shrink-0 p-1 text-white/20 hover:text-white transition-colors">
+              <X size={16} />
+            </button>
+          </div>
+
+          {/* Hover highlight overlay */}
+          <div className="absolute inset-0 bg-white/0 group-hover:bg-white/[0.03] transition-colors pointer-events-none" />
+        </motion.div>
+      )}
+    </AnimatePresence>
+  </AppContext.Provider>
   );
 };
 

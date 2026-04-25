@@ -69,6 +69,16 @@ A high-priority operator control for active pursuit scenarios.
 
 ---
 
+### **7. 🏛️ Governance & Institutional Command (Enterprise Hubs)**
+SmartSurv now supports a sophisticated, multi-tier organizational structure for large-scale security operations.
+
+*   **Admin Approval Workflow:** New administrative accounts are placed in a `PENDING_APPROVAL` state. They cannot access system controls until an existing Master Admin verifies and grants them authorization via the **User Management** hub.
+*   **Specialized Institutional Dashboards:** Organizations (e.g., Police Stations, Hospitals) receive a dedicated **Station Profile** feed. This view is stripped of complex configuration tools and focused entirely on live incident response and facility telemetry.
+*   **Granular Notification Routing:** Admins can configure exactly which detection classes (e.g., Gun, Fire, Violence) are broadcast to specific organizations. This prevents alert fatigue and ensures data relevance.
+*   **Professional Identity Cards:** Institutional users have a "Station Profile" identity including physical address, facility type, and emergency dispatch contact details.
+
+---
+
 ## 📺 **Mission Control Dashboard Features**
 
 ### **4. Analytics Intelligence Core (ANALYTICS_CORE)**
@@ -79,6 +89,16 @@ A high-priority operator control for active pursuit scenarios.
     *   **Independent Scroll:** The detections table has its own scrollable viewport (`max-h-64`) so the rest of the analytics dashboard stays fixed — no full-page scroll triggered by the table.
     *   **Sticky Column Headers:** Table headers remain visible while scrolling through detections.
     *   **Full History:** All logged incidents are shown (no arbitrary 10-row cap).
+
+### **5. Advanced Pro Analytics Suite (Research Level)**
+The system includes high-end visual telemetry designed for security research and operational auditing.
+
+*   **Threat Signature Radar:** A multi-dimensional radar chart mapping the distribution of threat types (Gun vs. Knife vs. Violence) in real time.
+*   **Detection Density Scatter:** A temporal scatter plot (Confidence vs. Time) that proves AI reliability and identifies high-risk time windows.
+*   **Live System Diagnostics:** Real-time line graphs tracking inference latency (ms) and system load, ensuring hardware stability under multi-feed pressure.
+*   **Sparkline Micro-Trends:** Every dashboard metric includes a "Mini-Trend" line showing the last 15 minutes of activity at a glance.
+
+---
 
 ---
 
@@ -128,17 +148,19 @@ A high-priority operator control for active pursuit scenarios.
 
 ## 🛠️ **System Technical Stack**
 
-| **Layer** | **Technology** | **Purpose** |
+| **layer** | **Technology** | **Purpose** |
 | :--- | :--- | :--- |
 | **🚀 Backend** | **FastAPI (Async Python)** | Sub-20ms inference and async WebSocket handling. |
-| **🧠 Real-Time Video** | **WebRTC (UDP)** | **New:** Ultra-low latency streaming for instant visualization. |
-| **⚡ Inference Engine** | **ONNX Runtime** | **New:** Optimized C++ backend providing a 3x speed boost. |
+| **🧠 Real-Time Video** | **WebRTC (UDP)** | Ultra-low latency streaming for instant visualization. |
+| **⚡ Inference Engine** | **ONNX Runtime** | Optimized C++ backend providing a 3x speed boost. |
+| **🛡️ Governance** | **Role-Based Access Control** | **New:** Admin Approval workflow and Org-specific notification filtering. |
+| **📊 Analytics** | **Recharts & Framer Motion** | **New:** Pro-level Radar, Scatter, and Live Telemetry charts. |
 | **🧠 Object AI** | **YOLOv11 (Ultralytics)** | Weapon, smoking, and violence classification. |
-| **🔍 Facial AI** | **FaceNet (InceptionResnetV1) & MTCNN** | 98%+ accurate biometric signature matching. |
-| **🧬 Semantic AI** | **OpenCLIP ViT-B-32 (LAION-2B)** | Natural language person search via multimodal embeddings. |
+| **🔍 Facial AI** | **FaceNet & MTCNN** | 98%+ accurate biometric signature matching. |
+| **🧬 Semantic AI** | **OpenCLIP ViT-B-32** | Natural language person search via multimodal embeddings. |
 | **🎨 Frontend** | **ReactJS 19 (TypeScript)** | Next-generation UI with high-performance animations. |
 | **📡 Protocols** | **WSS, WebRTC & SMTP** | Real-time alerts, low-latency video, and binary streaming. |
-| **🗄️ Database** | **SQLite & SQLAlchemy** | Encrypted user management and watchlist persistence. |
+| **🗄️ Database** | **SQLite & SQLAlchemy** | Encrypted user management and organization metadata. |
 
 ---
 
@@ -178,6 +200,8 @@ npm run dev
 *   **Natural Language Surveillance:** Operators can search CCTV logs using plain English descriptions (e.g., "man in blue jacket").
 *   **Privacy-by-Design Architecture:** Real-time selective face blurring protects bystander privacy at the AI level, not just the policy level. Faces are blurred _before_ they reach any log or human eye, unless algorithmically authorized.
 *   **Distributed Scalability:** Unlike traditional DVR-based systems, SmartSurv ingests cameras from anywhere in the world via WebSocket binary tunneling.
+*   **Institutional Governance & Approval:** Implementation of a multi-tier authorization system where new Admins require verification from existing ones, coupled with granular notification routing for agencies (Police/Hospitals).
+*   **Advanced Operational Analytics:** Use of research-grade visualizations (Radar/Scatter/Sparklines) to translate raw AI detections into actionable security intelligence.
 *   **Parallel Inference Engine:** `ThreadPoolExecutor` runs YOLO + FaceNet + CLIP simultaneously without dropping frame rates.
 *   **Person Re-Identification (Re-ID):** In-memory buffer with 5-minute cooldown logic, dual FaceNet + CLIP embeddings, and cross-camera tracking via Tactical Focus Mode.
 *   **Unified UI/UX:** Single-pane-of-glass dashboard integrating AI thresholds, live video, semantic search, biometric logs, privacy controls, and system diagnostics.

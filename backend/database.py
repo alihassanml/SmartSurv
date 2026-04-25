@@ -21,6 +21,11 @@ class User(Base):
     verification_code = Column(String, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
     is_admin = Column(Boolean, default=False, nullable=False)
+    role = Column(String, default="admin") # admin, user, or organization
+    is_approved = Column(Boolean, default=True, nullable=False) # Admins need approval
+    organization_type = Column(String, nullable=True) # Police Station, Hospital, etc.
+    organization_address = Column(String, nullable=True)
+    allowed_notifications = Column(Text, default='["person", "knife", "gun", "smoking", "violence", "watchlist_match"]') # JSON list
 
 class Camera(Base):
     """Online / URL cameras managed via the Cameras page."""
@@ -39,6 +44,19 @@ class Setting(Base):
     key = Column(String, unique=True, index=True, nullable=False)
     value = Column(Text, nullable=False)
 
+class Alert(Base):
+    """Historical record of security alerts."""
+    __tablename__ = "alerts"
+    id = Column(Integer, primary_key=True, index=True)
+    timestamp = Column(String, nullable=False) # Human readable
+    backend_ts = Column(Integer, index=True) # ms since epoch
+    feed_id = Column(String, nullable=False)
+    detections = Column(Text, nullable=False) # JSON string
+    is_person_search_match = Column(Boolean, default=False)
+    image_base64 = Column(Text, nullable=True) # Optional: keep small or store path
+    location_lat = Column(String, nullable=True)
+    location_lon = Column(String, nullable=True)
+
 Base.metadata.create_all(bind=engine)
 
 # --- SQLite migration: add new columns to existing tables if missing ---
@@ -54,6 +72,11 @@ def _run_migrations():
             ("verification_code", "VARCHAR"),
             ("is_active",         "BOOLEAN NOT NULL DEFAULT 1"),
             ("is_admin",          "BOOLEAN NOT NULL DEFAULT 0"),
+            ("role",              "VARCHAR DEFAULT 'admin'"),
+            ("is_approved",       "BOOLEAN NOT NULL DEFAULT 1"),
+            ("organization_type", "VARCHAR"),
+            ("organization_address", "VARCHAR"),
+            ("allowed_notifications", "TEXT DEFAULT '[\"person\", \"knife\", \"gun\", \"smoking\", \"violence\", \"watchlist_match\"]'"),
         ]:
             if col not in existing_users:
                 conn.execute(text(f"ALTER TABLE users ADD COLUMN {col} {ddl}"))

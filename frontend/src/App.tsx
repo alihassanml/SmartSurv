@@ -14,6 +14,8 @@ import SettingsPage from './pages/dashboard/SettingsPage';
 import SystemHealth from './pages/dashboard/SystemHealth';
 import UsersPage from './pages/dashboard/UsersPage';
 import CamerasPage from './pages/dashboard/CamerasPage';
+import OrganizationFeed from './pages/dashboard/OrganizationFeed';
+import OrganizationControls from './pages/dashboard/OrganizationControls';
 
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   const token = localStorage.getItem('token');
@@ -46,6 +48,8 @@ const App: React.FC = () => {
           <Route path="cameras" element={<CamerasPage />} />
           <Route path="system" element={<SystemHealth />} />
           <Route path="users" element={<UsersPage />} />
+          <Route path="organization" element={<OrganizationFeed />} />
+          <Route path="organization-controls" element={<OrganizationControls />} />
         </Route>
       </Routes>
     </Router>
