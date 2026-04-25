@@ -45,16 +45,16 @@ const Signup: React.FC = () => {
   };
 
   const inputStyle: React.CSSProperties = {
-    background: '#e8ecf0',
-    border: '1px solid rgba(0,0,0,0.12)',
-    color: '#191c1e',
+    background: 'var(--color-background)',
+    border: '1px solid var(--color-outline-variant)',
+    color: 'var(--color-on-surface)',
     outline: 'none',
     fontFamily: "'Inter', sans-serif",
-    borderRadius: '0.375rem',
+    borderRadius: '0.75rem',
   };
 
   const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
-    e.currentTarget.style.borderColor = '#2480ff';
+    e.currentTarget.style.borderColor = 'var(--color-primary)';
     e.currentTarget.style.boxShadow = '0 0 0 2px rgba(36,128,255,0.15)';
   };
   const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
@@ -64,28 +64,28 @@ const Signup: React.FC = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden"
-      style={{ background: '#e8ecf0', color: '#191c1e', fontFamily: "'Inter', sans-serif" }}>
+      style={{ background: 'var(--color-background)', color: 'var(--color-on-surface)', fontFamily: "'Inter', sans-serif" }}>
 
       {/* Dot grid background */}
-      <div className="absolute inset-0 z-0 pointer-events-none"
+      <div className="fixed inset-0 z-0 pointer-events-none"
         style={{
-          backgroundImage: 'radial-gradient(circle, rgba(36,128,255,0.1) 1px, transparent 1px)',
-          backgroundSize: '28px 28px',
-          opacity: 0.6,
+          backgroundImage: 'radial-gradient(circle, var(--color-outline) 1.5px, transparent 1.5px)',
+          backgroundSize: '32px 32px',
+          opacity: 0.5,
         }} />
 
-      {/* Top glow */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-64 pointer-events-none"
-        style={{ background: 'radial-gradient(ellipse, rgba(36,128,255,0.07) 0%, transparent 70%)' }} />
+      {/* Top ambient tint */}
+      <div className="fixed inset-0 z-0 pointer-events-none"
+        style={{ background: 'radial-gradient(ellipse 80% 50% at 50% -20%, var(--color-primary-container) 0%, transparent 70%)' }} />
 
       {/* Logo */}
       <div className="absolute top-6 left-6 flex items-center gap-2.5 cursor-pointer group z-10"
         onClick={() => navigate('/')}>
-        <div className="w-8 h-8 flex items-center justify-center transition-all duration-300"
-          style={{ border: '1px solid rgba(36,128,255,0.35)', borderRadius: '0.375rem', color: '#2480ff', background: 'rgba(36,128,255,0.06)' }}>
+        <div className="w-8 h-8 flex items-center justify-center transition-all duration-300 rounded-xl shadow-sm"
+          style={{ border: '1px solid var(--color-outline-variant)', color: 'var(--color-primary)', background: 'var(--color-surface)' }}>
           <Shield className="w-4 h-4" />
         </div>
-        <span style={{ fontSize: '0.875rem', fontFamily: "'Manrope', sans-serif", fontWeight: 800, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#191c1e' }}>SmartSurv</span>
+        <span style={{ fontSize: '0.875rem', fontFamily: "'Manrope', sans-serif", fontWeight: 800, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--color-on-surface)' }}>SmartSurv</span>
       </div>
 
       {/* Card */}
@@ -95,46 +95,40 @@ const Signup: React.FC = () => {
         transition={{ duration: 0.6, ease: 'easeOut' }}
         className="relative z-10 w-full max-w-sm mx-4">
 
-        {/* Corner accents */}
-        <div className="absolute -top-px -left-px w-10 h-10 border-t-2 border-l-2" style={{ borderColor: '#2480ff' }} />
-        <div className="absolute -top-px -right-px w-10 h-10 border-t-2 border-r-2" style={{ borderColor: '#2480ff' }} />
-        <div className="absolute -bottom-px -left-px w-10 h-10 border-b-2 border-l-2" style={{ borderColor: '#2480ff' }} />
-        <div className="absolute -bottom-px -right-px w-10 h-10 border-b-2 border-r-2" style={{ borderColor: '#2480ff' }} />
-
-        <div className="p-8 relative overflow-hidden"
-          style={{ background: '#e0e3e5', border: '1px solid rgba(0,0,0,0.1)', borderRadius: '0.125rem', boxShadow: '0 4px 24px rgba(0,0,0,0.1)' }}>
+        <div className="p-8 relative overflow-hidden bg-white rounded-3xl border border-[var(--color-outline-variant)] shadow-sm hover:shadow-xl transition-all duration-300"
+          style={{ background: 'var(--color-surface)' }}>
 
           {/* Success State */}
           {success && (
             <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 animate-fade-in"
               style={{ background: 'rgba(255,255,255,0.97)' }}>
-              <CheckCircle className="w-12 h-12" style={{ color: '#2480ff' }} />
-              <p className="text-sm font-bold tracking-wide" style={{ fontFamily: "'Manrope', sans-serif", color: '#191c1e' }}>
+              <CheckCircle className="w-12 h-12" style={{ color: 'var(--color-primary)' }} />
+              <p className="text-sm font-bold tracking-wide" style={{ fontFamily: "'Manrope', sans-serif", color: 'var(--color-on-surface)' }}>
                 Verification code sent!
               </p>
-              <p className="text-[11px]" style={{ color: '#74777d' }}>Check your email for the verification code...</p>
+              <p className="text-[11px]" style={{ color: 'var(--color-outline)' }}>Check your email for the verification code...</p>
             </div>
           )}
 
           {/* Header */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-14 h-14 mb-4"
-              style={{ border: '1px solid rgba(36,128,255,0.3)', borderRadius: '0.375rem', color: '#2480ff', background: 'rgba(36,128,255,0.06)' }}>
+            <div className="inline-flex items-center justify-center w-14 h-14 mb-4 rounded-2xl"
+              style={{ border: '1px solid var(--color-outline-variant)', color: 'var(--color-primary)', background: 'var(--color-surface-container)' }}>
               <User className="w-6 h-6" />
             </div>
             <h1 className="text-2xl font-bold tracking-tight uppercase mb-1"
-              style={{ fontFamily: "'Manrope', sans-serif", color: '#191c1e', letterSpacing: '0.08em' }}>
+              style={{ fontFamily: "'Manrope', sans-serif", color: 'var(--color-on-surface)', letterSpacing: '0.08em' }}>
               Create Account
             </h1>
-            <p className="text-[11px] tracking-[0.2em]" style={{ color: '#74777d' }}>
+            <p className="text-[11px] tracking-[0.2em]" style={{ color: 'var(--color-outline)' }}>
               Register for access
             </p>
           </div>
 
           {/* Error */}
           {error && (
-            <div className="mb-5 flex items-start gap-2.5 px-3 py-2.5 animate-fade-in"
-              style={{ border: '1px solid rgba(186,26,26,0.25)', background: 'rgba(186,26,26,0.06)', borderRadius: '0.375rem' }}>
+            <div className="mb-5 flex items-start gap-2.5 px-3 py-2.5 animate-fade-in rounded-xl"
+              style={{ border: '1px solid var(--color-error)', background: 'var(--color-error-container)' }}>
               <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" style={{ color: '#ba1a1a' }} />
               <span className="text-[11px] leading-relaxed" style={{ color: '#ba1a1a' }}>{error}</span>
             </div>
@@ -144,10 +138,10 @@ const Signup: React.FC = () => {
             {/* Username */}
             <div>
               <label className="block text-[10px] uppercase tracking-[0.15em] mb-2 font-semibold"
-                style={{ color: '#74777d' }}>Username</label>
+                style={{ color: 'var(--color-outline)' }}>Username</label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5"
-                  style={{ color: '#c4c6cc' }} />
+                  style={{ color: 'var(--color-outline-variant)' }} />
                 <input id="signup-username" type="text" value={username}
                   onChange={e => setUsername(e.target.value)}
                   onFocus={handleFocus} onBlur={handleBlur}
@@ -159,10 +153,10 @@ const Signup: React.FC = () => {
             {/* Email */}
             <div>
               <label className="block text-[10px] uppercase tracking-[0.15em] mb-2 font-semibold"
-                style={{ color: '#74777d' }}>Email Address</label>
+                style={{ color: 'var(--color-outline)' }}>Email Address</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5"
-                  style={{ color: '#c4c6cc' }} />
+                  style={{ color: 'var(--color-outline-variant)' }} />
                 <input id="signup-email" type="email" value={email}
                   onChange={e => setEmail(e.target.value)}
                   onFocus={handleFocus} onBlur={handleBlur}
@@ -174,21 +168,21 @@ const Signup: React.FC = () => {
             {/* Role */}
             <div>
               <label className="block text-[10px] uppercase tracking-[0.15em] mb-2 font-semibold"
-                style={{ color: '#74777d' }}>Account Type</label>
+                style={{ color: 'var(--color-outline)' }}>Account Type</label>
               <div className="relative">
                 <Shield className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5"
-                  style={{ color: '#c4c6cc' }} />
+                  style={{ color: 'var(--color-outline-variant)' }} />
                 <select 
                   value={role}
                   onChange={e => setRole(e.target.value)}
-                  onFocus={(e) => { e.currentTarget.style.borderColor = '#2480ff'; }}
-                  onBlur={(e) => { e.currentTarget.style.borderColor = 'rgba(0,0,0,0.12)'; }}
-                  className="w-full pl-9 pr-3 py-3 text-sm transition-all duration-200 appearance-none bg-[#e8ecf0]"
+                  onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--color-primary)'; }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--color-outline-variant)'; }}
+                  className="w-full pl-9 pr-3 py-3 text-sm transition-all duration-200 appearance-none bg-transparent"
                   style={inputStyle}
                 >
-                  <option value="admin">ADMIN (MASTER_CONTROL)</option>
-                  <option value="user">USER (OPERATOR)</option>
-                  <option value="organization">ORGANIZATION (ALERT_FEED)</option>
+                  <option value="admin" className="text-black bg-white">ADMIN (MASTER_CONTROL)</option>
+                  <option value="user" className="text-black bg-white">USER (OPERATOR)</option>
+                  <option value="organization" className="text-black bg-white">ORGANIZATION (ALERT_FEED)</option>
                 </select>
               </div>
             </div>
@@ -198,25 +192,27 @@ const Signup: React.FC = () => {
               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="space-y-4 mb-4">
                 <div>
                   <label className="block text-[10px] uppercase tracking-[0.15em] mb-2 font-semibold"
-                    style={{ color: '#74777d' }}>Organization Type</label>
+                    style={{ color: 'var(--color-outline)' }}>Organization Type</label>
                   <div className="relative">
-                    <Shield className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: '#c4c6cc' }} />
+                    <Shield className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: 'var(--color-outline-variant)' }} />
                     <select 
                       value={orgType}
                       onChange={e => setOrgType(e.target.value)}
-                      className="w-full pl-9 pr-3 py-3 text-sm transition-all duration-200 appearance-none bg-[#e8ecf0]"
+                      className="w-full pl-9 pr-3 py-3 text-sm transition-all duration-200 appearance-none bg-transparent"
                       style={inputStyle}
+                      onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--color-primary)'; }}
+                      onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--color-outline-variant)'; }}
                     >
-                      <option value="Police Station">POLICE_STATION</option>
-                      <option value="Hospital">HOSPITAL_FACILITY</option>
-                      <option value="Security Agency">SECURITY_AGENCY</option>
-                      <option value="Corporate Office">CORPORATE_OFFICE</option>
+                      <option value="Police Station" className="text-black bg-white">POLICE_STATION</option>
+                      <option value="Hospital" className="text-black bg-white">HOSPITAL_FACILITY</option>
+                      <option value="Security Agency" className="text-black bg-white">SECURITY_AGENCY</option>
+                      <option value="Corporate Office" className="text-black bg-white">CORPORATE_OFFICE</option>
                     </select>
                   </div>
                 </div>
                 <div>
                   <label className="block text-[10px] uppercase tracking-[0.15em] mb-2 font-semibold"
-                    style={{ color: '#74777d' }}>Physical Address</label>
+                    style={{ color: 'var(--color-outline)' }}>Physical Address</label>
                   <input type="text" value={orgAddress}
                     onChange={e => setOrgAddress(e.target.value)}
                     onFocus={handleFocus} onBlur={handleBlur}
@@ -229,10 +225,10 @@ const Signup: React.FC = () => {
             {/* Password */}
             <div>
               <label className="block text-[10px] uppercase tracking-[0.15em] mb-2 font-semibold"
-                style={{ color: '#74777d' }}>Password</label>
+                style={{ color: 'var(--color-outline)' }}>Password</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5"
-                  style={{ color: '#c4c6cc' }} />
+                  style={{ color: 'var(--color-outline-variant)' }} />
                 <input id="signup-password" type="password" value={password}
                   onChange={e => setPassword(e.target.value)}
                   onFocus={handleFocus} onBlur={handleBlur}
@@ -246,10 +242,10 @@ const Signup: React.FC = () => {
               id="signup-submit-btn"
               type="submit"
               disabled={loading || success}
-              className="btn-primary w-full py-3.5 font-bold text-[11px] tracking-[0.2em] uppercase transition-all duration-300 flex items-center justify-center gap-2 mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{ background: '#2480ff', border: '2px solid #2480ff', color: '#ffffff', borderRadius: '0.375rem' }}
-              onMouseEnter={e => { if (!loading && !success) { (e.currentTarget as HTMLButtonElement).style.background = '#1a6fef'; (e.currentTarget as HTMLButtonElement).style.borderColor = '#1a6fef'; } }}
-              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = '#2480ff'; (e.currentTarget as HTMLButtonElement).style.borderColor = '#2480ff'; }}
+              className="btn-primary w-full py-3.5 font-bold text-[11px] tracking-[0.2em] uppercase transition-all duration-300 flex items-center justify-center gap-2 mt-2 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl"
+              style={{ background: 'var(--color-primary)', border: '2px solid var(--color-primary)', color: '#ffffff' }}
+              onMouseEnter={e => { if (!loading && !success) { (e.currentTarget as HTMLButtonElement).style.background = 'var(--color-primary-container)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--color-primary-container)'; } }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--color-primary)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--color-primary)'; }}
             >
               {loading ? (
                 <>
@@ -267,14 +263,14 @@ const Signup: React.FC = () => {
 
           {/* Footer link */}
           <div className="mt-6 pt-5 text-center" style={{ borderTop: '1px solid rgba(0,0,0,0.1)' }}>
-            <span className="text-[11px]" style={{ color: '#74777d' }}>Already registered? </span>
+            <span className="text-[11px]" style={{ color: 'var(--color-outline)' }}>Already registered? </span>
             <button
               id="signup-to-login-link"
               onClick={() => navigate('/login')}
               className="text-[11px] font-semibold underline underline-offset-2 transition-colors"
-              style={{ color: '#2480ff' }}
-              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#1a6fef'; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = '#2480ff'; }}
+              style={{ color: 'var(--color-primary)' }}
+              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-primary-container)'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-primary)'; }}
             >
               Sign In
             </button>

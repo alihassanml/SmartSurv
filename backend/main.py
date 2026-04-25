@@ -246,6 +246,8 @@ def get_db():
     finally:
         db.close()
 
+
+
 # --- WEBSOCKET BROADCASTER ---
 class ConnectionManager:
     def __init__(self):
@@ -354,6 +356,21 @@ async def lifespan(app: FastAPI):
 from fastapi.staticfiles import StaticFiles
 
 app = FastAPI(lifespan=lifespan)
+
+@app.get("/api/camera/stream/{feed_id}")
+async def stream_camera(feed_id: str):
+    """MJPEG streaming endpoint for mobile app and web preview."""
+    from fastapi.responses import StreamingResponse
+    
+    def generate():
+        while True:
+            frame = camera.get_jpeg_frame(feed_id)
+            if frame is not None:
+                yield (b'--frame\r\n'
+                       b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+            time.sleep(0.1) # ~10 FPS
+
+    return StreamingResponse(generate(), media_type="multipart/x-mixed-replace; boundary=frame")
 
 # Watchlist path used both by the API routes and by the static mount below.
 # The mount is registered LAST (end of file) to avoid Starlette's ordered

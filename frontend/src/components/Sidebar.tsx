@@ -40,17 +40,17 @@ const Sidebar: React.FC = () => {
       transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
       className="relative flex flex-col shrink-0"
       style={{
-        background: '#dde3ea',
-        borderRight: '1px solid rgba(0,0,0,0.1)',
-        boxShadow: '2px 0 8px rgba(0,0,0,0.05)',
+        background: 'var(--color-surface)',
+        borderRight: '1px solid var(--color-outline-variant)',
+        boxShadow: '2px 0 8px rgba(0,0,0,0.02)',
         height: '100%',
       }}
     >
       {/* --- Logo header --- */}
       <div className="flex items-center gap-3 px-4 shrink-0"
-        style={{ height: '64px', borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
+        style={{ height: '64px', borderBottom: '1px solid var(--color-outline-variant)' }}>
         <div className="w-9 h-9 flex items-center justify-center shrink-0"
-          style={{ border: '1px solid rgba(36,128,255,0.35)', borderRadius: '0.375rem', color: '#2480ff', background: 'rgba(36,128,255,0.06)' }}>
+          style={{ border: '1px solid var(--color-outline-variant)', borderRadius: '0.5rem', color: 'var(--color-primary)', background: 'var(--color-surface-container)' }}>
           <Shield className="w-5 h-5" />
         </div>
         <AnimatePresence>
@@ -60,7 +60,7 @@ const Sidebar: React.FC = () => {
               exit={{ opacity: 0, width: 0 }}
               transition={{ duration: 0.2 }}
               className="overflow-hidden whitespace-nowrap font-bold tracking-[0.15em] uppercase text-sm"
-              style={{ fontFamily: "'Manrope', sans-serif", color: '#191c1e' }}
+              style={{ fontFamily: "'Manrope', sans-serif", color: 'var(--color-on-surface)' }}
             >
               SmartSurv
             </motion.span>
@@ -74,13 +74,13 @@ const Sidebar: React.FC = () => {
         className="absolute flex items-center justify-center w-5 h-5 transition-colors duration-200 z-20"
         style={{
           top: '22px', right: '-10px',
-          background: '#e0e3e5',
-          border: '1px solid rgba(0,0,0,0.12)',
+          background: 'var(--color-surface)',
+          border: '1px solid var(--color-outline)',
           borderRadius: '50%',
-          color: '#74777d',
+          color: 'var(--color-outline)',
         }}
-        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#2480ff'; }}
-        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = '#74777d'; }}
+        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-primary)'; }}
+        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-outline)'; }}
       >
         {collapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronLeft className="w-3 h-3" />}
       </button>
@@ -95,26 +95,25 @@ const Sidebar: React.FC = () => {
               onClick={() => navigate(item.path)}
               className="flex items-center gap-3 px-3 py-2.5 w-full text-left transition-all duration-200 relative group"
               style={{
-                borderRadius: '0.375rem',
-                background: active ? '#e0e3e5' : 'transparent',
-                color: active ? '#2480ff' : '#44474c',
-                boxShadow: active ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+                borderRadius: '0.5rem',
+                background: active ? 'var(--color-primary-container)' : 'transparent',
+                color: active ? 'var(--color-primary)' : 'var(--color-on-surface-variant)',
               }}
               onMouseEnter={e => {
                 if (!active) {
-                  (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,0,0,0.04)';
-                  (e.currentTarget as HTMLButtonElement).style.color = '#191c1e';
+                  (e.currentTarget as HTMLButtonElement).style.background = 'var(--color-surface-container)';
+                  (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-on-surface)';
                 }
               }}
               onMouseLeave={e => {
-                (e.currentTarget as HTMLButtonElement).style.background = active ? '#e0e3e5' : 'transparent';
-                (e.currentTarget as HTMLButtonElement).style.color = active ? '#2480ff' : '#44474c';
+                (e.currentTarget as HTMLButtonElement).style.background = active ? 'var(--color-primary-container)' : 'transparent';
+                (e.currentTarget as HTMLButtonElement).style.color = active ? 'var(--color-primary)' : 'var(--color-on-surface-variant)';
               }}
             >
               {/* Active indicator */}
               {active && (
                 <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-r"
-                  style={{ background: '#2480ff' }} />
+                  style={{ background: 'var(--color-primary)' }} />
               )}
               <item.icon className="w-4 h-4 shrink-0" />
               <AnimatePresence>
@@ -137,7 +136,7 @@ const Sidebar: React.FC = () => {
 
       {/* --- Bottom nav --- */}
       <div className="px-2 pb-4 flex flex-col gap-0.5"
-        style={{ borderTop: '1px solid rgba(0,0,0,0.07)', paddingTop: '12px' }}>
+        style={{ borderTop: '1px solid var(--color-outline-variant)', paddingTop: '12px' }}>
         {isAdmin && bottomItems.map(item => {
           const active = isActive(item.path);
           return (
@@ -146,25 +145,24 @@ const Sidebar: React.FC = () => {
               onClick={() => navigate(item.path)}
               className="flex items-center gap-3 px-3 py-2.5 w-full text-left transition-all duration-200 relative"
               style={{
-                borderRadius: '0.375rem',
-                background: active ? '#e0e3e5' : 'transparent',
-                color: active ? '#2480ff' : '#44474c',
-                boxShadow: active ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+                borderRadius: '0.5rem',
+                background: active ? 'var(--color-primary-container)' : 'transparent',
+                color: active ? 'var(--color-primary)' : 'var(--color-on-surface-variant)',
               }}
               onMouseEnter={e => {
                 if (!active) {
-                  (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,0,0,0.04)';
-                  (e.currentTarget as HTMLButtonElement).style.color = '#191c1e';
+                  (e.currentTarget as HTMLButtonElement).style.background = 'var(--color-surface-container)';
+                  (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-on-surface)';
                 }
               }}
               onMouseLeave={e => {
-                (e.currentTarget as HTMLButtonElement).style.background = active ? '#e0e3e5' : 'transparent';
-                (e.currentTarget as HTMLButtonElement).style.color = active ? '#2480ff' : '#44474c';
+                (e.currentTarget as HTMLButtonElement).style.background = active ? 'var(--color-primary-container)' : 'transparent';
+                (e.currentTarget as HTMLButtonElement).style.color = active ? 'var(--color-primary)' : 'var(--color-on-surface-variant)';
               }}
             >
               {active && (
                 <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-r"
-                  style={{ background: '#2480ff' }} />
+                  style={{ background: 'var(--color-primary)' }} />
               )}
               <item.icon className="w-4 h-4 shrink-0" />
               <AnimatePresence>

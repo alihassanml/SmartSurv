@@ -37,37 +37,32 @@ const OrganizationFeed: React.FC = () => {
   }, []);
 
   return (
-    <div className="h-full bg-[#e8ecf0] font-sans flex flex-col overflow-hidden">
+    <div className="h-full bg-[var(--color-background)] font-sans flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="px-8 py-6 bg-white border-b border-[rgba(0,0,0,0.06)] flex items-center justify-between">
+      <div className="px-6 py-5 bg-white border-b border-[var(--color-outline-variant)] flex items-center justify-between">
         <div className="flex items-center gap-4">
-            <div className="p-3 bg-[#ba1a1a] rounded-xl shadow-[0_4px_15px_rgba(186,26,26,0.2)]">
-                <Shield size={24} color="white" />
+            <div className="p-2.5 rounded-xl shadow-[0_4px_12px_rgba(186,26,26,0.2)]" style={{ background: '#ba1a1a' }}>
+                <Shield size={20} color="white" />
             </div>
             <div>
-                <p className="text-[9px] tracking-[0.4em] font-black uppercase text-[#74777d]">Organization Hub</p>
-                <h1 className="text-2xl font-black tracking-tighter text-[#191c1e]">LIVE ALERT FEED</h1>
+                <p className="text-xs text-[var(--color-outline)]">Organization Hub</p>
+                <h1 className="text-lg font-bold text-[var(--color-on-surface)]">Live Alert Feed</h1>
             </div>
         </div>
-        <div className="flex items-center gap-6">
-            <div className="text-right">
-                <p className="text-[8px] font-black tracking-widest text-[#74777d] uppercase mb-1">Active Nodes</p>
-                <div className="flex items-center gap-2 justify-end">
-                    <div className="w-2 h-2 bg-[#16a34a] rounded-full animate-pulse" />
-                    <span className="text-xs font-black">SYSTEM_ONLINE</span>
-                </div>
-            </div>
+        <div className="flex items-center gap-3 px-4 py-2 rounded-xl" style={{ background: 'var(--color-surface-container-low)', border: '1px solid var(--color-outline-variant)' }}>
+            <div className="w-2 h-2 bg-[#16a34a] rounded-full animate-pulse" />
+            <span className="text-xs font-medium text-[var(--color-on-surface)]">System Online</span>
         </div>
       </div>
 
       <div className="flex-1 overflow-hidden flex">
         {/* Left: Alert List */}
-        <div className="w-[450px] border-r border-[rgba(0,0,0,0.06)] bg-white/50 overflow-y-auto custom-scrollbar p-6 space-y-4">
+        <div className="w-[420px] border-r border-[var(--color-outline-variant)] bg-[var(--color-surface-container-low)] overflow-y-auto p-4 space-y-3">
             <AnimatePresence initial={false}>
                 {alerts.length === 0 ? (
-                    <div className="h-full flex flex-col items-center justify-center opacity-30 text-center space-y-4">
+                    <div className="h-full flex flex-col items-center justify-center opacity-30 text-center space-y-4 pt-20">
                         <Bell size={40} />
-                        <p className="text-xs font-bold tracking-widest uppercase">Waiting for security events...</p>
+                        <p className="text-xs font-medium">Waiting for security events...</p>
                     </div>
                 ) : (
                     alerts.map((alert, i) => (
@@ -76,39 +71,40 @@ const OrganizationFeed: React.FC = () => {
                             initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}
                             onClick={() => setSelectedAlert(alert)}
-                            className={`p-4 rounded-xl border cursor-pointer transition-all ${
-                                selectedAlert === alert 
-                                ? 'bg-white border-[#2480ff] shadow-lg ring-1 ring-[#2480ff]/20' 
-                                : 'bg-white/80 border-[rgba(0,0,0,0.04)] hover:border-[#2480ff]/30 hover:shadow-md'
+                            className={`p-4 rounded-2xl border cursor-pointer transition-all ${
+                                selectedAlert === alert
+                                ? 'bg-white border-[var(--color-primary)] shadow-[0_4px_16px_rgba(36,128,255,0.1)]'
+                                : 'bg-white border-[var(--color-outline-variant)] hover:border-[var(--color-primary)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.04)]'
                             }`}
                         >
                             <div className="flex justify-between items-start mb-3">
-                                <span className={`px-2 py-0.5 rounded-sm text-[8px] font-black tracking-widest uppercase ${
-                                    alert.is_person_search_match ? 'bg-[#ba1a1a] text-white' : 'bg-[#2480ff]/10 text-[#2480ff]'
-                                }`}>
-                                    {alert.is_person_search_match ? 'WATCHLIST_MATCH' : 'ACTIVITY_DETECTED'}
+                                <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                                    alert.is_person_search_match
+                                    ? 'bg-red-50 text-[#ba1a1a] border border-red-200'
+                                    : 'border border-[var(--color-outline-variant)] text-[var(--color-primary)]'
+                                }`} style={!alert.is_person_search_match ? { background: 'rgba(36,128,255,0.08)' } : {}}>
+                                    {alert.is_person_search_match ? 'Watchlist Match' : 'Activity Detected'}
                                 </span>
-                                <div className="flex items-center gap-1.5 text-[9px] font-bold text-[#74777d]">
+                                <div className="flex items-center gap-1.5 text-xs text-[var(--color-outline)]">
                                     <Clock size={10} />
                                     {alert.timestamp}
                                 </div>
                             </div>
-
                             <div className="flex gap-3">
                                 {alert.image && (
-                                    <div className="w-16 h-16 rounded-lg overflow-hidden border border-[rgba(0,0,0,0.05)] bg-[#f0f2f5] shrink-0">
+                                    <div className="w-14 h-14 rounded-xl overflow-hidden border border-[var(--color-outline-variant)] shrink-0">
                                         <img src={`data:image/jpeg;base64,${alert.image}`} className="w-full h-full object-cover" alt="event" />
                                     </div>
                                 )}
                                 <div className="flex-1 min-w-0">
                                     <div className="flex flex-wrap gap-1 mb-2">
                                         {alert.detections.map((d, j) => (
-                                            <span key={j} className="text-[9px] font-black text-[#191c1e] bg-[#f0f2f5] px-2 py-0.5 rounded-sm uppercase">
+                                            <span key={j} className="text-xs font-medium text-[var(--color-on-surface)] px-2 py-0.5 rounded-lg capitalize" style={{ background: 'var(--color-surface-container-low)', border: '1px solid var(--color-outline-variant)' }}>
                                                 {d.label}
                                             </span>
                                         ))}
                                     </div>
-                                    <div className="flex items-center gap-1.5 text-[10px] text-[#74777d] font-bold truncate">
+                                    <div className="flex items-center gap-1.5 text-xs text-[var(--color-outline)] truncate">
                                         <MapPin size={10} />
                                         {alert.location?.id || 'Main Site Entrance'}
                                     </div>
@@ -129,15 +125,13 @@ const OrganizationFeed: React.FC = () => {
                 >
                     <div className="flex items-center justify-between">
                         <div>
-                            <h2 className="text-3xl font-black tracking-tighter text-[#191c1e] uppercase">Incident Detail</h2>
-                            <p className="text-xs font-bold text-[#74777d] tracking-widest mt-1">LOG_ID: {selectedAlert.feed_id.toUpperCase()}-{selectedAlert.timestamp}</p>
+                            <h2 className="text-xl font-bold text-[var(--color-on-surface)]">Incident Detail</h2>
+                            <p className="text-xs text-[var(--color-outline)] mt-1">Feed: {selectedAlert.feed_id.toUpperCase()} · {selectedAlert.timestamp}</p>
                         </div>
-                        <div className="flex items-center gap-3">
-                            <button className="flex items-center gap-2 px-4 py-2 bg-white border border-[rgba(0,0,0,0.1)] rounded-lg text-xs font-bold hover:bg-[#f8f9fa] transition-colors shadow-sm">
-                                <AlertTriangle size={14} className="text-[#ffbb33]" />
-                                Report Issue
-                            </button>
-                        </div>
+                        <button className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium transition-all hover:opacity-90" style={{ background: 'var(--color-surface-container-low)', border: '1px solid var(--color-outline-variant)', color: 'var(--color-on-surface)' }}>
+                            <AlertTriangle size={14} className="text-amber-500" />
+                            Report Issue
+                        </button>
                     </div>
 
                     <div className="grid grid-cols-2 gap-8">
@@ -156,40 +150,40 @@ const OrganizationFeed: React.FC = () => {
                                 </div>
                             </div>
 
-                            <div className="bg-white rounded-2xl p-6 border border-[rgba(0,0,0,0.06)] shadow-sm space-y-4">
-                                <h3 className="text-xs font-black tracking-[0.2em] text-[#74777d] uppercase border-b border-[rgba(0,0,0,0.04)] pb-3">Security Metadata</h3>
-                                <div className="grid grid-cols-2 gap-6">
+                            <div className="bg-white rounded-2xl p-6 border border-[var(--color-outline-variant)] shadow-[0_2px_8px_rgba(0,0,0,0.02)] space-y-4">
+                                <h3 className="text-xs font-bold text-[var(--color-outline)] border-b border-[var(--color-outline-variant)] pb-3">Security Metadata</h3>
+                                <div className="grid grid-cols-2 gap-5">
                                     <div>
-                                        <p className="text-[8px] font-black text-[#c4c6cc] uppercase mb-1">Time of Incident</p>
-                                        <p className="text-sm font-bold text-[#191c1e]">{selectedAlert.timestamp}</p>
+                                        <p className="text-xs text-[var(--color-outline)] mb-1">Time of Incident</p>
+                                        <p className="text-sm font-bold text-[var(--color-on-surface)]">{selectedAlert.timestamp}</p>
                                     </div>
                                     <div>
-                                        <p className="text-[8px] font-black text-[#c4c6cc] uppercase mb-1">Match Type</p>
-                                        <p className={`text-sm font-bold ${selectedAlert.is_person_search_match ? 'text-[#ba1a1a]' : 'text-[#2480ff]'}`}>
+                                        <p className="text-xs text-[var(--color-outline)] mb-1">Match Type</p>
+                                        <p className={`text-sm font-bold ${selectedAlert.is_person_search_match ? 'text-[#ba1a1a]' : 'text-[var(--color-primary)]'}`}>
                                             {selectedAlert.is_person_search_match ? 'Watchlist Hit' : 'Regular Detection'}
                                         </p>
                                     </div>
                                     <div>
-                                        <p className="text-[8px] font-black text-[#c4c6cc] uppercase mb-1">Zone Reference</p>
-                                        <p className="text-sm font-bold text-[#191c1e]">{selectedAlert.location?.id || 'Alpha-01'}</p>
+                                        <p className="text-xs text-[var(--color-outline)] mb-1">Zone Reference</p>
+                                        <p className="text-sm font-bold text-[var(--color-on-surface)]">{selectedAlert.location?.id || 'Alpha-01'}</p>
                                     </div>
                                     <div>
-                                        <p className="text-[8px] font-black text-[#c4c6cc] uppercase mb-1">Protocol</p>
-                                        <p className="text-sm font-bold text-[#16a34a]">SECURE_LINK</p>
+                                        <p className="text-xs text-[var(--color-outline)] mb-1">Protocol</p>
+                                        <p className="text-sm font-bold text-[#16a34a]">Secure Link</p>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
                         <div className="space-y-6">
-                            <div className="bg-[#191c1e] text-white rounded-2xl p-6 shadow-xl relative overflow-hidden">
+                            <div className="bg-[var(--color-on-surface)] text-white rounded-2xl p-6 shadow-xl relative overflow-hidden">
                                 <div className="absolute top-0 right-0 p-6 opacity-10">
                                     <MapPin size={100} />
                                 </div>
                                 <h3 className="text-[10px] font-black tracking-[0.3em] text-white/40 uppercase mb-6">Location Vector</h3>
                                 <div className="space-y-4 relative z-10">
                                     <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center text-[#2480ff] border border-white/10">
+                                        <div className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center text-[var(--color-primary)] border border-white/10">
                                             <MapPin size={20} />
                                         </div>
                                         <div>
@@ -203,16 +197,16 @@ const OrganizationFeed: React.FC = () => {
                                 </div>
                             </div>
 
-                            <div className="bg-white rounded-2xl p-6 border border-[rgba(0,0,0,0.06)] shadow-sm space-y-4">
-                                <h3 className="text-xs font-black tracking-[0.2em] text-[#74777d] uppercase border-b border-[rgba(0,0,0,0.04)] pb-3">Detections List</h3>
+                            <div className="bg-white rounded-2xl p-6 border border-[var(--color-outline-variant)] shadow-[0_2px_8px_rgba(0,0,0,0.02)] space-y-4">
+                                <h3 className="text-xs font-bold text-[var(--color-outline)] border-b border-[var(--color-outline-variant)] pb-3">Detections</h3>
                                 <div className="space-y-2">
                                     {selectedAlert.detections.map((det, idx) => (
-                                        <div key={idx} className="flex items-center justify-between p-3 bg-[#f8f9fa] rounded-lg">
+                                        <div key={idx} className="flex items-center justify-between p-3 rounded-xl" style={{ background: 'var(--color-surface-container-low)', border: '1px solid var(--color-outline-variant)' }}>
                                             <div className="flex items-center gap-3">
-                                                <div className="w-2 h-2 rounded-full bg-[#2480ff]" />
-                                                <span className="text-xs font-black text-[#191c1e] uppercase">{det.label}</span>
+                                                <div className="w-2 h-2 rounded-full bg-[var(--color-primary)]" />
+                                                <span className="text-sm font-medium text-[var(--color-on-surface)] capitalize">{det.label}</span>
                                             </div>
-                                            <span className="text-[10px] font-bold text-[#74777d]">{(det.confidence * 100).toFixed(1)}% CONF</span>
+                                            <span className="text-xs font-bold text-[var(--color-primary)]">{(det.confidence * 100).toFixed(1)}%</span>
                                         </div>
                                     ))}
                                 </div>
@@ -223,42 +217,42 @@ const OrganizationFeed: React.FC = () => {
             ) : (
                 <div className="h-full flex flex-col items-center justify-center text-center space-y-4 opacity-40">
                     <div className="p-6 bg-white rounded-full shadow-inner">
-                        <Eye size={48} className="text-[#2480ff]" />
+                        <Eye size={48} className="text-[var(--color-primary)]" />
                     </div>
                     <div>
-                        <h3 className="text-lg font-black tracking-tighter text-[#191c1e]">SELECT AN INCIDENT</h3>
-                        <p className="text-xs font-bold text-[#74777d] tracking-widest uppercase">Select an alert from the left to view deep telemetry</p>
+                        <h3 className="text-lg font-black tracking-tighter text-[var(--color-on-surface)]">SELECT AN INCIDENT</h3>
+                        <p className="text-xs font-bold text-[var(--color-outline)] tracking-widest uppercase">Select an alert from the left to view deep telemetry</p>
                     </div>
                 </div>
             )}
         </div>
 
         {/* Far Right: Station Profile */}
-        <div className="w-[320px] bg-white p-6 overflow-y-auto flex flex-col gap-8 shadow-[-4px_0_15px_rgba(0,0,0,0.02)]">
-            <div className="space-y-4 text-center">
-                <div className="w-20 h-20 bg-[#191c1e] rounded-2xl mx-auto flex items-center justify-center text-white border-4 border-[#e8ecf0] shadow-xl">
-                    <Shield size={40} />
+        <div className="w-[300px] bg-white border-l border-[var(--color-outline-variant)] p-5 overflow-y-auto flex flex-col gap-6">
+            <div className="space-y-3 text-center">
+                <div className="w-16 h-16 bg-[var(--color-primary)] rounded-2xl mx-auto flex items-center justify-center text-white shadow-[0_4px_16px_rgba(36,128,255,0.2)]">
+                    <Shield size={28} />
                 </div>
                 <div>
-                    <h3 className="text-sm font-black tracking-widest text-[#191c1e] uppercase">{localStorage.getItem('username')}</h3>
-                    <p className="text-[9px] font-bold text-[#2480ff] tracking-[0.2em] mt-1">VERIFIED_FACILITY_UNIT</p>
+                    <h3 className="text-sm font-bold text-[var(--color-on-surface)]">{localStorage.getItem('username')}</h3>
+                    <p className="text-xs text-[var(--color-primary)] mt-0.5">Verified Facility Unit</p>
                 </div>
             </div>
 
-            <div className="space-y-6">
+            <div className="space-y-5">
                 <div className="space-y-2">
-                    <p className="text-[9px] font-black text-[#c4c6cc] uppercase tracking-widest">Facility Details</p>
-                    <div className="p-4 bg-[#f8f9fa] border border-[rgba(0,0,0,0.04)] rounded-xl space-y-3">
+                    <p className="text-xs font-bold text-[var(--color-outline)]">Facility Details</p>
+                    <div className="p-4 rounded-2xl space-y-3" style={{ background: 'var(--color-surface-container-low)', border: '1px solid var(--color-outline-variant)' }}>
                         <div className="flex items-start gap-3">
-                            <Building size={16} className="text-[#2480ff] mt-0.5" />
+                            <Building size={15} className="text-[var(--color-primary)] mt-0.5 shrink-0" />
                             <div>
-                                <p className="text-[10px] font-black text-[#191c1e]">STATION_LEVEL_01</p>
-                                <p className="text-[9px] text-[#74777d] mt-0.5">High Priority Response Unit</p>
+                                <p className="text-sm font-medium text-[var(--color-on-surface)]">Station Level 01</p>
+                                <p className="text-xs text-[var(--color-outline)] mt-0.5">High Priority Response Unit</p>
                             </div>
                         </div>
-                        <div className="flex items-start gap-3 border-t border-[rgba(0,0,0,0.06)] pt-3">
-                            <MapPin size={16} className="text-[#ff4466] mt-0.5" />
-                            <p className="text-[9px] font-bold text-[#191c1e] leading-relaxed">
+                        <div className="flex items-start gap-3 border-t border-[var(--color-outline-variant)] pt-3">
+                            <MapPin size={15} className="text-[#ba1a1a] mt-0.5 shrink-0" />
+                            <p className="text-xs text-[var(--color-on-surface)] leading-relaxed">
                                 {localStorage.getItem('username')?.includes('Police') ? 'Main HQ Central District' : 'Regional Medical Center Zone A'}
                             </p>
                         </div>
@@ -266,20 +260,20 @@ const OrganizationFeed: React.FC = () => {
                 </div>
 
                 <div className="space-y-2">
-                    <p className="text-[9px] font-black text-[#c4c6cc] uppercase tracking-widest">Active Filters</p>
+                    <p className="text-xs font-bold text-[var(--color-outline)]">Active Filters</p>
                     <div className="grid grid-cols-2 gap-2">
                         {["person", "knife", "gun", "smoking", "violence"].map(n => (
-                            <div key={n} className="flex items-center justify-between text-[10px] font-black text-[#191c1e] px-3 py-2 bg-[#f8f9fa] rounded-lg border border-[rgba(0,0,0,0.03)] uppercase">
+                            <div key={n} className="flex items-center justify-between text-xs font-medium text-[var(--color-on-surface)] px-3 py-2 rounded-xl capitalize" style={{ background: 'var(--color-surface-container-low)', border: '1px solid var(--color-outline-variant)' }}>
                                 {n}
-                                <CheckCircle size={12} className="text-[#16a34a]" />
+                                <CheckCircle size={12} className="text-[#16a34a] shrink-0" />
                             </div>
                         ))}
                     </div>
                 </div>
 
-                <div className="p-4 bg-[#ba1a1a]/5 border border-[#ba1a1a]/10 rounded-xl space-y-2">
-                    <p className="text-[9px] font-black text-[#ba1a1a] uppercase tracking-widest">System Override</p>
-                    <p className="text-[10px] font-bold text-[#ba1a1a] leading-relaxed">Notifications are currently being filtered by Master Admin.</p>
+                <div className="p-4 rounded-2xl" style={{ background: 'rgba(186,26,26,0.05)', border: '1px solid rgba(186,26,26,0.15)' }}>
+                    <p className="text-xs font-bold text-[#ba1a1a] mb-1">System Override Active</p>
+                    <p className="text-xs text-[#ba1a1a] leading-relaxed opacity-80">Notifications are filtered by Master Admin.</p>
                 </div>
             </div>
         </div>

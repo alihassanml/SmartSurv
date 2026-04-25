@@ -126,7 +126,7 @@ const CameraStream: React.FC<CameraStreamProps> = ({ feedId, active, onLoaded })
           style={{ background: 'rgba(25,25,25,0.9)', zIndex: 30 }}>
           <div className="relative w-9 h-9">
             <div className="absolute inset-0 rounded-full border-[1.5px] border-transparent animate-spin"
-              style={{ borderTopColor: '#2480ff' }} />
+              style={{ borderTopColor: 'var(--color-primary)' }} />
             <div className="absolute inset-[3px] rounded-full border-[1.5px] border-transparent animate-spin"
               style={{ borderTopColor: 'rgba(36,128,255,0.2)', animationDuration: '1.5s', animationDirection: 'reverse' }} />
           </div>
@@ -135,7 +135,7 @@ const CameraStream: React.FC<CameraStreamProps> = ({ feedId, active, onLoaded })
             ESTABLISHING UPLINK
           </p>
           {feedId && (
-            <p className="text-[7px] font-mono" style={{ color: '#c4c6cc' }}>
+            <p className="text-[7px] font-mono" style={{ color: 'var(--color-outline-variant)' }}>
               FEED_{feedId.toUpperCase()}
             </p>
           )}

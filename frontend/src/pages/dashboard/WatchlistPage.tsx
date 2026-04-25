@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Target, Plus, Trash2, User, Upload, X, Pencil, Check, AlertTriangle, Camera, RotateCcw } from 'lucide-react';
 import { useApp } from '../../layouts/AppLayout';
@@ -237,27 +237,27 @@ const WatchlistPage: React.FC = () => {
   // ─────────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="h-full flex flex-col" style={{ background: '#e8ecf0' }}>
+    <div className="h-full flex flex-col" style={{ background: 'var(--color-background)' }}>
 
       {/* Header */}
       <div className="shrink-0 px-6 py-4 flex items-center justify-between"
-        style={{ borderBottom: '1px solid rgba(0,0,0,0.1)', background: '#e0e3e5' }}>
+        style={{ borderBottom: '1px solid rgba(0,0,0,0.1)', background: 'var(--color-surface)' }}>
         <div className="flex items-center gap-3">
-          <div className="w-2 h-2 rounded-full" style={{ background: '#2480ff' }} />
+          <div className="w-2 h-2 rounded-full" style={{ background: 'var(--color-primary)' }} />
           <div>
             <h2 className="text-xs font-bold tracking-[0.2em] uppercase"
-              style={{ fontFamily: "'Manrope', sans-serif", color: '#191c1e' }}>WATCHLIST</h2>
-            <p className="text-[10px]" style={{ color: '#74777d' }}>
+              style={{ fontFamily: "'Manrope', sans-serif", color: 'var(--color-on-surface)' }}>WATCHLIST</h2>
+            <p className="text-[10px]" style={{ color: 'var(--color-outline)' }}>
               {watchlist.length} targets registered — Person Re-ID engine
             </p>
           </div>
         </div>
         <button
           onClick={() => setIsAdding(true)}
-          className="flex items-center gap-2 px-4 py-2 text-xs font-bold tracking-widest uppercase transition-all"
-          style={{ background: '#2480ff', color: '#191c1e', borderRadius: '0.25rem' }}
+          className="flex items-center gap-2 px-4 py-2 text-xs font-bold tracking-widest uppercase transition-all rounded-xl"
+          style={{ background: 'var(--color-primary)', color: '#ffffff', border: '1px solid var(--color-primary)' }}
           onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#0d6efd'; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = '#2480ff'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--color-primary)'; }}
         >
           <Plus className="w-3.5 h-3.5" /> ADD TARGET
         </button>
@@ -267,15 +267,15 @@ const WatchlistPage: React.FC = () => {
       <div className="flex-1 overflow-auto p-6">
         {watchlist.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center gap-4"
-            style={{ color: '#c4c6cc' }}>
+            style={{ color: 'var(--color-outline-variant)' }}>
             <Target className="w-16 h-16" />
             <p className="text-sm tracking-[0.3em] font-bold">NO TARGETS REGISTERED</p>
             <p className="text-xs" style={{ color: 'rgba(0,0,0,0.1)' }}>
               Add reference images to enable person search mode.
             </p>
             <button onClick={() => setIsAdding(true)}
-              className="mt-2 flex items-center gap-2 px-5 py-2.5 text-xs font-bold tracking-widest uppercase"
-              style={{ border: '1px solid rgba(36,128,255,0.25)', color: '#2480ff', borderRadius: '0.25rem' }}>
+              className="mt-2 flex items-center gap-2 px-5 py-2.5 text-xs font-bold tracking-widest uppercase rounded-xl transition-all"
+              style={{ background: 'var(--color-primary)', color: '#ffffff', border: '1px solid var(--color-primary)' }}>
               <Plus className="w-3.5 h-3.5" /> ADD FIRST TARGET
             </button>
           </div>
@@ -283,8 +283,8 @@ const WatchlistPage: React.FC = () => {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
             {watchlist.map((name) => (
               <motion.div key={name} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-                className="group relative overflow-hidden flex flex-col"
-                style={{ border: '1px solid rgba(0,0,0,0.1)', borderRadius: '0.5rem', background: '#f2f4f6' }}>
+                className="group relative overflow-hidden flex flex-col bg-white rounded-2xl"
+                style={{ border: '1px solid var(--color-outline-variant)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
 
                 {/* Image + action overlay */}
                 <div className="aspect-square overflow-hidden relative" style={{ background: 'rgba(36,128,255,0.05)' }}>
@@ -294,19 +294,19 @@ const WatchlistPage: React.FC = () => {
                     onError={(e) => {
                       (e.target as HTMLImageElement).style.display = 'none';
                       (e.target as HTMLImageElement).parentElement!.innerHTML =
-                        `<div class="w-full h-full flex items-center justify-center"><svg class="w-10 h-10" fill="none" stroke="#2480ff" stroke-width="1.5" viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg></div>`;
+                        `<div class="w-full h-full flex items-center justify-center"><svg class="w-10 h-10" fill="none" stroke="var(--color-primary)" stroke-width="1.5" viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg></div>`;
                     }}
                   />
                   <div className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity"
                     style={{ background: 'rgba(255,255,255,0.9)' }}>
                     <button onClick={() => startEdit(name)}
-                      className="flex items-center gap-1.5 px-3 py-2 text-[9px] font-bold uppercase"
-                      style={{ border: '1px solid rgba(36,128,255,0.3)', color: '#2480ff', background: 'rgba(0,0,0,0.1)', borderRadius: '0.25rem' }}>
+                      className="flex items-center gap-1.5 px-3 py-2 text-[9px] font-bold uppercase rounded-xl transition-all hover:bg-[var(--color-primary)] hover:text-white"
+                      style={{ border: '1px solid var(--color-primary)', color: 'var(--color-primary)', background: 'white' }}>
                       <Pencil className="w-3 h-3" /> RENAME
                     </button>
                     <button onClick={() => setDeleteConfirm(name)}
-                      className="flex items-center gap-1.5 px-3 py-2 text-[9px] font-bold uppercase"
-                      style={{ border: '1px solid rgba(186,26,26,0.25)', color: '#ba1a1a', background: 'rgba(186,26,26,0.08)', borderRadius: '0.25rem' }}>
+                      className="flex items-center gap-1.5 px-3 py-2 text-[9px] font-bold uppercase rounded-xl transition-all hover:bg-[#ba1a1a] hover:text-white"
+                      style={{ border: '1px solid #ba1a1a', color: '#ba1a1a', background: 'white' }}>
                       <Trash2 className="w-3 h-3" />
                     </button>
                   </div>
@@ -320,29 +320,29 @@ const WatchlistPage: React.FC = () => {
                         onChange={e => { setEditValue(e.target.value); setEditError(''); }}
                         onKeyDown={e => { if (e.key === 'Enter') submitRename(name); if (e.key === 'Escape') cancelEdit(); }}
                         className="w-full px-2 py-1 text-xs font-bold focus:outline-none"
-                        style={{ background: '#e8ecf0', border: '1px solid rgba(36,128,255,0.4)', color: '#2480ff', borderRadius: '0.125rem' }}
+                        style={{ background: 'var(--color-background)', border: '1px solid rgba(36,128,255,0.4)', color: 'var(--color-primary)', borderRadius: '0.125rem' }}
                       />
                       {editError && (
                         <div className="flex items-center gap-1 text-[8px]" style={{ color: '#ba1a1a' }}>
                           <AlertTriangle className="w-2.5 h-2.5 shrink-0" />{editError}
                         </div>
                       )}
-                      <div className="flex gap-1">
+                      <div className="flex gap-1 mt-2">
                         <button onClick={() => submitRename(name)} disabled={editLoading}
-                          className="flex-1 flex items-center justify-center gap-1 py-1 text-[9px] font-bold"
-                          style={{ background: 'rgba(0,0,0,0.1)', border: '1px solid rgba(36,128,255,0.3)', color: '#2480ff', borderRadius: '0.125rem' }}>
+                          className="flex-1 flex items-center justify-center gap-1 py-1.5 text-[9px] font-bold rounded-lg transition-all hover:bg-[var(--color-primary)] hover:text-white"
+                          style={{ background: 'var(--color-surface-container)', border: '1px solid var(--color-primary)', color: 'var(--color-primary)' }}>
                           {editLoading ? '...' : <><Check className="w-3 h-3" /> SAVE</>}
                         </button>
-                        <button onClick={cancelEdit} className="px-2 py-1 text-[9px] font-bold"
-                          style={{ border: '1px solid rgba(0,0,0,0.1)', color: '#74777d', borderRadius: '0.125rem' }}>
+                        <button onClick={cancelEdit} className="px-2.5 py-1.5 text-[9px] font-bold rounded-lg transition-all hover:bg-gray-100"
+                          style={{ border: '1px solid var(--color-outline-variant)', color: 'var(--color-outline)', background: 'white' }}>
                           <X className="w-3 h-3" />
                         </button>
                       </div>
                     </div>
                   ) : (
                     <>
-                      <p className="text-xs font-bold truncate" style={{ color: '#2480ff', fontFamily: "'Manrope', sans-serif" }}>{name}</p>
-                      <p className="text-[9px] mt-0.5" style={{ color: '#74777d' }}>TARGET REGISTERED</p>
+                      <p className="text-xs font-bold truncate" style={{ color: 'var(--color-primary)', fontFamily: "'Manrope', sans-serif" }}>{name}</p>
+                      <p className="text-[9px] mt-0.5" style={{ color: 'var(--color-outline)' }}>TARGET REGISTERED</p>
                     </>
                   )}
                 </div>
@@ -364,21 +364,21 @@ const WatchlistPage: React.FC = () => {
               initial={{ scale: 0.92, opacity: 0, y: 16 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.92, opacity: 0, y: 16 }}
-              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md z-[201]"
-              style={{ background: '#e0e3e5', border: '1px solid rgba(0,0,0,0.1)', borderRadius: '0.5rem' }}
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md z-[201] rounded-3xl"
+              style={{ background: 'var(--color-surface)', border: '1px solid var(--color-outline-variant)', boxShadow: '0 8px 32px rgba(0,0,0,0.08)' }}
             >
               {/* Modal header */}
               <div className="flex items-center justify-between px-6 py-4"
                 style={{ borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
                 <div>
-                  <h3 className="text-sm font-bold" style={{ fontFamily: "'Manrope', sans-serif", color: '#191c1e' }}>
+                  <h3 className="text-sm font-bold" style={{ fontFamily: "'Manrope', sans-serif", color: 'var(--color-on-surface)' }}>
                     Add Watchlist Target
                   </h3>
-                  <p className="text-[10px] mt-0.5" style={{ color: '#74777d' }}>
+                  <p className="text-[10px] mt-0.5" style={{ color: 'var(--color-outline)' }}>
                     Choose how to provide the face image
                   </p>
                 </div>
-                <button onClick={closeAddModal} style={{ color: '#74777d' }}>
+                <button onClick={closeAddModal} style={{ color: 'var(--color-outline)' }}>
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -392,8 +392,8 @@ const WatchlistPage: React.FC = () => {
                   <input
                     type="text" value={newName} onChange={e => setNewName(e.target.value)}
                     placeholder="e.g., John Doe"
-                    className="w-full px-4 py-2.5 text-sm focus:outline-none"
-                    style={{ background: '#f2f4f6', border: '1px solid rgba(0,0,0,0.1)', color: '#191c1e', borderRadius: '0.25rem' }}
+                    className="w-full px-4 py-2.5 text-sm focus:outline-none rounded-xl"
+                    style={{ background: 'var(--color-surface-container-low)', border: '1px solid var(--color-outline-variant)', color: 'var(--color-on-surface)' }}
                   />
                 </div>
 
@@ -404,10 +404,10 @@ const WatchlistPage: React.FC = () => {
                     { key: 'camera', label: 'Live Camera', icon: Camera },
                   ] as const).map(({ key, label, icon: Icon }) => (
                     <button key={key} onClick={() => switchMode(key)}
-                      className="flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-bold uppercase tracking-widest transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                      className="flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-bold uppercase tracking-widest transition-all rounded-xl disabled:opacity-30 disabled:cursor-not-allowed"
                       style={addMode === key
-                        ? { background: '#2480ff', color: '#191c1e', borderRadius: '0.25rem' }
-                        : { background: '#f2f4f6', border: '1px solid rgba(0,0,0,0.1)', color: 'rgba(36,128,255,0.5)', borderRadius: '0.25rem' }
+                        ? { background: 'var(--color-primary)', color: '#ffffff', border: '1px solid var(--color-primary)' }
+                        : { background: 'var(--color-surface-container-low)', border: '1px solid var(--color-outline-variant)', color: 'var(--color-outline)' }
                       }>
                       <Icon className="w-3.5 h-3.5" /> {label}
                     </button>
@@ -429,13 +429,13 @@ const WatchlistPage: React.FC = () => {
                       </div>
                     ) : (
                       <div className="aspect-video flex flex-col items-center justify-center gap-3 mb-3"
-                        style={{ border: '2px dashed rgba(0,0,0,0.1)', borderRadius: '0.25rem', background: 'rgba(36,128,255,0.02)', color: '#74777d' }}>
+                        style={{ border: '2px dashed rgba(0,0,0,0.1)', borderRadius: '0.25rem', background: 'rgba(36,128,255,0.02)', color: 'var(--color-outline)' }}>
                         <User className="w-10 h-10" />
                         <p className="text-[10px] tracking-widest">FACE PHOTO</p>
                       </div>
                     )}
-                    <label className={`flex items-center justify-center gap-2 w-full py-3 text-xs font-bold uppercase tracking-widest cursor-pointer transition-all`}
-                      style={{ background: '#2480ff', color: '#191c1e', borderRadius: '0.25rem' }}>
+                    <label className={`flex items-center justify-center gap-2 w-full py-3 text-xs font-bold uppercase tracking-widest cursor-pointer transition-all rounded-xl`}
+                      style={{ background: 'var(--color-primary)', color: '#ffffff', border: '1px solid var(--color-primary)' }}>
                       {isLoading ? <span className="animate-pulse">UPLOADING...</span> : (
                         <><Upload className="w-3.5 h-3.5" /> {newPreview ? 'CHANGE PHOTO' : 'SELECT PHOTO'}</>
                       )}
@@ -474,7 +474,7 @@ const WatchlistPage: React.FC = () => {
                       {/* No stream / no capture placeholder */}
                       {!cameraStream && !captured && !cameraError && (
                         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3"
-                          style={{ color: '#74777d' }}>
+                          style={{ color: 'var(--color-outline)' }}>
                           <Camera className="w-10 h-10 animate-pulse" />
                           <p className="text-[10px] tracking-widest">INITIALIZING CAMERA...</p>
                         </div>
@@ -497,16 +497,16 @@ const WatchlistPage: React.FC = () => {
                     <div className="flex gap-2">
                       {!cameraStream && !cameraError && !captured && (
                         <button onClick={startCamera}
-                          className="flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-bold uppercase"
-                          style={{ background: '#f2f4f6', border: '1px solid rgba(36,128,255,0.15)', color: '#2480ff', borderRadius: '0.25rem' }}>
+                          className="flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-bold uppercase rounded-xl transition-all"
+                          style={{ background: 'var(--color-surface-container-low)', border: '1px solid var(--color-outline-variant)', color: 'var(--color-primary)' }}>
                           <Camera className="w-3.5 h-3.5" /> START CAMERA
                         </button>
                       )}
                       
                       {cameraStream && !captured && (
                         <button onClick={capturePhoto} disabled={isLoading}
-                          className="flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-bold uppercase disabled:opacity-40"
-                          style={{ background: '#2480ff', color: '#191c1e', borderRadius: '0.25rem' }}>
+                          className="flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-bold uppercase rounded-xl transition-all disabled:opacity-40"
+                          style={{ background: 'var(--color-primary)', color: '#ffffff', border: '1px solid var(--color-primary)' }}>
                           {isLoading 
                              ? <span className="animate-pulse">SAVING TO DATABASE...</span> 
                              : <><Camera className="w-3.5 h-3.5" /> CAPTURE & SAVE</>}
@@ -515,15 +515,15 @@ const WatchlistPage: React.FC = () => {
                       
                       {cameraError && (
                         <button onClick={startCamera}
-                          className="flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-bold uppercase"
-                          style={{ border: '1px solid rgba(36,128,255,0.15)', color: '#2480ff', borderRadius: '0.25rem' }}>
+                          className="flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-bold uppercase rounded-xl transition-all"
+                          style={{ border: '1px solid var(--color-outline-variant)', color: 'var(--color-primary)' }}>
                           <RotateCcw className="w-3.5 h-3.5" /> RETRY CAMERA
                         </button>
                       )}
 
                       {captured && isLoading && (
-                        <button disabled className="flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-bold uppercase opacity-60"
-                          style={{ background: '#2480ff', color: '#191c1e', borderRadius: '0.25rem' }}>
+                        <button disabled className="flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-bold uppercase rounded-xl opacity-60"
+                          style={{ background: 'var(--color-primary)', color: '#ffffff', border: '1px solid var(--color-primary)' }}>
                           <span className="animate-pulse">SAVING...</span>
                         </button>
                       )}
@@ -545,22 +545,22 @@ const WatchlistPage: React.FC = () => {
               className="fixed inset-0 bg-black/80 z-[200] backdrop-blur-md" />
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
-              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-xs p-7 z-[201] text-center"
-              style={{ background: '#e0e3e5', border: '1px solid rgba(255,180,171,0.25)', borderRadius: '0.5rem' }}>
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-xs p-7 z-[201] text-center rounded-3xl"
+              style={{ background: 'var(--color-surface)', border: '1px solid var(--color-outline-variant)', boxShadow: '0 8px 32px rgba(0,0,0,0.08)' }}>
               <Trash2 className="w-10 h-10 mx-auto mb-4" style={{ color: '#ba1a1a' }} />
-              <p className="text-sm font-bold mb-2" style={{ fontFamily: "'Manrope', sans-serif", color: '#191c1e' }}>
+              <p className="text-sm font-bold mb-2" style={{ fontFamily: "'Manrope', sans-serif", color: 'var(--color-on-surface)' }}>
                 Remove Target?
               </p>
-              <p className="text-xs mb-6" style={{ color: '#74777d' }}>
+              <p className="text-xs mb-6" style={{ color: 'var(--color-outline)' }}>
                 <span style={{ color: '#ba1a1a' }}>{deleteConfirm}</span> will be removed from the watchlist.
               </p>
               <div className="flex gap-3">
-                <button onClick={() => setDeleteConfirm(null)} className="flex-1 py-2.5 text-xs font-bold uppercase"
-                  style={{ border: '1px solid rgba(36,128,255,0.15)', color: '#74777d', borderRadius: '0.25rem' }}>
+                <button onClick={() => setDeleteConfirm(null)} className="flex-1 py-2.5 text-xs font-bold uppercase rounded-xl transition-all"
+                  style={{ border: '1px solid var(--color-outline-variant)', color: 'var(--color-outline)' }}>
                   CANCEL
                 </button>
-                <button onClick={() => removeTarget(deleteConfirm)} className="flex-1 py-2.5 text-xs font-bold uppercase"
-                  style={{ background: '#93000a', color: '#ffdad6', border: '1px solid rgba(255,180,171,0.3)', borderRadius: '0.25rem' }}>
+                <button onClick={() => removeTarget(deleteConfirm)} className="flex-1 py-2.5 text-xs font-bold uppercase rounded-xl transition-all"
+                  style={{ background: '#ba1a1a', color: '#ffffff', border: '1px solid #ba1a1a' }}>
                   REMOVE
                 </button>
               </div>

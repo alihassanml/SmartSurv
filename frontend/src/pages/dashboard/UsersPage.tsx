@@ -132,31 +132,31 @@ const UsersPage: React.FC = () => {
   };
 
   return (
-    <div className="h-full flex flex-col" style={{ background: '#e8ecf0' }}>
+    <div className="h-full flex flex-col" style={{ background: 'var(--color-background)' }}>
 
       {/* Header */}
-      <div className="shrink-0 px-6 py-4 flex items-center justify-between"
-        style={{ borderBottom: '1px solid rgba(0,0,0,0.1)', background: '#e0e3e5' }}>
+      <div className="shrink-0 px-6 py-4 flex items-center justify-between bg-white"
+        style={{ borderBottom: '1px solid var(--color-outline-variant)' }}>
         <div className="flex items-center gap-3">
-          <div className="w-2 h-2 rounded-full" style={{ background: '#2480ff' }} />
+          <div className="p-2 rounded-xl bg-[var(--color-primary)] shadow-[0_4px_12px_rgba(36,128,255,0.2)]">
+            <Users className="text-white" size={18} />
+          </div>
           <div>
-            <h2 className="text-xs font-bold tracking-[0.2em] uppercase" style={{ fontFamily: "'Manrope', sans-serif", color: '#191c1e' }}>
-              USER MANAGEMENT
+            <h2 className="text-sm font-bold" style={{ fontFamily: "'Manrope', sans-serif", color: 'var(--color-on-surface)' }}>
+              User Management
             </h2>
-            <p className="text-[10px]" style={{ color: '#74777d' }}>
+            <p className="text-xs" style={{ color: 'var(--color-outline)' }}>
               {users.length} operator{users.length !== 1 ? 's' : ''} registered
             </p>
           </div>
         </div>
         <button
           onClick={fetchUsers}
-          className="flex items-center gap-2 px-3 py-2 text-xs font-bold uppercase tracking-widest transition-all"
-          style={{ border: '1px solid rgba(0,0,0,0.1)', color: '#74777d', borderRadius: '0.25rem' }}
-          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#2480ff'; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = '#74777d'; }}
+          className="flex items-center gap-2 px-4 py-2 text-xs font-medium rounded-xl transition-all hover:bg-[var(--color-surface-container)]"
+          style={{ border: '1px solid var(--color-outline-variant)', color: 'var(--color-outline)' }}
         >
           <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-          REFRESH
+          Refresh
         </button>
       </div>
 
@@ -165,8 +165,8 @@ const UsersPage: React.FC = () => {
         {successMsg && (
           <motion.div
             initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
-            className="fixed top-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-5 py-3 text-xs font-bold"
-            style={{ background: '#e0e3e5', border: '1px solid rgba(36,128,255,0.3)', color: '#2480ff', borderRadius: '0.5rem', boxShadow: '0 4px 20px rgba(0,0,0,0.4)' }}
+            className="fixed top-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-5 py-3 text-sm font-medium rounded-2xl"
+            style={{ background: 'white', border: '1px solid #16a34a', color: '#16a34a', boxShadow: '0 8px 32px rgba(0,0,0,0.08)' }}
           >
             <CheckCircle className="w-4 h-4" />
             {successMsg}
@@ -177,7 +177,7 @@ const UsersPage: React.FC = () => {
       {/* Content */}
       <div className="flex-1 overflow-auto p-6">
         {loading ? (
-          <div className="h-full flex items-center justify-center gap-3" style={{ color: '#74777d' }}>
+          <div className="h-full flex items-center justify-center gap-3" style={{ color: 'var(--color-outline)' }}>
             <RefreshCw className="w-5 h-5 animate-spin" />
             <span className="text-sm">Loading users...</span>
           </div>
@@ -186,17 +186,17 @@ const UsersPage: React.FC = () => {
             <AlertCircle className="w-12 h-12" />
             <p className="text-sm font-bold">{error}</p>
             {error === 'Admin access required' && (
-              <p className="text-xs" style={{ color: '#74777d' }}>
+              <p className="text-xs" style={{ color: 'var(--color-outline)' }}>
                 This page requires administrator privileges.
               </p>
             )}
             <button onClick={fetchUsers} className="px-4 py-2 text-xs font-bold uppercase"
-              style={{ border: '1px solid rgba(36,128,255,0.15)', color: '#2480ff', borderRadius: '0.25rem' }}>
+              style={{ border: '1px solid rgba(36,128,255,0.15)', color: 'var(--color-primary)', borderRadius: '0.25rem' }}>
               RETRY
             </button>
           </div>
         ) : users.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center gap-4" style={{ color: '#c4c6cc' }}>
+          <div className="h-full flex flex-col items-center justify-center gap-4" style={{ color: 'var(--color-outline-variant)' }}>
             <Users className="w-16 h-16" />
             <p className="text-sm tracking-[0.3em] font-bold">NO USERS FOUND</p>
           </div>
@@ -205,24 +205,24 @@ const UsersPage: React.FC = () => {
             {/* Summary */}
             <div className="mb-6 grid grid-cols-4 gap-4">
               {[
-                { label: 'Total Users', value: users.length, color: '#2480ff' },
-                { label: 'Active', value: users.filter(u => u.is_active).length, color: '#47607e' },
-                { label: 'Verified', value: users.filter(u => u.is_verified).length, color: '#74777d' },
-                { label: 'Admins', value: users.filter(u => u.is_admin).length, color: '#ffd6f9' },
+                { label: 'Total Users', value: users.length, color: 'var(--color-primary)' },
+                { label: 'Active', value: users.filter(u => u.is_active).length, color: '#16a34a' },
+                { label: 'Verified', value: users.filter(u => u.is_verified).length, color: 'var(--color-on-surface)' },
+                { label: 'Admins', value: users.filter(u => u.is_admin).length, color: '#a855f7' },
               ].map(stat => (
-                <div key={stat.label} className="p-4 text-center"
-                  style={{ background: '#e0e3e5', border: '1px solid rgba(0,0,0,0.1)', borderRadius: '0.5rem' }}>
+                <div key={stat.label} className="p-4 text-center bg-white rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.02)]"
+                  style={{ border: '1px solid var(--color-outline-variant)' }}>
                   <p className="text-2xl font-bold" style={{ color: stat.color, fontFamily: "'Manrope', sans-serif" }}>{stat.value}</p>
-                  <p className="text-xs mt-1" style={{ color: '#74777d' }}>{stat.label}</p>
+                  <p className="text-xs mt-1" style={{ color: 'var(--color-outline)' }}>{stat.label}</p>
                 </div>
               ))}
             </div>
 
             {/* Table */}
-            <div style={{ border: '1px solid rgba(0,0,0,0.1)', borderRadius: '0.5rem', overflow: 'hidden' }}>
+            <div className="bg-white rounded-2xl overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.02)]" style={{ border: '1px solid var(--color-outline-variant)' }}>
               {/* Table header */}
-              <div className="grid grid-cols-12 gap-4 px-5 py-3 text-[9px] font-bold tracking-[0.2em] uppercase"
-                style={{ background: '#f2f4f6', color: '#74777d', borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
+              <div className="grid grid-cols-12 gap-4 px-5 py-3 text-xs font-bold"
+                style={{ background: 'var(--color-surface-container-low)', color: 'var(--color-outline)', borderBottom: '1px solid var(--color-outline-variant)' }}>
                 <div className="col-span-1">#</div>
                 <div className="col-span-3">Username</div>
                 <div className="col-span-3">Email</div>
@@ -239,18 +239,18 @@ const UsersPage: React.FC = () => {
                   transition={{ delay: idx * 0.05 }}
                   className="grid grid-cols-12 gap-4 px-5 py-4 items-center"
                   style={{
-                    borderBottom: idx < users.length - 1 ? '1px solid rgba(36,128,255,0.05)' : 'none',
-                    background: '#e0e3e5',
+                    borderBottom: idx < users.length - 1 ? '1px solid var(--color-outline-variant)' : 'none',
+                    background: 'white',
                   }}
                 >
-                  <div className="col-span-1 text-[10px]" style={{ color: '#74777d' }}>{idx + 1}</div>
+                  <div className="col-span-1 text-[10px]" style={{ color: 'var(--color-outline)' }}>{idx + 1}</div>
 
                   <div className="col-span-3 flex items-center gap-2">
                     <div className="w-7 h-7 flex items-center justify-center text-xs font-bold shrink-0"
-                      style={{ background: 'rgba(36,128,255,0.15)', color: '#2480ff', border: '1px solid rgba(0,0,0,0.1)', borderRadius: '50%' }}>
+                      style={{ background: 'rgba(36,128,255,0.15)', color: 'var(--color-primary)', border: '1px solid rgba(0,0,0,0.1)', borderRadius: '50%' }}>
                       {user.username[0]?.toUpperCase()}
                     </div>
-                    <span className="text-sm font-medium truncate" style={{ color: '#191c1e' }}>{user.username}</span>
+                    <span className="text-sm font-medium truncate" style={{ color: 'var(--color-on-surface)' }}>{user.username}</span>
                   </div>
 
                   <div className="col-span-3 flex items-center gap-1.5 text-xs" style={{ color: 'rgba(36,128,255,0.5)' }}>
@@ -259,29 +259,27 @@ const UsersPage: React.FC = () => {
                   </div>
 
                   <div className="col-span-3 flex items-center gap-2 flex-wrap">
-                    <span className="text-[9px] font-bold px-2 py-0.5 w-fit"
+                    <span className="text-xs font-medium px-2.5 py-1 rounded-full w-fit"
                       style={user.is_active
-                        ? { background: 'rgba(0,0,0,0.1)', color: '#2480ff', border: '1px solid rgba(36,128,255,0.15)', borderRadius: '0.125rem' }
-                        : { background: 'rgba(255,180,171,0.08)', color: '#ba1a1a', border: '1px solid rgba(255,180,171,0.25)', borderRadius: '0.125rem' }
+                        ? { background: 'rgba(22,163,74,0.1)', color: '#16a34a', border: '1px solid rgba(22,163,74,0.2)' }
+                        : { background: 'rgba(186,26,26,0.08)', color: '#ba1a1a', border: '1px solid rgba(186,26,26,0.2)' }
                       }>
-                      {user.is_active ? 'ACTIVE' : 'INACTIVE'}
+                      {user.is_active ? 'Active' : 'Inactive'}
                     </span>
-                    <span className="text-[9px] px-2 py-0.5 w-fit"
-                      style={user.is_verified
-                        ? { color: '#74777d' }
-                        : { color: 'rgba(255,180,171,0.5)' }
-                      }>
-                      {user.is_verified ? '✓ Verified' : '⚠ Unverified'}
-                    </span>
+                    {user.is_verified ? (
+                      <span className="text-xs px-2.5 py-1 rounded-full" style={{ background: 'rgba(0,0,0,0.04)', color: 'var(--color-outline)', border: '1px solid var(--color-outline-variant)' }}>✓ Verified</span>
+                    ) : (
+                      <span className="text-xs px-2.5 py-1 rounded-full" style={{ background: 'rgba(255,180,171,0.08)', color: '#ba1a1a', border: '1px solid rgba(186,26,26,0.15)' }}>⚠ Unverified</span>
+                    )}
                     {user.is_admin && (
-                      <span className="text-[9px] font-bold px-2 py-0.5 w-fit"
-                        style={{ background: 'rgba(255,214,249,0.1)', color: '#ffd6f9', border: '1px solid rgba(255,214,249,0.25)', borderRadius: '0.125rem' }}>
-                        ADMIN
+                      <span className="text-xs font-medium px-2.5 py-1 rounded-full w-fit"
+                        style={{ background: 'rgba(168,85,247,0.1)', color: '#a855f7', border: '1px solid rgba(168,85,247,0.2)' }}>
+                        Admin
                       </span>
                     )}
                     {!user.is_approved && (
-                      <span className="text-[9px] font-bold px-2 py-0.5 w-fit bg-[#ffd941] text-[#2c2b00] rounded-sm">
-                        PENDING_APPROVAL
+                      <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-amber-50 text-amber-700" style={{ border: '1px solid rgba(251,191,36,0.3)' }}>
+                        Pending
                       </span>
                     )}
                   </div>
@@ -291,9 +289,9 @@ const UsersPage: React.FC = () => {
                       <button
                         onClick={() => handleApprove(user)}
                         disabled={actionLoading === user.id}
-                        title="Grant Access / Approve Admin"
-                        className="p-1.5 transition-all disabled:opacity-50"
-                        style={{ border: '1px solid #16a34a', color: '#16a34a', background: 'rgba(22,163,74,0.1)', borderRadius: '0.25rem' }}
+                        title="Approve user"
+                        className="p-1.5 rounded-lg transition-all disabled:opacity-50 hover:bg-green-50"
+                        style={{ border: '1px solid rgba(22,163,74,0.3)', color: '#16a34a' }}
                       >
                         <CheckCircle className="w-3.5 h-3.5" />
                       </button>
@@ -303,10 +301,8 @@ const UsersPage: React.FC = () => {
                         onClick={() => handleVerify(user)}
                         disabled={actionLoading === user.id}
                         title="Manually verify"
-                        className="p-1.5 transition-all disabled:opacity-50"
-                        style={{ border: '1px solid rgba(0,0,0,0.1)', color: '#74777d', borderRadius: '0.25rem' }}
-                        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#2480ff'; }}
-                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = '#74777d'; }}
+                        className="p-1.5 rounded-lg transition-all disabled:opacity-50 hover:text-[var(--color-primary)] hover:border-[var(--color-primary)]"
+                        style={{ border: '1px solid var(--color-outline-variant)', color: 'var(--color-outline)' }}
                       >
                         <Shield className="w-3.5 h-3.5" />
                       </button>
@@ -316,10 +312,8 @@ const UsersPage: React.FC = () => {
                       onClick={() => handleToggleAdmin(user)}
                       disabled={actionLoading === user.id}
                       title={user.is_admin ? 'Remove Admin' : 'Make Admin'}
-                      className="p-1.5 transition-all disabled:opacity-50"
-                      style={{ border: '1px solid rgba(255,214,249,0.15)', color: user.is_admin ? '#ffd6f9' : '#74777d', borderRadius: '0.25rem' }}
-                      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#ffd6f9'; }}
-                      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = user.is_admin ? '#ffd6f9' : '#74777d'; }}
+                      className="p-1.5 rounded-lg transition-all disabled:opacity-50"
+                      style={{ border: `1px solid ${user.is_admin ? 'rgba(168,85,247,0.3)' : 'var(--color-outline-variant)'}`, color: user.is_admin ? '#a855f7' : 'var(--color-outline)', background: user.is_admin ? 'rgba(168,85,247,0.08)' : 'transparent' }}
                     >
                       <Shield className="w-3.5 h-3.5" />
                     </button>
@@ -328,10 +322,8 @@ const UsersPage: React.FC = () => {
                       onClick={() => handleToggleActive(user)}
                       disabled={actionLoading === user.id}
                       title={user.is_active ? 'Deactivate' : 'Activate'}
-                      className="p-1.5 transition-all disabled:opacity-50"
-                      style={{ border: '1px solid rgba(0,0,0,0.1)', color: '#74777d', borderRadius: '0.25rem' }}
-                      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#2480ff'; }}
-                      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = '#74777d'; }}
+                      className="p-1.5 rounded-lg transition-all disabled:opacity-50 hover:text-[var(--color-primary)] hover:border-[var(--color-primary)]"
+                      style={{ border: '1px solid var(--color-outline-variant)', color: 'var(--color-outline)' }}
                     >
                       {actionLoading === user.id ? (
                         <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -344,10 +336,8 @@ const UsersPage: React.FC = () => {
                       onClick={() => setDeleteConfirm(user)}
                       disabled={actionLoading === user.id}
                       title="Delete user"
-                      className="p-1.5 transition-all disabled:opacity-50"
-                      style={{ border: '1px solid rgba(255,180,171,0.15)', color: '#74777d', borderRadius: '0.25rem' }}
-                      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#ba1a1a'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(186,26,26,0.25)'; }}
-                      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = '#74777d'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,180,171,0.15)'; }}
+                      className="p-1.5 rounded-lg transition-all disabled:opacity-50 hover:bg-red-50"
+                      style={{ border: '1px solid rgba(186,26,26,0.2)', color: '#ba1a1a' }}
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -368,24 +358,24 @@ const UsersPage: React.FC = () => {
               className="fixed inset-0 bg-black/80 z-[200] backdrop-blur-md" />
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
-              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-xs p-7 z-[201] text-center"
-              style={{ background: '#e0e3e5', border: '1px solid rgba(255,180,171,0.25)', borderRadius: '0.5rem' }}>
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-xs p-7 z-[201] text-center rounded-3xl"
+              style={{ background: 'white', border: '1px solid var(--color-outline-variant)', boxShadow: '0 8px 32px rgba(0,0,0,0.08)' }}>
               <Trash2 className="w-10 h-10 mx-auto mb-4" style={{ color: '#ba1a1a' }} />
-              <p className="text-sm font-bold mb-1" style={{ fontFamily: "'Manrope', sans-serif", color: '#191c1e' }}>Delete User?</p>
-              <p className="text-xs mb-6" style={{ color: '#74777d' }}>
+              <p className="text-sm font-bold mb-1" style={{ fontFamily: "'Manrope', sans-serif", color: 'var(--color-on-surface)' }}>Delete User?</p>
+              <p className="text-xs mb-6" style={{ color: 'var(--color-outline)' }}>
                 <span style={{ color: '#ba1a1a' }}>{deleteConfirm.username}</span> will be permanently removed.
               </p>
               <div className="flex gap-3">
                 <button onClick={() => setDeleteConfirm(null)}
-                  className="flex-1 py-2.5 text-xs font-bold uppercase"
-                  style={{ border: '1px solid rgba(36,128,255,0.15)', color: '#74777d', borderRadius: '0.25rem' }}>
-                  CANCEL
+                  className="flex-1 py-2.5 text-sm font-medium rounded-xl transition-all hover:bg-[var(--color-surface-container)]"
+                  style={{ border: '1px solid var(--color-outline-variant)', color: 'var(--color-outline)' }}>
+                  Cancel
                 </button>
                 <button onClick={() => handleDelete(deleteConfirm)}
-                  className="flex-1 py-2.5 text-xs font-bold uppercase flex items-center justify-center gap-2"
-                  style={{ background: '#93000a', color: '#ffdad6', borderRadius: '0.25rem' }}>
+                  className="flex-1 py-2.5 text-sm font-medium rounded-xl flex items-center justify-center gap-2"
+                  style={{ background: '#ba1a1a', color: '#ffffff', border: '1px solid #ba1a1a' }}>
                   {actionLoading === deleteConfirm.id ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                  DELETE
+                  Delete
                 </button>
               </div>
             </motion.div>

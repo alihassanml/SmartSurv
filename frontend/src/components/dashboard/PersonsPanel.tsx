@@ -26,15 +26,15 @@ const PersonsPanel: React.FC<PersonsPanelProps> = ({
 }) => {
   return (
     <section className="w-[220px] flex flex-col shrink-0"
-      style={{ background: '#e0e3e5', borderLeft: '1px solid rgba(0,0,0,0.1)', boxShadow: '-2px 0 10px rgba(0,0,0,0.05)' }}>
+      style={{ background: 'var(--color-surface)', borderLeft: '1px solid rgba(0,0,0,0.1)', boxShadow: '-2px 0 10px rgba(0,0,0,0.05)' }}>
       <div className="px-4 py-3 shrink-0"
-        style={{ borderBottom: '1px solid rgba(0,0,0,0.08)', background: '#f2f4f6' }}>
-        <h2 className="text-[10px] font-bold tracking-[0.2em] uppercase" style={{ color: '#191c1e' }}>Persons Log</h2>
-        <p className="text-[8px] mt-0.5 uppercase" style={{ color: '#74777d' }}>Re-ID Engine Â· 5min cooldown</p>
+        style={{ borderBottom: '1px solid rgba(0,0,0,0.08)', background: 'var(--color-surface-container-low)' }}>
+        <h2 className="text-[10px] font-bold tracking-[0.2em] uppercase" style={{ color: 'var(--color-on-surface)' }}>Persons Log</h2>
+        <p className="text-[8px] mt-0.5 uppercase" style={{ color: 'var(--color-outline)' }}>Re-ID Engine Â· 5min cooldown</p>
 
         {/* Semantic Search */}
         <div className="mt-3 relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3" style={{ color: '#c4c6cc' }} />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3" style={{ color: 'var(--color-outline-variant)' }} />
           <input
             type="text"
             placeholder="Search persons..."
@@ -42,22 +42,22 @@ const PersonsPanel: React.FC<PersonsPanelProps> = ({
             onChange={(e) => handleSemanticSearch(e.target.value)}
             className="w-full pl-8 pr-3 py-1.5 text-[8px] font-semibold tracking-wide outline-none transition-all"
             style={{
-              background: '#e0e3e5',
+              background: 'var(--color-surface)',
               border: '1px solid rgba(0,0,0,0.1)',
-              color: '#191c1e',
+              color: 'var(--color-on-surface)',
               borderRadius: '0.375rem',
             }}
-            onFocus={e => { e.currentTarget.style.borderColor = '#2480ff'; e.currentTarget.style.boxShadow = '0 0 0 2px rgba(36,128,255,0.12)'; }}
+            onFocus={e => { e.currentTarget.style.borderColor = 'var(--color-primary)'; e.currentTarget.style.boxShadow = '0 0 0 2px rgba(36,128,255,0.12)'; }}
             onBlur={e => { e.currentTarget.style.borderColor = 'rgba(0,0,0,0.1)'; e.currentTarget.style.boxShadow = 'none'; }}
           />
           {semanticQuery && (
             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
               {semanticLoading ? (
-                <RefreshCw className="w-2.5 h-2.5 animate-spin" style={{ color: '#2480ff' }} />
+                <RefreshCw className="w-2.5 h-2.5 animate-spin" style={{ color: 'var(--color-primary)' }} />
               ) : (
                 <button onClick={() => handleSemanticSearch('')}
                   className="transition-opacity hover:opacity-100 opacity-60"
-                  style={{ color: '#74777d' }}>
+                  style={{ color: 'var(--color-outline)' }}>
                   <X className="w-2.5 h-2.5" />
                 </button>
               )}
@@ -69,8 +69,8 @@ const PersonsPanel: React.FC<PersonsPanelProps> = ({
       <div className="flex-1 overflow-y-auto p-2 space-y-2">
         {detectedPersons.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center gap-2" style={{ opacity: 0.3 }}>
-            <User className="w-8 h-8" style={{ color: '#74777d' }} />
-            <span className="text-[8px] tracking-[0.3em]" style={{ color: '#74777d' }}>NO PERSONS</span>
+            <User className="w-8 h-8" style={{ color: 'var(--color-outline)' }} />
+            <span className="text-[8px] tracking-[0.3em]" style={{ color: 'var(--color-outline)' }}>NO PERSONS</span>
           </div>
         ) : (
           <AnimatePresence initial={false}>
@@ -96,7 +96,7 @@ const PersonsPanel: React.FC<PersonsPanelProps> = ({
                     ? { border: '1px solid rgba(186,26,26,0.4)', background: 'rgba(186,26,26,0.04)', boxShadow: '0 1px 6px rgba(186,26,26,0.08)' }
                     : isTopMatch
                     ? { border: '1px solid rgba(36,128,255,0.4)', background: 'rgba(36,128,255,0.04)', boxShadow: '0 1px 6px rgba(36,128,255,0.08)' }
-                    : { border: '1px solid rgba(0,0,0,0.1)', background: '#e0e3e5', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }
+                    : { border: '1px solid rgba(0,0,0,0.1)', background: 'var(--color-surface)', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }
                   }
                   onMouseEnter={e => { if (focusedPersonId !== p.person_id && !isTopMatch) (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(36,128,255,0.25)'; }}
                   onMouseLeave={e => { if (focusedPersonId !== p.person_id && !isTopMatch) (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(0,0,0,0.1)'; }}
@@ -110,7 +110,7 @@ const PersonsPanel: React.FC<PersonsPanelProps> = ({
                   <div
                     className="absolute top-0 right-0 px-1.5 py-0.5 text-[7px] font-bold z-10"
                     style={p.status === 'NEW'
-                      ? { background: '#2480ff', color: '#ffffff', borderRadius: '0 0.5rem 0 0.25rem' }
+                      ? { background: 'var(--color-primary)', color: '#ffffff', borderRadius: '0 0.5rem 0 0.25rem' }
                       : { background: '#47607e', color: '#ffffff', borderRadius: '0 0.5rem 0 0.25rem' }
                     }
                   >
@@ -119,7 +119,7 @@ const PersonsPanel: React.FC<PersonsPanelProps> = ({
 
                   {semanticQuery && (
                     <div className="absolute top-5 right-0 px-1.5 py-0.5 text-[7px] font-bold z-10"
-                      style={{ background: 'rgba(36,128,255,0.1)', color: '#2480ff', borderRadius: '0 0 0 0.25rem', border: '1px solid rgba(36,128,255,0.2)' }}>
+                      style={{ background: 'rgba(36,128,255,0.1)', color: 'var(--color-primary)', borderRadius: '0 0 0 0.25rem', border: '1px solid rgba(36,128,255,0.2)' }}>
                       {Math.round((semanticResults.find(r => r.id === p.person_id)?.score || 0) * 100)}%
                     </div>
                   )}
@@ -135,10 +135,10 @@ const PersonsPanel: React.FC<PersonsPanelProps> = ({
                   </div>
 
                   <div className="px-2 py-1.5">
-                    <p className="text-[10px] font-bold tracking-wide" style={{ color: '#2480ff' }}>{p.person_id}</p>
-                    <p className="text-[7px] mt-0.5" style={{ color: '#c4c6cc' }}>{p.timestamp} Â· {p.feed_id}</p>
+                    <p className="text-[10px] font-bold tracking-wide" style={{ color: 'var(--color-primary)' }}>{p.person_id}</p>
+                    <p className="text-[7px] mt-0.5" style={{ color: 'var(--color-outline-variant)' }}>{p.timestamp} Â· {p.feed_id}</p>
                     {p.traits && p.traits !== 'ANALYZING...' && (
-                      <p className="text-[7px] mt-0.5 truncate" style={{ color: '#74777d' }}>{p.traits}</p>
+                      <p className="text-[7px] mt-0.5 truncate" style={{ color: 'var(--color-outline)' }}>{p.traits}</p>
                     )}
                   </div>
                 </motion.div>

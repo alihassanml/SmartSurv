@@ -70,7 +70,7 @@ const VerifyEmail: React.FC = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden"
-      style={{ background: '#e8ecf0', color: '#191c1e', fontFamily: "'Inter', sans-serif" }}>
+      style={{ background: 'var(--color-background)', color: 'var(--color-on-surface)', fontFamily: "'Inter', sans-serif" }}>
 
       {/* Dot grid background */}
       <div className="absolute inset-0 z-0 pointer-events-none"
@@ -88,10 +88,10 @@ const VerifyEmail: React.FC = () => {
       <div className="absolute top-6 left-6 flex items-center gap-2.5 cursor-pointer group z-10"
         onClick={() => navigate('/')}>
         <div className="w-8 h-8 flex items-center justify-center transition-all duration-300"
-          style={{ border: '1px solid rgba(36,128,255,0.35)', borderRadius: '0.375rem', color: '#2480ff', background: 'rgba(36,128,255,0.06)' }}>
+          style={{ border: '1px solid rgba(36,128,255,0.35)', borderRadius: '0.375rem', color: 'var(--color-primary)', background: 'rgba(36,128,255,0.06)' }}>
           <Shield className="w-4 h-4" />
         </div>
-        <span style={{ fontSize: '0.875rem', fontFamily: "'Manrope', sans-serif", fontWeight: 800, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#191c1e' }}>SmartSurv</span>
+        <span style={{ fontSize: '0.875rem', fontFamily: "'Manrope', sans-serif", fontWeight: 800, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--color-on-surface)' }}>SmartSurv</span>
       </div>
 
       {/* Card */}
@@ -102,41 +102,41 @@ const VerifyEmail: React.FC = () => {
         className="relative z-10 w-full max-w-sm mx-4">
 
         {/* Corner accents */}
-        <div className="absolute -top-px -left-px w-12 h-12 border-t-2 border-l-2" style={{ borderColor: '#2480ff' }} />
-        <div className="absolute -top-px -right-px w-12 h-12 border-t-2 border-r-2" style={{ borderColor: '#2480ff' }} />
-        <div className="absolute -bottom-px -left-px w-12 h-12 border-b-2 border-l-2" style={{ borderColor: '#2480ff' }} />
-        <div className="absolute -bottom-px -right-px w-12 h-12 border-b-2 border-r-2" style={{ borderColor: '#2480ff' }} />
+        <div className="absolute -top-px -left-px w-12 h-12 border-t-2 border-l-2" style={{ borderColor: 'var(--color-primary)' }} />
+        <div className="absolute -top-px -right-px w-12 h-12 border-t-2 border-r-2" style={{ borderColor: 'var(--color-primary)' }} />
+        <div className="absolute -bottom-px -left-px w-12 h-12 border-b-2 border-l-2" style={{ borderColor: 'var(--color-primary)' }} />
+        <div className="absolute -bottom-px -right-px w-12 h-12 border-b-2 border-r-2" style={{ borderColor: 'var(--color-primary)' }} />
 
         <div className="p-8 relative overflow-hidden"
-          style={{ background: '#e0e3e5', border: '1px solid rgba(0,0,0,0.1)', borderRadius: '0.125rem', boxShadow: '0 4px 24px rgba(0,0,0,0.1)' }}>
+          style={{ background: 'var(--color-surface)', border: '1px solid rgba(0,0,0,0.1)', borderRadius: '0.125rem', boxShadow: '0 4px 24px rgba(0,0,0,0.1)' }}>
 
           {/* Success State */}
           {success && (
             <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 animate-fade-in"
               style={{ background: 'rgba(255,255,255,0.97)' }}>
-              <CheckCircle className="w-12 h-12" style={{ color: '#2480ff' }} />
-              <p className="text-sm font-bold tracking-wide" style={{ fontFamily: "'Manrope', sans-serif", color: '#191c1e' }}>Identity Verified!</p>
-              <p className="text-[11px]" style={{ color: '#74777d' }}>Redirecting to login...</p>
+              <CheckCircle className="w-12 h-12" style={{ color: 'var(--color-primary)' }} />
+              <p className="text-sm font-bold tracking-wide" style={{ fontFamily: "'Manrope', sans-serif", color: 'var(--color-on-surface)' }}>Identity Verified!</p>
+              <p className="text-[11px]" style={{ color: 'var(--color-outline)' }}>Redirecting to login...</p>
             </div>
           )}
 
           {/* Header */}
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-14 h-14 mb-4"
-              style={{ border: '1px solid rgba(36,128,255,0.3)', borderRadius: '0.375rem', color: '#2480ff', background: 'rgba(36,128,255,0.06)' }}>
+              style={{ border: '1px solid rgba(36,128,255,0.3)', borderRadius: '0.375rem', color: 'var(--color-primary)', background: 'rgba(36,128,255,0.06)' }}>
               <Mail className="w-6 h-6" />
             </div>
             <h1 className="text-2xl font-bold tracking-tight uppercase mb-1"
-              style={{ fontFamily: "'Manrope', sans-serif", color: '#191c1e', letterSpacing: '0.08em' }}>Verify Email</h1>
-            <p className="text-[11px] tracking-[0.15em]" style={{ color: '#74777d' }}>Enter the code sent to your email</p>
+              style={{ fontFamily: "'Manrope', sans-serif", color: 'var(--color-on-surface)', letterSpacing: '0.08em' }}>Verify Email</h1>
+            <p className="text-[11px] tracking-[0.15em]" style={{ color: 'var(--color-outline)' }}>Enter the code sent to your email</p>
           </div>
 
           {/* Info */}
           <div className="mb-6 px-3 py-2.5 text-center"
             style={{ border: '1px solid rgba(36,128,255,0.15)', background: 'rgba(36,128,255,0.04)', borderRadius: '0.375rem' }}>
-            <p className="text-[11px] leading-relaxed" style={{ color: '#74777d' }}>
+            <p className="text-[11px] leading-relaxed" style={{ color: 'var(--color-outline)' }}>
               A 6-digit code was sent to<br />
-              <span className="font-semibold" style={{ color: '#2480ff' }}>{email || 'your email'}</span>
+              <span className="font-semibold" style={{ color: 'var(--color-primary)' }}>{email || 'your email'}</span>
             </p>
           </div>
 
@@ -151,7 +151,7 @@ const VerifyEmail: React.FC = () => {
 
           <form onSubmit={handleVerify}>
             <label className="block text-[10px] uppercase tracking-[0.15em] mb-3 font-semibold text-center"
-              style={{ color: '#74777d' }}>
+              style={{ color: 'var(--color-outline)' }}>
               Verification Code
             </label>
 
@@ -169,14 +169,14 @@ const VerifyEmail: React.FC = () => {
                   onKeyDown={e => handleKeyDown(i, e)}
                   className="w-11 h-14 text-center text-xl font-bold transition-all duration-200"
                   style={{
-                    background: '#e8ecf0',
+                    background: 'var(--color-background)',
                     border: '1px solid rgba(0,0,0,0.12)',
-                    color: '#2480ff',
+                    color: 'var(--color-primary)',
                     outline: 'none',
                     borderRadius: '0.375rem',
                   }}
-                  onFocus={e => { e.currentTarget.style.borderColor = '#2480ff'; e.currentTarget.style.boxShadow = '0 0 0 2px rgba(36,128,255,0.15)'; e.currentTarget.style.background = '#ffffff'; }}
-                  onBlur={e => { e.currentTarget.style.borderColor = 'rgba(0,0,0,0.12)'; e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.background = '#e8ecf0'; }}
+                  onFocus={e => { e.currentTarget.style.borderColor = 'var(--color-primary)'; e.currentTarget.style.boxShadow = '0 0 0 2px rgba(36,128,255,0.15)'; e.currentTarget.style.background = '#ffffff'; }}
+                  onBlur={e => { e.currentTarget.style.borderColor = 'rgba(0,0,0,0.12)'; e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.background = 'var(--color-background)'; }}
                 />
               ))}
             </div>
@@ -186,9 +186,9 @@ const VerifyEmail: React.FC = () => {
               type="submit"
               disabled={loading || success}
               className="w-full py-3.5 font-bold text-[11px] tracking-[0.2em] uppercase transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{ background: '#2480ff', border: '2px solid #2480ff', color: '#ffffff', borderRadius: '0.375rem' }}
-              onMouseEnter={e => { if (!loading && !success) { (e.currentTarget as HTMLButtonElement).style.background = '#1a6fef'; } }}
-              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = '#2480ff'; }}
+              style={{ background: 'var(--color-primary)', border: '2px solid var(--color-primary)', color: '#ffffff', borderRadius: '0.375rem' }}
+              onMouseEnter={e => { if (!loading && !success) { (e.currentTarget as HTMLButtonElement).style.background = 'var(--color-primary-container)'; } }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--color-primary)'; }}
             >
               {loading ? (
                 <>
@@ -206,13 +206,13 @@ const VerifyEmail: React.FC = () => {
 
           {/* Footer */}
           <div className="mt-6 pt-5 text-center" style={{ borderTop: '1px solid rgba(0,0,0,0.1)' }}>
-            <span className="text-[11px]" style={{ color: '#74777d' }}>Wrong account? </span>
+            <span className="text-[11px]" style={{ color: 'var(--color-outline)' }}>Wrong account? </span>
             <button
               onClick={() => navigate('/signup')}
               className="text-[11px] font-semibold underline underline-offset-2 transition-colors"
-              style={{ color: '#2480ff' }}
-              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#1a6fef'; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = '#2480ff'; }}
+              style={{ color: 'var(--color-primary)' }}
+              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-primary-container)'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-primary)'; }}
             >
               Back to Signup
             </button>

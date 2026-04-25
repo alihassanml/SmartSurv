@@ -960,7 +960,14 @@ class CameraEngine:
             if not self.feeds: return None
             feed_id = list(self.feeds.keys())[0]
         if feed_id in self.feeds:
-            return self.feeds[feed_id].frame_queue.get(timeout=1.0) if not self.feeds[feed_id].frame_queue.empty() else None
+            return self.feeds[feed_id].latest_frame
+        return None
+
+    def get_jpeg_frame(self, feed_id=None):
+        frame = self.get_frame(feed_id)
+        if frame is not None:
+            _, buf = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 60])
+            return buf.tobytes()
         return None
 
     def get_active_feeds(self):

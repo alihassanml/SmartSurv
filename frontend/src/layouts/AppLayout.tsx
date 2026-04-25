@@ -517,7 +517,7 @@ const AppLayout: React.FC = () => {
 
   return (
     <AppContext.Provider value={ctxValue}>
-      <div className="flex h-screen overflow-hidden" style={{ background: '#e8ecf0', color: '#191c1e', fontFamily: "'Inter', sans-serif" }}>
+      <div className="flex h-screen overflow-hidden" style={{ background: 'var(--color-background)', color: 'var(--color-on-surface)', fontFamily: "'Inter', sans-serif" }}>
 
         {/* --- Sidebar --- */}
         {role !== 'organization' && <Sidebar />}
@@ -527,9 +527,9 @@ const AppLayout: React.FC = () => {
 
           {/* --- Top header --- */}
           <header className="shrink-0 flex items-center justify-between px-6"
-            style={{ height: '64px', background: '#e0e3e5', borderBottom: '1px solid rgba(0,0,0,0.1)', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+            style={{ height: '64px', background: 'var(--color-surface)', borderBottom: '1px solid rgba(0,0,0,0.1)', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
             {/* Page title */}
-            <h1 className="text-sm font-bold tracking-wide" style={{ fontFamily: "'Manrope', sans-serif", color: '#191c1e' }}>
+            <h1 className="text-sm font-bold tracking-wide" style={{ fontFamily: "'Manrope', sans-serif", color: 'var(--color-on-surface)' }}>
               {pageTitle}
             </h1>
 
@@ -545,7 +545,7 @@ const AppLayout: React.FC = () => {
                 title={cameraActive ? 'System Power ON â€” click to stop' : 'System Power OFF â€” click to start'}
                 className="px-3 py-1.5 flex items-center gap-2 transition-all duration-300 disabled:opacity-50 text-[10px] font-bold tracking-widest uppercase"
                 style={cameraActive
-                  ? { border: '1px solid rgba(36,128,255,0.35)', color: '#1a6fef', background: 'rgba(36,128,255,0.08)', borderRadius: '0.375rem' }
+                  ? { border: '1px solid rgba(36,128,255,0.35)', color: 'var(--color-primary-container)', background: 'rgba(36,128,255,0.08)', borderRadius: '0.375rem' }
                   : { border: '1px solid rgba(186,26,26,0.35)', color: '#ba1a1a', background: 'rgba(186,26,26,0.06)', borderRadius: '0.375rem' }
                 }
               >
@@ -560,9 +560,9 @@ const AppLayout: React.FC = () => {
               <button
                 onClick={() => { navigate('/dashboard/alerts'); setUnreadAlerts(0); }}
                 className="relative p-2 transition-all"
-                style={{ border: '1px solid rgba(0,0,0,0.1)', borderRadius: '0.375rem', color: '#74777d' }}
-                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#2480ff'; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = '#74777d'; }}
+                style={{ border: '1px solid rgba(0,0,0,0.1)', borderRadius: '0.375rem', color: 'var(--color-outline)' }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-primary)'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-outline)'; }}
               >
                 <Bell className="w-4 h-4" />
                 {unreadAlerts > 0 && (
@@ -578,8 +578,8 @@ const AppLayout: React.FC = () => {
                 <button
                   onClick={() => setShowProfileMenu(v => !v)}
                   className="w-8 h-8 rounded-full flex items-center justify-center transition-all"
-                  style={{ background: 'rgba(36,128,255,0.1)', border: '1px solid rgba(36,128,255,0.25)', color: '#2480ff' }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#2480ff'; }}
+                  style={{ background: 'rgba(36,128,255,0.1)', border: '1px solid rgba(36,128,255,0.25)', color: 'var(--color-primary)' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--color-primary)'; }}
                   onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(36,128,255,0.25)'; }}
                 >
                   <User className="w-3.5 h-3.5" />
@@ -594,11 +594,11 @@ const AppLayout: React.FC = () => {
                         exit={{ opacity: 0, y: -8, scale: 0.95 }}
                         transition={{ duration: 0.15 }}
                         className="absolute right-0 top-full mt-2 w-48 z-[100] overflow-hidden"
-                        style={{ background: '#e0e3e5', border: '1px solid rgba(0,0,0,0.1)', borderRadius: '0.5rem', boxShadow: '0 4px 20px rgba(0,0,0,0.12)' }}
+                        style={{ background: 'var(--color-surface)', border: '1px solid rgba(0,0,0,0.1)', borderRadius: '0.5rem', boxShadow: '0 4px 20px rgba(0,0,0,0.12)' }}
                       >
                         <div className="px-4 py-3" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
-                          <p className="text-xs font-bold truncate" style={{ color: '#191c1e', fontFamily: "'Manrope', sans-serif" }}>{username}</p>
-                          <p className="text-[10px] truncate mt-0.5" style={{ color: '#74777d' }}>{userEmail}</p>
+                          <p className="text-xs font-bold truncate" style={{ color: 'var(--color-on-surface)', fontFamily: "'Manrope', sans-serif" }}>{username}</p>
+                          <p className="text-[10px] truncate mt-0.5" style={{ color: 'var(--color-outline)' }}>{userEmail}</p>
                         </div>
                         <button
                           onClick={() => { setShowProfileMenu(false); handleLogout(); }}
@@ -624,15 +624,15 @@ const AppLayout: React.FC = () => {
               <motion.div
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 className="fixed inset-0 z-[1000] flex flex-col items-center justify-center"
-                style={{ background: '#e8ecf0' }}
+                style={{ background: 'var(--color-background)' }}
               >
                 <div className="w-full max-w-sm space-y-5 px-8">
                   <div className="space-y-1">
-                    <p className="text-[9px] tracking-[0.3em] font-bold" style={{ color: '#74777d' }}>RECONFIGURING</p>
-                    <p className="text-2xl font-bold tracking-tighter" style={{ color: '#191c1e', fontFamily: "'Manrope', sans-serif" }}>SWITCHING SOURCE</p>
+                    <p className="text-[9px] tracking-[0.3em] font-bold" style={{ color: 'var(--color-outline)' }}>RECONFIGURING</p>
+                    <p className="text-2xl font-bold tracking-tighter" style={{ color: 'var(--color-on-surface)', fontFamily: "'Manrope', sans-serif" }}>SWITCHING SOURCE</p>
                   </div>
                   <div className="h-0.5 w-full overflow-hidden" style={{ background: 'rgba(0,0,0,0.08)' }}>
-                    <motion.div className="h-full" style={{ background: '#2480ff' }}
+                    <motion.div className="h-full" style={{ background: 'var(--color-primary)' }}
                       initial={{ width: '0%' }} animate={{ width: '100%' }}
                       transition={{ duration: 1.2, ease: 'easeInOut' }} />
                   </div>
@@ -667,7 +667,7 @@ const AppLayout: React.FC = () => {
           onClick={() => setLastAlert(null)}
           className="fixed bottom-8 right-8 z-[9999] w-[380px] cursor-pointer overflow-hidden group"
           style={{
-            background: '#191c1e',
+            background: 'var(--color-on-surface)',
             border: '1px solid rgba(255,255,255,0.1)',
             borderRadius: '1rem',
             boxShadow: '0 20px 50px rgba(0,0,0,0.6)',
@@ -676,17 +676,17 @@ const AppLayout: React.FC = () => {
           {/* Progress bar timer */}
           <motion.div 
             initial={{ width: '100%' }} animate={{ width: '0%' }} transition={{ duration: 6, ease: 'linear' }}
-            className="h-1 bg-[#2480ff]" 
+            className="h-1 bg-[var(--color-primary)]" 
           />
           
           <div className="p-5 flex gap-4">
-            <div className={`shrink-0 w-12 h-12 rounded-xl flex items-center justify-center ${lastAlert.is_person_search_match ? 'bg-[#ba1a1a] shadow-[0_0_20px_rgba(186,26,26,0.4)]' : 'bg-[#2480ff]'}`}>
+            <div className={`shrink-0 w-12 h-12 rounded-xl flex items-center justify-center ${lastAlert.is_person_search_match ? 'bg-[#ba1a1a] shadow-[0_0_20px_rgba(186,26,26,0.4)]' : 'bg-[var(--color-primary)]'}`}>
               <Shield size={24} color="white" />
             </div>
             
             <div className="flex-1 min-w-0">
               <div className="flex justify-between items-start mb-1">
-                <span className={`text-[10px] font-black tracking-[0.2em] uppercase ${lastAlert.is_person_search_match ? 'text-[#ffb4ab]' : 'text-[#2480ff]'}`}>
+                <span className={`text-[10px] font-black tracking-[0.2em] uppercase ${lastAlert.is_person_search_match ? 'text-[#ffb4ab]' : 'text-[var(--color-primary)]'}`}>
                   {lastAlert.is_person_search_match ? 'Watchlist Match' : 'Security Alert'}
                 </span>
                 <span className="text-[10px] text-white/30 font-bold">{lastAlert.timestamp}</span>

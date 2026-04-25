@@ -22,19 +22,19 @@ const AlertsPanel: React.FC<AlertsPanelProps> = ({
 
   return (
     <aside className="w-[340px] flex flex-col shrink-0"
-      style={{ background: '#e0e3e5', borderLeft: '1px solid rgba(0,0,0,0.1)', boxShadow: '-2px 0 12px rgba(0,0,0,0.06)' }}>
+      style={{ background: 'var(--color-surface)', borderLeft: '1px solid rgba(0,0,0,0.1)', boxShadow: '-2px 0 12px rgba(0,0,0,0.06)' }}>
       {/* Header */}
       <div className="px-5 py-4 flex justify-between items-center shrink-0"
-        style={{ borderBottom: '1px solid rgba(0,0,0,0.08)', background: '#f2f4f6' }}>
+        style={{ borderBottom: '1px solid rgba(0,0,0,0.08)', background: 'var(--color-surface-container-low)' }}>
         <div>
-          <h2 className="text-[11px] font-bold tracking-[0.2em] uppercase" style={{ color: '#191c1e' }}>Alerts</h2>
+          <h2 className="text-[11px] font-bold tracking-[0.2em] uppercase" style={{ color: 'var(--color-on-surface)' }}>Alerts</h2>
           <div className="flex items-center gap-1.5 mt-1">
-            <p className="text-[8px] uppercase" style={{ color: '#74777d' }}>Incidents</p>
+            <p className="text-[8px] uppercase" style={{ color: 'var(--color-outline)' }}>Incidents</p>
             <div className="h-[2px] w-2 rounded" style={{ background: 'rgba(0,0,0,0.1)' }} />
             <button
               onClick={() => setIsAddingTarget(true)}
               className="text-[8px] font-bold tracking-widest hover:underline transition-opacity"
-              style={{ color: '#2480ff' }}
+              style={{ color: 'var(--color-primary)' }}
             >
               Watchlist ({watchlist.length})
             </button>
@@ -43,7 +43,7 @@ const AlertsPanel: React.FC<AlertsPanelProps> = ({
         <div className="flex items-center gap-2">
           {alerts.length > 0 && (
             <span className="text-[9px] font-bold px-1.5 py-0.5 rounded"
-              style={{ background: 'rgba(36,128,255,0.1)', border: '1px solid rgba(36,128,255,0.2)', color: '#2480ff' }}>
+              style={{ background: 'rgba(36,128,255,0.1)', border: '1px solid rgba(36,128,255,0.2)', color: 'var(--color-primary)' }}>
               {alerts.length}
             </span>
           )}
@@ -55,8 +55,8 @@ const AlertsPanel: React.FC<AlertsPanelProps> = ({
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-3">
         {alerts.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center gap-3" style={{ opacity: 0.3 }}>
-            <Shield className="w-10 h-10" style={{ color: '#74777d' }} />
-            <span className="text-[9px] tracking-[0.3em]" style={{ color: '#74777d' }}>NO THREATS DETECTED</span>
+            <Shield className="w-10 h-10" style={{ color: 'var(--color-outline)' }} />
+            <span className="text-[9px] tracking-[0.3em]" style={{ color: 'var(--color-outline)' }}>NO THREATS DETECTED</span>
           </div>
         ) : (
           <AnimatePresence initial={false}>
@@ -69,7 +69,7 @@ const AlertsPanel: React.FC<AlertsPanelProps> = ({
                 className="relative overflow-hidden group rounded-lg"
                 style={alert.is_person_search_match
                   ? { borderLeft: '3px solid #ba1a1a', background: 'rgba(186,26,26,0.04)', border: '1px solid rgba(186,26,26,0.2)', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }
-                  : { border: '1px solid rgba(0,0,0,0.1)', background: '#e0e3e5', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }
+                  : { border: '1px solid rgba(0,0,0,0.1)', background: 'var(--color-surface)', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }
                 }
               >
                 {/* ID badge */}
@@ -77,7 +77,7 @@ const AlertsPanel: React.FC<AlertsPanelProps> = ({
                   className="absolute top-0 right-0 px-2 py-0.5 text-[8px] font-bold flex items-center gap-1.5"
                   style={alert.is_person_search_match
                     ? { background: '#ba1a1a', color: '#fff', borderRadius: '0 0.5rem 0 0.25rem' }
-                    : { background: '#f2f4f6', color: '#74777d', borderRadius: '0 0.5rem 0 0.25rem' }
+                    : { background: 'var(--color-surface-container-low)', color: 'var(--color-outline)', borderRadius: '0 0.5rem 0 0.25rem' }
                   }
                 >
                   {alert.is_person_search_match && <Target className="w-2.5 h-2.5" />}
@@ -86,7 +86,7 @@ const AlertsPanel: React.FC<AlertsPanelProps> = ({
 
                 {/* Timestamp */}
                 <div className="absolute left-2 top-2 text-[7px] rotate-180 [writing-mode:vertical-lr]"
-                  style={{ color: '#c4c6cc' }}>
+                  style={{ color: 'var(--color-outline-variant)' }}>
                   {alert.timestamp}
                 </div>
 
@@ -118,11 +118,11 @@ const AlertsPanel: React.FC<AlertsPanelProps> = ({
                   <div
                     className="flex justify-between items-center px-2 py-1.5 mb-2 rounded"
                     style={{
-                      borderLeft: `2px solid ${alert.is_person_search_match ? '#ba1a1a' : '#2480ff'}`,
-                      background: '#f2f4f6',
+                      borderLeft: `2px solid ${alert.is_person_search_match ? '#ba1a1a' : 'var(--color-primary)'}`,
+                      background: 'var(--color-surface-container-low)',
                     }}
                   >
-                    <span className="text-[9px] font-bold" style={{ color: '#74777d' }}>Threat:</span>
+                    <span className="text-[9px] font-bold" style={{ color: 'var(--color-outline)' }}>Threat:</span>
                     <div className="flex flex-wrap gap-1 justify-end">
                       {alert.is_person_search_match && (
                         <span className="text-[8px] px-1.5 py-0.5 font-bold rounded"
@@ -130,7 +130,7 @@ const AlertsPanel: React.FC<AlertsPanelProps> = ({
                       )}
                       {alert.detections.map((d, i) => (
                         <span key={i} className="text-[8px] px-1.5 py-0.5 rounded font-semibold"
-                          style={{ border: '1px solid rgba(36,128,255,0.2)', color: '#2480ff', background: 'rgba(36,128,255,0.06)' }}>
+                          style={{ border: '1px solid rgba(36,128,255,0.2)', color: 'var(--color-primary)', background: 'rgba(36,128,255,0.06)' }}>
                           {d.label.toUpperCase()}
                         </span>
                       ))}
@@ -144,7 +144,7 @@ const AlertsPanel: React.FC<AlertsPanelProps> = ({
                         style={{ color: '#ba1a1a' }}>
                         {typeof alert.is_person_search_match === 'string' ? alert.is_person_search_match : 'TARGET LOCATED'}
                       </p>
-                      <p className="text-[7px] leading-tight" style={{ color: '#74777d' }}>
+                      <p className="text-[7px] leading-tight" style={{ color: 'var(--color-outline)' }}>
                         Visual verification required. Threat active in current sector.
                       </p>
                     </div>
@@ -152,7 +152,7 @@ const AlertsPanel: React.FC<AlertsPanelProps> = ({
 
                   {/* Confidence & Location */}
                   <div className="flex justify-between items-center text-[8px] font-bold">
-                    <div className="flex flex-col" style={{ color: '#c4c6cc' }}>
+                    <div className="flex flex-col" style={{ color: 'var(--color-outline-variant)' }}>
                       <span>Conf: {(Math.max(...(alert.detections.map(d => d.confidence) || [0]), 0) * 100).toFixed(1)}%</span>
                     </div>
 
@@ -160,9 +160,9 @@ const AlertsPanel: React.FC<AlertsPanelProps> = ({
                       <button
                         onClick={() => setMapAlert(alert)}
                         className="flex items-center gap-1.5 px-2 py-1 rounded transition-all duration-300"
-                        style={{ background: 'rgba(36,128,255,0.08)', border: '1px solid rgba(36,128,255,0.2)', color: '#2480ff' }}
-                        onMouseEnter={e => { e.currentTarget.style.background = '#2480ff'; e.currentTarget.style.color = '#ffffff'; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(36,128,255,0.08)'; e.currentTarget.style.color = '#2480ff'; }}
+                        style={{ background: 'rgba(36,128,255,0.08)', border: '1px solid rgba(36,128,255,0.2)', color: 'var(--color-primary)' }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'var(--color-primary)'; e.currentTarget.style.color = '#ffffff'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(36,128,255,0.08)'; e.currentTarget.style.color = 'var(--color-primary)'; }}
                       >
                         <MapPin className="w-3 h-3" />
                         Map
@@ -193,7 +193,7 @@ const AlertsPanel: React.FC<AlertsPanelProps> = ({
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
               onClick={(e) => e.stopPropagation()}
               className="relative max-w-[95vw] max-h-[92vh] overflow-hidden flex flex-col rounded-xl"
-              style={{ background: '#e0e3e5', border: '1px solid rgba(0,0,0,0.1)', boxShadow: '0 20px 80px rgba(0,0,0,0.4)' }}
+              style={{ background: 'var(--color-surface)', border: '1px solid rgba(0,0,0,0.1)', boxShadow: '0 20px 80px rgba(0,0,0,0.4)' }}
             >
               {/* Corner accents */}
               <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 z-10 pointer-events-none" style={{ borderColor: 'rgba(36,128,255,0.4)' }} />
@@ -204,13 +204,13 @@ const AlertsPanel: React.FC<AlertsPanelProps> = ({
               {/* Close Button */}
               <div className="absolute top-0 left-0 right-0 h-12 flex items-center justify-between px-6 z-20"
                 style={{ background: 'linear-gradient(to bottom, rgba(255,255,255,0.95), transparent)' }}>
-                <span className="text-[10px] font-bold tracking-widest uppercase" style={{ color: '#191c1e' }}>Incident View</span>
+                <span className="text-[10px] font-bold tracking-widest uppercase" style={{ color: 'var(--color-on-surface)' }}>Incident View</span>
                 <button
                   onClick={() => setSelectedImage(null)}
                   className="p-1.5 transition-all rounded"
-                  style={{ background: 'rgba(0,0,0,0.08)', border: '1px solid rgba(0,0,0,0.1)', color: '#74777d' }}
+                  style={{ background: 'rgba(0,0,0,0.08)', border: '1px solid rgba(0,0,0,0.1)', color: 'var(--color-outline)' }}
                   onMouseEnter={e => { e.currentTarget.style.background = '#ba1a1a'; e.currentTarget.style.color = '#ffffff'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,0,0,0.08)'; e.currentTarget.style.color = '#74777d'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,0,0,0.08)'; e.currentTarget.style.color = 'var(--color-outline)'; }}
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -226,12 +226,12 @@ const AlertsPanel: React.FC<AlertsPanelProps> = ({
 
               {/* Status Bar */}
               <div className="px-6 py-3 flex items-center justify-between z-20 shrink-0"
-                style={{ background: '#f2f4f6', borderTop: '1px solid rgba(0,0,0,0.1)' }}>
+                style={{ background: 'var(--color-surface-container-low)', borderTop: '1px solid rgba(0,0,0,0.1)' }}>
                 <div className="flex items-center gap-2">
                   <div className="w-1.5 h-1.5 rounded-full animate-pulse bg-red-500" />
-                  <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color: '#191c1e' }}>SmartSurv</span>
+                  <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color: 'var(--color-on-surface)' }}>SmartSurv</span>
                 </div>
-                <div className="text-[9px]" style={{ color: '#74777d' }}>
+                <div className="text-[9px]" style={{ color: 'var(--color-outline)' }}>
                   Secure incident view
                 </div>
               </div>

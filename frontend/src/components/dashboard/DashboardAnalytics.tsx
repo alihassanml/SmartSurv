@@ -15,13 +15,13 @@ interface Props {
   systemMode: 'detection' | 'search' | 'both';
 }
 
-const COLORS = ['#2480ff', '#47607e', '#a855f7', '#ff4466', '#ffbb33', '#ff8c00'];
+const COLORS = ['var(--color-primary)', '#47607e', '#a855f7', '#ff4466', '#ffbb33', '#ff8c00'];
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-[#e0e3e5] border border-[rgba(36,128,255,0.2)] px-3 py-2 font-sans shadow-2xl backdrop-blur-md rounded-sm">
-      <p className="text-[9px] text-[#2480ff] font-bold mb-1 tracking-[0.2em]">{label || 'TELEMETRY'}</p>
+    <div className="bg-white border border-[var(--color-outline-variant)] px-4 py-3 font-sans shadow-[0_8px_32px_rgba(0,0,0,0.08)] rounded-xl">
+      <p className="text-[9px] text-[var(--color-primary)] font-bold mb-1 tracking-[0.2em]">{label || 'TELEMETRY'}</p>
       {payload.map((p: any, i: number) => (
         <p key={i} className="text-[11px] font-bold flex items-center gap-2" style={{ color: p.color || p.fill }}>
           <span className="w-1.5 h-1.5 rounded-full" style={{ background: p.color || p.fill }} />
@@ -45,13 +45,13 @@ const StatCard: React.FC<{
     initial={{ opacity: 0, y: 12 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ delay: index * 0.08, duration: 0.4 }}
-    className="border border-[rgba(0,0,0,0.1)] bg-[#e0e3e5] p-5 relative overflow-hidden group hover:border-[rgba(36,128,255,0.25)] transition-all duration-300"
+    className="border border-[var(--color-outline-variant)] bg-white rounded-2xl p-6 relative overflow-hidden group hover:border-[var(--color-primary)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.04)] transition-all duration-300 shadow-[0_2px_8px_rgba(0,0,0,0.02)]"
   >
     <div className="flex justify-between items-start">
       <div className="relative z-10">
-        <p className="text-[8px] tracking-[0.35em] mb-3 uppercase font-black" style={{ color: '#74777d' }}>{label}</p>
-        <p className="text-4xl font-bold tabular-nums tracking-tighter" style={{ color, textShadow: `0 0 20px ${color}30` }}>{value}</p>
-        <p className="text-[8px] mt-2 uppercase tracking-widest font-bold" style={{ color: '#c4c6cc' }}>{sub}</p>
+        <p className="text-[8px] tracking-[0.35em] mb-3 uppercase font-black" style={{ color: 'var(--color-outline)' }}>{label}</p>
+        <p className="text-4xl font-bold tabular-nums tracking-tighter" style={{ color }}>{value}</p>
+        <p className="text-[8px] mt-2 uppercase tracking-widest font-bold" style={{ color: 'var(--color-outline-variant)' }}>{sub}</p>
       </div>
       <div className="w-16 h-10 mt-1 opacity-40">
         <ResponsiveContainer width="100%" height="100%">
@@ -197,28 +197,28 @@ const DashboardAnalytics: React.FC<Props> = ({ alerts, detectedPersons, isConnec
   }, [alerts, detectedPersons]);
 
   const modeLabel = { detection: 'ACTIVITY_SCAN', search: 'PERSON_SEARCH', both: 'HYBRID_LINK' }[systemMode];
-  const modeColor = { detection: '#2480ff', search: '#ff4466', both: '#a855f7' }[systemMode];
+  const modeColor = { detection: 'var(--color-primary)', search: '#ff4466', both: '#a855f7' }[systemMode];
 
   return (
-    <div className="flex-1 overflow-y-auto bg-[#e8ecf0] font-sans pb-12">
+    <div className="flex-1 overflow-y-auto bg-[var(--color-background)] font-sans pb-12">
       {/* Analytics Header */}
-      <div className="px-6 pt-5 pb-4 border-b border-[rgba(0,0,0,0.1)] flex items-center justify-between sticky top-0 bg-[#e8ecf0]/80 backdrop-blur-md z-30">
+      <div className="px-6 pt-5 pb-4 border-b border-[rgba(0,0,0,0.1)] flex items-center justify-between sticky top-0 bg-[var(--color-background)]/80 backdrop-blur-md z-30">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-[#2480ff] rounded-sm shadow-[0_0_15px_rgba(36,128,255,0.3)]">
+          <div className="p-2 bg-[var(--color-primary)] rounded-xl shadow-[0_4px_12px_rgba(36,128,255,0.2)]">
             <TrendingUp size={18} color="white" />
           </div>
           <div>
-            <p className="text-[7px] tracking-[0.5em] mb-0.5 font-black uppercase" style={{ color: '#74777d' }}>INTELLIGENCE_CENTER</p>
-            <h1 className="text-xl font-black tracking-[0.1em] text-[#191c1e] uppercase">System Analytics</h1>
+            <p className="text-[7px] tracking-[0.5em] mb-0.5 font-black uppercase" style={{ color: 'var(--color-outline)' }}>INTELLIGENCE_CENTER</p>
+            <h1 className="text-xl font-black tracking-[0.1em] text-[var(--color-on-surface)] uppercase">System Analytics</h1>
           </div>
         </div>
         <div className="flex items-center gap-8">
           <div className="text-right">
-            <p className="text-[7px] tracking-widest mb-0.5 font-bold uppercase" style={{ color: '#74777d' }}>ENGINE_PROTOCOL</p>
+            <p className="text-[7px] tracking-widest mb-0.5 font-bold uppercase" style={{ color: 'var(--color-outline)' }}>ENGINE_PROTOCOL</p>
             <p className="text-[10px] font-black" style={{ color: modeColor }}>{modeLabel}</p>
           </div>
           <div className="text-right">
-            <p className="text-[7px] tracking-widest mb-0.5 font-bold uppercase" style={{ color: '#74777d' }}>LINK_STATUS</p>
+            <p className="text-[7px] tracking-widest mb-0.5 font-bold uppercase" style={{ color: 'var(--color-outline)' }}>LINK_STATUS</p>
             <div className="flex items-center gap-2 justify-end">
               <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-[#16a34a] shadow-[0_0_10px_rgba(22,163,74,0.5)] animate-pulse' : 'bg-red-500'}`} />
               <p className="text-[10px] font-black uppercase tracking-widest">{isConnected ? 'ENCRYPTED' : 'DISCONNECTED'}</p>
@@ -231,10 +231,10 @@ const DashboardAnalytics: React.FC<Props> = ({ alerts, detectedPersons, isConnec
 
         {/* High-Level Stat Cards */}
         <div className="grid grid-cols-4 gap-4">
-          <StatCard label="TOTAL_INCIDENTS" value={data.totalAlerts} color="#2480ff" sub="system-wide alerts" index={0} symbol="â–²" trend={data.trends.alerts} />
-          <StatCard label="AI_RELIABILITY" value={`${data.avgConf}%`} color="#47607e" sub="average confidence" index={1} symbol="â—†" trend={data.trends.conf} />
-          <StatCard label="PERSONS_TRACKED" value={data.uniquePersons} color="#a855f7" sub="unique subject ids" index={2} symbol="â— " trend={data.trends.persons} />
-          <StatCard label="SECURITY_HITS" value={data.personMatches} color="#ff4466" sub="watchlist matches" index={3} symbol="âœ•" trend={data.trends.matches} />
+          <StatCard label="TOTAL_INCIDENTS" value={data.totalAlerts} color="var(--color-primary)" sub="system-wide alerts" index={0} symbol="" trend={data.trends.alerts} />
+          <StatCard label="AI_RELIABILITY" value={`${data.avgConf}%`} color="#47607e" sub="average confidence" index={1} symbol="" trend={data.trends.conf} />
+          <StatCard label="PERSONS_TRACKED" value={data.uniquePersons} color="#a855f7" sub="unique subject ids" index={2} symbol="" trend={data.trends.persons} />
+          <StatCard label="SECURITY_HITS" value={data.personMatches} color="#ff4466" sub="watchlist matches" index={3} symbol="" trend={data.trends.matches} />
         </div>
 
         {/* Main Charts: Timeline + Radar */}
@@ -243,18 +243,18 @@ const DashboardAnalytics: React.FC<Props> = ({ alerts, detectedPersons, isConnec
           {/* Time Analysis â€” Area Chart */}
           <motion.div
             initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.2 }}
-            className="col-span-8 border border-[rgba(0,0,0,0.1)] bg-[#e0e3e5] p-6 shadow-sm"
+            className="col-span-8 border border-[var(--color-outline-variant)] bg-white rounded-3xl p-6 shadow-[0_4px_24px_rgba(0,0,0,0.02)]"
           >
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2.5">
-                <Activity size={16} className="text-[#2480ff]" />
+                <Activity size={16} className="text-[var(--color-primary)]" />
                 <div>
-                  <p className="text-[8px] tracking-[0.4em] mb-0.5 font-black uppercase" style={{ color: '#74777d' }}>Temporal Analysis</p>
-                  <p className="text-xs font-bold text-[#191c1e]">DETECTION_TIMELINE (24H)</p>
+                  <p className="text-[8px] tracking-[0.4em] mb-0.5 font-black uppercase" style={{ color: 'var(--color-outline)' }}>Temporal Analysis</p>
+                  <p className="text-xs font-bold text-[var(--color-on-surface)]">DETECTION_TIMELINE (24H)</p>
                 </div>
               </div>
               <div className="flex items-center gap-5 text-[8px] font-black tracking-widest">
-                <span className="flex items-center gap-1.5"><span className="w-2.5 h-1 bg-[#2480ff]" />ALERTS</span>
+                <span className="flex items-center gap-1.5"><span className="w-2.5 h-1 bg-[var(--color-primary)]" />ALERTS</span>
                 <span className="flex items-center gap-1.5"><span className="w-2.5 h-1 bg-[#ff4466]" />CRITICAL</span>
                 <span className="flex items-center gap-1.5"><span className="w-2.5 h-1 bg-[#a855f7]" />PERSONS</span>
               </div>
@@ -263,8 +263,8 @@ const DashboardAnalytics: React.FC<Props> = ({ alerts, detectedPersons, isConnec
               <AreaChart data={data.hourlyData} margin={{ top: 5, right: 10, left: -25, bottom: 0 }}>
                 <defs>
                   <linearGradient id="gAlert" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#2480ff" stopOpacity={0.2} />
-                    <stop offset="95%" stopColor="#2480ff" stopOpacity={0} />
+                    <stop offset="5%" stopColor="var(--color-primary)" stopOpacity={0.2} />
+                    <stop offset="95%" stopColor="var(--color-primary)" stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="gCrit" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#ff4466" stopOpacity={0.2} />
@@ -272,10 +272,10 @@ const DashboardAnalytics: React.FC<Props> = ({ alerts, detectedPersons, isConnec
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.03)" vertical={false} />
-                <XAxis dataKey="hour" tick={{ fill: '#74777d', fontSize: 8, fontWeight: 700 }} tickLine={false} axisLine={false} interval={2} />
-                <YAxis tick={{ fill: '#74777d', fontSize: 8, fontWeight: 700 }} tickLine={false} axisLine={false} allowDecimals={false} />
+                <XAxis dataKey="hour" tick={{ fill: 'var(--color-outline)', fontSize: 8, fontWeight: 700 }} tickLine={false} axisLine={false} interval={2} />
+                <YAxis tick={{ fill: 'var(--color-outline)', fontSize: 8, fontWeight: 700 }} tickLine={false} axisLine={false} allowDecimals={false} />
                 <Tooltip content={<CustomTooltip />} />
-                <Area type="monotone" dataKey="alerts" name="ALERTS" stroke="#2480ff" strokeWidth={2.5} fill="url(#gAlert)" />
+                <Area type="monotone" dataKey="alerts" name="ALERTS" stroke="var(--color-primary)" strokeWidth={2.5} fill="url(#gAlert)" />
                 <Area type="monotone" dataKey="critical" name="CRITICAL" stroke="#ff4466" strokeWidth={2.5} fill="url(#gCrit)" />
                 <Area type="monotone" dataKey="persons" name="PERSONS" stroke="#a855f7" strokeWidth={2} fill="transparent" strokeDasharray="4 4" />
               </AreaChart>
@@ -285,13 +285,13 @@ const DashboardAnalytics: React.FC<Props> = ({ alerts, detectedPersons, isConnec
           {/* Activity Fingerprint â€” Radar Chart */}
           <motion.div
             initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.25 }}
-            className="col-span-4 border border-[rgba(0,0,0,0.1)] bg-[#e0e3e5] p-6 shadow-sm flex flex-col"
+            className="col-span-4 border border-[var(--color-outline-variant)] bg-white rounded-3xl p-6 shadow-[0_4px_24px_rgba(0,0,0,0.02)] flex flex-col"
           >
             <div className="flex items-center gap-2.5 mb-2">
               <Shield size={16} className="text-[#a855f7]" />
               <div>
-                <p className="text-[8px] tracking-[0.4em] mb-0.5 font-black uppercase" style={{ color: '#74777d' }}>Signature Profile</p>
-                <p className="text-xs font-bold text-[#191c1e]">ACTIVITY_RADAR</p>
+                <p className="text-[8px] tracking-[0.4em] mb-0.5 font-black uppercase" style={{ color: 'var(--color-outline)' }}>Signature Profile</p>
+                <p className="text-xs font-bold text-[var(--color-on-surface)]">ACTIVITY_RADAR</p>
               </div>
             </div>
             <div className="flex-1 min-h-[260px]">
@@ -300,14 +300,14 @@ const DashboardAnalytics: React.FC<Props> = ({ alerts, detectedPersons, isConnec
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <RadarChart data={data.activityBreakdown}>
-                    <PolarGrid stroke="rgba(0,0,0,0.05)" />
-                    <PolarAngleAxis dataKey="name" tick={{ fill: '#74777d', fontSize: 7, fontWeight: 900 }} />
+                    <PolarGrid stroke="var(--color-outline-variant)" />
+                    <PolarAngleAxis dataKey="name" tick={{ fill: 'var(--color-outline)', fontSize: 7, fontWeight: 900 }} />
                     <PolarRadiusAxis angle={30} domain={[0, 'auto']} tick={false} axisLine={false} />
                     <Radar
                       name="Density"
                       dataKey="count"
-                      stroke="#2480ff"
-                      fill="#2480ff"
+                      stroke="var(--color-primary)"
+                      fill="var(--color-primary)"
                       fillOpacity={0.2}
                       strokeWidth={2}
                     />
@@ -316,7 +316,7 @@ const DashboardAnalytics: React.FC<Props> = ({ alerts, detectedPersons, isConnec
                 </ResponsiveContainer>
               )}
             </div>
-            <p className="text-[8px] text-center mt-2 font-bold uppercase tracking-widest" style={{ color: '#c4c6cc' }}>Multi-factor activity distribution</p>
+            <p className="text-[8px] text-center mt-2 font-bold uppercase tracking-widest" style={{ color: 'var(--color-outline-variant)' }}>Multi-factor activity distribution</p>
           </motion.div>
         </div>
 
@@ -326,26 +326,26 @@ const DashboardAnalytics: React.FC<Props> = ({ alerts, detectedPersons, isConnec
           {/* Classification Breakdown â€” Bars */}
           <motion.div
             initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
-            className="col-span-4 border border-[rgba(0,0,0,0.1)] bg-[#e0e3e5] p-6 shadow-sm"
+            className="col-span-4 border border-[var(--color-outline-variant)] bg-white rounded-3xl p-6 shadow-[0_4px_24px_rgba(0,0,0,0.02)]"
           >
             <div className="flex items-center justify-between mb-5">
                 <div className="flex items-center gap-2.5">
                     <Target size={16} className="text-[#ffbb33]" />
                     <div>
-                        <p className="text-[8px] tracking-[0.4em] mb-0.5 font-black uppercase" style={{ color: '#74777d' }}>Model Insights</p>
-                        <p className="text-xs font-bold text-[#191c1e]">CLASSIFICATION_MAP</p>
+                        <p className="text-[8px] tracking-[0.4em] mb-0.5 font-black uppercase" style={{ color: 'var(--color-outline)' }}>Model Insights</p>
+                        <p className="text-xs font-bold text-[var(--color-on-surface)]">CLASSIFICATION_MAP</p>
                     </div>
                 </div>
-                <p className="text-[9px] font-black text-[#74777d]">{data.activityBreakdown.length} CLASSES</p>
+                <p className="text-[9px] font-black text-[var(--color-outline)]">{data.activityBreakdown.length} CLASSES</p>
             </div>
             <div className="space-y-4 max-h-[220px] overflow-y-auto pr-2 custom-scrollbar">
                 {data.activityBreakdown.map((act, i) => (
                     <div key={act.name} className="group">
                         <div className="flex justify-between items-center mb-1.5">
-                            <span className="text-[9px] font-black tracking-widest text-[#191c1e] group-hover:text-[#2480ff] transition-colors uppercase">{act.name}</span>
-                            <span className="text-[9px] font-mono font-bold" style={{ color: '#74777d' }}>{act.count} UNITS</span>
+                            <span className="text-[9px] font-black tracking-widest text-[var(--color-on-surface)] group-hover:text-[var(--color-primary)] transition-colors uppercase">{act.name}</span>
+                            <span className="text-[9px] font-mono font-bold" style={{ color: 'var(--color-outline)' }}>{act.count} UNITS</span>
                         </div>
-                        <div className="h-1.5 bg-[rgba(0,0,0,0.05)] rounded-full overflow-hidden">
+                        <div className="h-1.5 bg-[var(--color-surface-container)] rounded-full overflow-hidden">
                             <motion.div
                                 initial={{ width: 0 }}
                                 animate={{ width: data.totalDetections > 0 ? `${Math.round((act.count / data.totalDetections) * 100)}%` : '0%' }}
@@ -362,21 +362,21 @@ const DashboardAnalytics: React.FC<Props> = ({ alerts, detectedPersons, isConnec
           {/* Detection Density â€” Scatter Plot */}
           <motion.div
             initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}
-            className="col-span-8 border border-[rgba(0,0,0,0.1)] bg-[#e0e3e5] p-6 shadow-sm"
+            className="col-span-8 border border-[var(--color-outline-variant)] bg-white rounded-3xl p-6 shadow-[0_4px_24px_rgba(0,0,0,0.02)]"
           >
             <div className="flex items-center justify-between mb-5">
                 <div className="flex items-center gap-2.5">
-                    <Zap size={16} className="text-[#2480ff]" />
+                    <Zap size={16} className="text-[var(--color-primary)]" />
                     <div>
-                        <p className="text-[8px] tracking-[0.4em] mb-0.5 font-black uppercase" style={{ color: '#74777d' }}>Inference Accuracy</p>
-                        <p className="text-xs font-bold text-[#191c1e]">DETECTION_DENSITY (CONFIDENCE VS TIME)</p>
+                        <p className="text-[8px] tracking-[0.4em] mb-0.5 font-black uppercase" style={{ color: 'var(--color-outline)' }}>Inference Accuracy</p>
+                        <p className="text-xs font-bold text-[var(--color-on-surface)]">DETECTION_DENSITY (CONFIDENCE VS TIME)</p>
                     </div>
                 </div>
             </div>
             {data.scatterData.length === 0 ? (
               <div className="h-[220px] flex flex-col items-center justify-center gap-2 opacity-30">
                 <p className="text-[10px] font-bold tracking-[0.3em] uppercase">Awaiting Detection Data...</p>
-                <p className="text-[8px] font-bold tracking-widest" style={{ color: '#74777d' }}>No inference events in current window</p>
+                <p className="text-[8px] font-bold tracking-widest" style={{ color: 'var(--color-outline)' }}>No inference events in current window</p>
               </div>
             ) : (
             <ResponsiveContainer width="100%" height={220}>
@@ -387,7 +387,7 @@ const DashboardAnalytics: React.FC<Props> = ({ alerts, detectedPersons, isConnec
                         dataKey="hour"
                         name="Time"
                         domain={[0, 24]}
-                        tick={{ fill: '#74777d', fontSize: 7, fontWeight: 700 }}
+                        tick={{ fill: 'var(--color-outline)', fontSize: 7, fontWeight: 700 }}
                         axisLine={false}
                         tickLine={false}
                         tickFormatter={(v) => `${Math.floor(v)}h`}
@@ -398,7 +398,7 @@ const DashboardAnalytics: React.FC<Props> = ({ alerts, detectedPersons, isConnec
                         name="Confidence"
                         domain={[0, 100]}
                         unit="%"
-                        tick={{ fill: '#74777d', fontSize: 7, fontWeight: 700 }}
+                        tick={{ fill: 'var(--color-outline)', fontSize: 7, fontWeight: 700 }}
                         axisLine={false}
                         tickLine={false}
                     />
@@ -407,11 +407,11 @@ const DashboardAnalytics: React.FC<Props> = ({ alerts, detectedPersons, isConnec
                     <Scatter
                         name="Detections"
                         data={data.scatterData}
-                        fill="#2480ff"
+                        fill="var(--color-primary)"
                         fillOpacity={0.6}
                     >
                         {data.scatterData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.confidence > 85 ? '#16a34a' : entry.confidence > 60 ? '#2480ff' : '#ffbb33'} />
+                            <Cell key={`cell-${index}`} fill={entry.confidence > 85 ? '#16a34a' : entry.confidence > 60 ? 'var(--color-primary)' : '#ffbb33'} />
                         ))}
                     </Scatter>
                 </ScatterChart>
@@ -426,12 +426,12 @@ const DashboardAnalytics: React.FC<Props> = ({ alerts, detectedPersons, isConnec
                 { label: 'NODE_THROUGHPUT', value: `${(data.totalDetections / Math.max(1, alerts.length)).toFixed(2)}`, unit: 'OBJ/FRAME', icon: <Cpu size={14} />, color: '#47607e' },
                 { label: 'PEAK_THREAT_TIME', value: data.peakHour, unit: 'LOCAL_TIME', icon: <AlertCircle size={14} />, color: '#ff4466' },
                 { label: 'AI_RECOGNITION', value: 'OPTIMIZED', unit: 'GPU_CUDA', icon: <TrendingUp size={14} />, color: '#16a34a' },
-                { label: 'DATA_INTEGRITY', value: 'SECURE', unit: 'ENCRYPTED', icon: <Shield size={14} />, color: '#2480ff' },
+                { label: 'DATA_INTEGRITY', value: 'SECURE', unit: 'ENCRYPTED', icon: <Shield size={14} />, color: 'var(--color-primary)' },
             ].map((tele, i) => (
-                <div key={i} className="p-4 bg-[#e0e3e5] border border-[rgba(0,0,0,0.06)] flex items-center justify-between">
+                <div key={i} className="p-5 bg-white border border-[var(--color-outline-variant)] rounded-2xl flex items-center justify-between shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
                     <div>
-                        <p className="text-[7px] font-black tracking-widest text-[#74777d] uppercase mb-1">{tele.label}</p>
-                        <p className="text-sm font-black text-[#191c1e]">{tele.value} <span className="text-[9px] text-[#74777d] font-normal">{tele.unit}</span></p>
+                        <p className="text-[7px] font-black tracking-widest text-[var(--color-outline)] uppercase mb-1">{tele.label}</p>
+                        <p className="text-sm font-black text-[var(--color-on-surface)]">{tele.value} <span className="text-[9px] text-[var(--color-outline)] font-normal">{tele.unit}</span></p>
                     </div>
                     <div style={{ color: tele.color }} className="opacity-30">{tele.icon}</div>
                 </div>
@@ -441,19 +441,19 @@ const DashboardAnalytics: React.FC<Props> = ({ alerts, detectedPersons, isConnec
         {/* Events Table */}
         <motion.div
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}
-          className="border border-[rgba(0,0,0,0.1)] bg-[#e0e3e5] p-6 shadow-sm"
+          className="border border-[var(--color-outline-variant)] bg-white rounded-3xl p-6 shadow-[0_4px_24px_rgba(0,0,0,0.02)] overflow-hidden"
         >
           <div className="flex items-center gap-2.5 mb-6">
-              <TrendingUp size={16} className="text-[#2480ff]" />
+              <TrendingUp size={16} className="text-[var(--color-primary)]" />
               <div>
-                  <p className="text-[8px] tracking-[0.4em] mb-0.5 font-black uppercase" style={{ color: '#74777d' }}>Event Audit</p>
-                  <p className="text-xs font-bold text-[#191c1e]">LIVE_DETECTION_LOG (LAST 100)</p>
+                  <p className="text-[8px] tracking-[0.4em] mb-0.5 font-black uppercase" style={{ color: 'var(--color-outline)' }}>Event Audit</p>
+                  <p className="text-xs font-bold text-[var(--color-on-surface)]">LIVE_DETECTION_LOG (LAST 100)</p>
               </div>
           </div>
           <div className="overflow-x-auto overflow-y-auto max-h-[300px] custom-scrollbar">
             <table className="w-full text-[9px] font-sans border-separate border-spacing-y-1">
-              <thead className="sticky top-0 bg-[#e0e3e5] z-10">
-                <tr className="text-left text-[#74777d] font-black tracking-[0.2em] uppercase">
+              <thead className="sticky top-0 bg-white z-10">
+                <tr className="text-left text-[var(--color-outline)] font-black tracking-[0.2em] uppercase">
                   <th className="py-3 px-4">INDEX</th>
                   <th className="py-3 px-4">TIMESTAMP</th>
                   <th className="py-3 px-4">SIGNATURES</th>
@@ -471,28 +471,28 @@ const DashboardAnalytics: React.FC<Props> = ({ alerts, detectedPersons, isConnec
                     const maxConf = Math.max(...alert.detections.map(d => d.confidence), 0);
                     return (
                       <tr key={i} className="group hover:bg-[rgba(36,128,255,0.03)] transition-all">
-                        <td className="py-3 px-4 font-bold tabular-nums text-[#c4c6cc] group-hover:text-[#2480ff]">{(i + 1).toString().padStart(3, '0')}</td>
-                        <td className="py-3 px-4 font-mono font-bold text-[#74777d]">{alert.timestamp}</td>
+                        <td className="py-3 px-4 font-bold tabular-nums text-[var(--color-outline-variant)] group-hover:text-[var(--color-primary)]">{(i + 1).toString().padStart(3, '0')}</td>
+                        <td className="py-3 px-4 font-mono font-bold text-[var(--color-outline)]">{alert.timestamp}</td>
                         <td className="py-3 px-4">
                           <div className="flex flex-wrap gap-1.5">
                             {alert.detections.map((d, j) => (
-                              <span key={j} className="border border-[rgba(36,128,255,0.1)] px-2 py-0.5 text-[8px] font-bold text-[#2480ff] group-hover:border-[#2480ff] transition-colors">{d.label.toUpperCase()}</span>
+                              <span key={j} className="border border-[var(--color-outline-variant)] px-2 py-0.5 text-[8px] font-bold text-[var(--color-primary)] group-hover:border-[var(--color-primary)] transition-colors rounded-md">{d.label.toUpperCase()}</span>
                             ))}
                           </div>
                         </td>
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-2">
-                             <div className="w-16 h-1 bg-[rgba(0,0,0,0.05)] rounded-full overflow-hidden">
-                                <div className="h-full rounded-full" style={{ width: `${maxConf * 100}%`, background: maxConf > 0.85 ? '#16a34a' : maxConf > 0.65 ? '#2480ff' : '#ffbb33' }} />
+                             <div className="w-16 h-1 bg-[var(--color-surface-container)] rounded-full overflow-hidden">
+                                <div className="h-full rounded-full" style={{ width: `${maxConf * 100}%`, background: maxConf > 0.85 ? '#16a34a' : maxConf > 0.65 ? 'var(--color-primary)' : '#ffbb33' }} />
                              </div>
-                             <span className="font-black tabular-nums text-[#191c1e]">{(maxConf * 100).toFixed(1)}%</span>
+                             <span className="font-black tabular-nums text-[var(--color-on-surface)]">{(maxConf * 100).toFixed(1)}%</span>
                           </div>
                         </td>
                         <td className="py-3 px-4 text-right">
                           {alert.is_person_search_match ? (
-                            <span className="bg-[#ba1a1a] text-white text-[7px] px-2 py-1 font-black rounded-sm shadow-[0_0_10px_rgba(186,26,26,0.2)]">ALPHA_TARGET</span>
+                            <span className="bg-[#ba1a1a] text-white text-[7px] px-2 py-1 font-black rounded-md shadow-[0_2px_8px_rgba(186,26,26,0.2)]">ALPHA_TARGET</span>
                           ) : (
-                            <span className="text-[7px] font-black text-[#c4c6cc] border border-[rgba(0,0,0,0.06)] px-2 py-1 rounded-sm">DETECTION</span>
+                            <span className="text-[7px] font-black text-[var(--color-outline)] border border-[var(--color-outline-variant)] px-2 py-1 rounded-md">DETECTION</span>
                           )}
                         </td>
                       </tr>

@@ -117,7 +117,7 @@ const RemoteCamera: React.FC = () => {
     }, [status]);
 
     return (
-        <div className="min-h-screen bg-[#e8ecf0] text-[#191c1e] font-sans p-6 flex flex-col items-center justify-center relative overflow-hidden">
+        <div className="min-h-screen bg-[var(--color-background)] text-[var(--color-on-surface)] font-sans p-6 flex flex-col items-center justify-center relative overflow-hidden">
             {/* Background Grid */}
             <div className="absolute inset-0 opacity-10 pointer-events-none"
               style={{ backgroundImage: 'linear-gradient(rgba(36,128,255,0.06) 1px,transparent 1px),linear-gradient(90deg,rgba(36,128,255,0.06) 1px,transparent 1px)', backgroundSize: '40px 40px' }} />
@@ -133,7 +133,7 @@ const RemoteCamera: React.FC = () => {
                 </div>
                 <div className="text-right">
                     <div className="flex items-center gap-2 justify-end">
-                        <div className={`w-2 h-2 rounded-full ${status === 'streaming' ? 'bg-[#2480ff] animate-ping' : 'bg-red-500'}`} />
+                        <div className={`w-2 h-2 rounded-full ${status === 'streaming' ? 'bg-[var(--color-primary)] animate-ping' : 'bg-red-500'}`} />
                         <span className="text-[10px] font-bold uppercase">{status}</span>
                     </div>
                     {status === 'streaming' && <p className="text-[10px] opacity-40">UPLINK: {fps} FPS</p>}
@@ -170,7 +170,7 @@ const RemoteCamera: React.FC = () => {
                 {status === 'idle' ? (
                     <button 
                         onClick={startStreaming}
-                        className="w-full py-4 border-2 border-[#2480ff] bg-[rgba(36,128,255,0.05)] font-bold tracking-[0.3em] uppercase hover:bg-[#2480ff] hover:text-white transition-all duration-300 flex items-center justify-center gap-3"
+                        className="w-full py-4 border-2 border-[var(--color-primary)] bg-[rgba(36,128,255,0.05)] font-bold tracking-[0.3em] uppercase hover:bg-[var(--color-primary)] hover:text-white transition-all duration-300 flex items-center justify-center gap-3"
                     >
                         <Zap className="w-5 h-5" />
                         Initialize Uplink

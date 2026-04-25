@@ -78,7 +78,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
             {/* Panel Header */}
             <div className="flex justify-between items-center p-6 border-b border-[rgba(0,0,0,0.08)] shrink-0">
               <div className="flex items-center gap-3">
-                <div className="w-2 h-2 bg-[#2480ff]" />
+                <div className="w-2 h-2 bg-[var(--color-primary)]" />
                 <span className="text-sm font-bold tracking-[0.25em]">SYSTEM_PARAMETERS</span>
               </div>
               <button
@@ -100,8 +100,8 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                   <div>
                     <p className="text-[11px] opacity-30 tracking-[0.2em] mb-0.5">AUTHORIZED_OPERATOR</p>
                     <p className="text-lg font-bold tracking-tight uppercase">{username}</p>
-                    <p className="text-[12px] text-[#2480ff]/60 mt-0.5 lowercase">{userEmail}</p>
-                    <div className="mt-2 text-[10px] tracking-widest text-[#2480ff]/40 border border-[rgba(0,0,0,0.1)] px-2 py-0.5 inline-block">
+                    <p className="text-[12px] text-[var(--color-primary)]/60 mt-0.5 lowercase">{userEmail}</p>
+                    <div className="mt-2 text-[10px] tracking-widest text-[var(--color-primary)]/40 border border-[rgba(0,0,0,0.1)] px-2 py-0.5 inline-block">
                       LEVEL_01_ACCESS
                     </div>
                   </div>
@@ -111,7 +111,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
               {/* Camera Source */}
               <div className="p-6 border-b border-[rgba(0,0,0,0.07)]">
                 <div className="flex items-center gap-2 mb-4">
-                  <Radio className="w-3.5 h-3.5" style={{ color: currentSource === 'hybrid' ? '#47607e' : currentSource === 'remote' ? '#ff4466' : '#2480ff' }} />
+                  <Radio className="w-3.5 h-3.5" style={{ color: currentSource === 'hybrid' ? '#47607e' : currentSource === 'remote' ? '#ff4466' : 'var(--color-primary)' }} />
                   <div>
                     <span className="text-[12px] font-bold tracking-[0.2em]">CAMERA_SOURCE</span>
                     <p className="text-[10px] opacity-30 mt-0.5 uppercase">Feed Input Channel</p>
@@ -124,7 +124,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                     disabled={isReconnecting}
                     className="w-full appearance-none bg-[rgba(247,249,251,0.9)] border text-[12px] font-bold tracking-widest px-4 py-3 focus:outline-none transition-all cursor-pointer uppercase"
                     style={{
-                      color: currentSource === 'hybrid' ? '#47607e' : currentSource === 'remote' ? '#ff4466' : '#2480ff',
+                      color: currentSource === 'hybrid' ? '#47607e' : currentSource === 'remote' ? '#ff4466' : 'var(--color-primary)',
                       borderColor: currentSource === 'hybrid' ? 'rgba(180,198,248,0.4)' : currentSource === 'remote' ? 'rgba(255,68,102,0.4)' : 'rgba(36,128,255,0.15)',
                     }}
                   >
@@ -133,7 +133,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                     <option value="hybrid">Source: Hybrid</option>
                   </select>
                   <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">
-                    <ChevronDown className="w-3 h-3 text-[#2480ff]" />
+                    <ChevronDown className="w-3 h-3 text-[var(--color-primary)]" />
                   </div>
                 </div>
               </div>
@@ -144,7 +144,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
               <div className="p-6 border-b border-[rgba(0,0,0,0.07)]">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Mail className="w-3.5 h-3.5 text-[#2480ff]" />
+                    <Mail className="w-3.5 h-3.5 text-[var(--color-primary)]" />
                     <div>
                       <span className="text-[12px] font-bold tracking-[0.2em]">COMM_LINK_SYSTEM</span>
                       <p className="text-[10px] opacity-30 mt-0.5 uppercase">Email Incident Alerts</p>
@@ -155,13 +155,13 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                     onClick={toggleEmail}
                     className="relative w-10 h-5 border transition-all duration-300 shrink-0"
                     style={emailEnabled
-                      ? { borderColor: '#2480ff', background: 'rgba(0,0,0,0.07)' }
+                      ? { borderColor: 'var(--color-primary)', background: 'rgba(0,0,0,0.07)' }
                       : { borderColor: 'rgba(255,68,102,0.4)', background: 'rgba(255,68,102,0.04)' }
                     }
                   >
                     <div
                       className={`absolute top-0.5 bottom-0.5 w-3.5 transition-all duration-300 ${
-                        emailEnabled ? 'right-0.5 bg-[#2480ff] shadow-[0_0_6px_#2480ff]' : 'left-0.5 bg-red-700'
+                        emailEnabled ? 'right-0.5 bg-[var(--color-primary)] shadow-[0_0_6px_var(--color-primary)]' : 'left-0.5 bg-red-700'
                       }`}
                     />
                   </button>
@@ -205,7 +205,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
               <div className="p-6 border-b border-[rgba(0,0,0,0.07)]">
                 <div className="flex items-center justify-between mb-5">
                   <div className="flex items-center gap-2">
-                    <Search className="w-3.5 h-3.5 text-[#2480ff]" />
+                    <Search className="w-3.5 h-3.5 text-[var(--color-primary)]" />
                     <span className="text-[12px] font-bold tracking-[0.2em]">WATCHLIST_STATUS</span>
                   </div>
                 </div>
@@ -213,11 +213,11 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                   <div className="space-y-3">
                     <div className="flex justify-between items-center">
                       <span className="text-[11px] opacity-40 uppercase">Active Targets:</span>
-                      <span className="text-[13px] font-bold text-[#2480ff]">{watchlist.length}</span>
+                      <span className="text-[13px] font-bold text-[var(--color-primary)]">{watchlist.length}</span>
                     </div>
                     <button
                       onClick={() => { setShowSettings(false); setIsAddingTarget(true); }}
-                      className="w-full py-2 bg-[rgba(0,0,0,0.08)] border border-[rgba(36,128,255,0.3)] text-[11px] font-bold text-[#2480ff] hover:bg-[#2480ff] hover:text-white transition-all"
+                      className="w-full py-2 bg-[rgba(0,0,0,0.08)] border border-[rgba(36,128,255,0.3)] text-[11px] font-bold text-[var(--color-primary)] hover:bg-[var(--color-primary)] hover:text-white transition-all"
                     >
                       MANAGE_WATCHLIST
                     </button>
@@ -229,7 +229,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
               <div className="p-6 border-b border-[rgba(0,0,0,0.07)]">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <User className="w-3.5 h-3.5 text-[#2480ff]" />
+                    <User className="w-3.5 h-3.5 text-[var(--color-primary)]" />
                     <div>
                       <span className="text-[12px] font-bold tracking-[0.2em]">PERSON_LOG</span>
                       <p className="text-[10px] opacity-30 mt-0.5 uppercase">Re-ID sidebar &amp; face crops</p>
@@ -240,13 +240,13 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                     onClick={togglePersonLog}
                     className="relative w-10 h-5 border transition-all duration-300 shrink-0"
                     style={personLogEnabled
-                      ? { borderColor: '#2480ff', background: 'rgba(0,0,0,0.07)' }
+                      ? { borderColor: 'var(--color-primary)', background: 'rgba(0,0,0,0.07)' }
                       : { borderColor: 'rgba(255,68,102,0.4)', background: 'rgba(255,68,102,0.04)' }
                     }
                   >
                     <div
                       className={`absolute top-0.5 bottom-0.5 w-3.5 transition-all duration-300 ${
-                        personLogEnabled ? 'right-0.5 bg-[#2480ff] shadow-[0_0_6px_#2480ff]' : 'left-0.5 bg-red-700'
+                        personLogEnabled ? 'right-0.5 bg-[var(--color-primary)] shadow-[0_0_6px_var(--color-primary)]' : 'left-0.5 bg-red-700'
                       }`}
                     />
                   </button>
@@ -324,21 +324,21 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
               {/* System Diagnostics */}
               <div className="p-6 border-t border-[rgba(0,0,0,0.07)] bg-[rgba(36,128,255,0.02)]">
                 <div className="flex items-center gap-2 mb-4">
-                  <Shield className="w-3.5 h-3.5 text-[#2480ff]/40" />
-                  <span className="text-[11px] font-bold tracking-[0.2em] text-[#2480ff]/40 uppercase">System Diagnostics</span>
+                  <Shield className="w-3.5 h-3.5 text-[var(--color-primary)]/40" />
+                  <span className="text-[11px] font-bold tracking-[0.2em] text-[var(--color-primary)]/40 uppercase">System Diagnostics</span>
                 </div>
                 <div className="space-y-2 text-[11px] font-sans opacity-50">
                   <div className="flex justify-between">
                     <span>CORE_LATENCY:</span>
-                    <span className="text-[#2480ff]">12ms</span>
+                    <span className="text-[var(--color-primary)]">12ms</span>
                   </div>
                   <div className="flex justify-between">
                     <span>SMTP_LINK:</span>
-                    <span className={smtpEmail ? 'text-[#2480ff]' : 'text-red-500'}>{smtpEmail || 'NOT_CONFIGURED'}</span>
+                    <span className={smtpEmail ? 'text-[var(--color-primary)]' : 'text-red-500'}>{smtpEmail || 'NOT_CONFIGURED'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>LOCAL_UPLINK:</span>
-                    <span className="text-[#2480ff]">{systemIp || 'FETCHING...'}</span>
+                    <span className="text-[var(--color-primary)]">{systemIp || 'FETCHING...'}</span>
                   </div>
                 </div>
               </div>

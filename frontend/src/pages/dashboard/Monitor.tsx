@@ -43,22 +43,22 @@ function LocalCameraCard({
       style={{
         aspectRatio: '16/9',
         border: isStreaming
-          ? '1px solid rgba(36,128,255,0.2)'
-          : '1px dashed rgba(0,0,0,0.1)',
+          ? '2px solid var(--color-primary)'
+          : '2px dashed var(--color-outline-variant)',
         opacity: isStreaming ? 1 : 0.7,
         cursor: isStreaming ? 'pointer' : 'default',
-        background: '#e0e3e5',
+        background: 'var(--color-surface)',
         overflow: 'hidden',
-        borderRadius: '0.375rem',
+        borderRadius: '1rem',
         transition: 'all 0.2s',
       }}
     >
       {/* Offline placeholder */}
       {!isStreaming && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-          <EyeOff size={28} style={{ color: '#c4c6cc' }} />
-          <p className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: '#74777d' }}>Sector Offline</p>
-          <p className="text-[9px] font-bold" style={{ color: '#c4c6cc' }}>LOCAL CAMERA</p>
+          <EyeOff size={28} style={{ color: 'var(--color-outline-variant)' }} />
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: 'var(--color-outline)' }}>Sector Offline</p>
+          <p className="text-[9px] font-bold" style={{ color: 'var(--color-outline-variant)' }}>LOCAL CAMERA</p>
         </div>
       )}
 
@@ -76,7 +76,7 @@ function LocalCameraCard({
         {isStreaming && streamLoaded && (
           <span className="flex items-center gap-1.5 px-2.5 py-1 text-[0.6rem] font-bold"
             style={{ background: 'rgba(36,128,255,0.85)', border: '1px solid rgba(36,128,255,0.3)', color: '#ffffff', backdropFilter: 'blur(6px)' }}>
-            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#e0e3e5' }} />
+            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--color-surface)' }} />
             LIVE
           </span>
         )}
@@ -96,8 +96,8 @@ function LocalCameraCard({
             <button
               onClick={e => { e.stopPropagation(); toggleLocalCameraVisibility(); }}
               title={localCameraVisible ? 'Hide Camera' : 'Show Camera'}
-              className="px-2 py-1.5 flex items-center gap-1.5 transition-all text-[9px] font-bold tracking-wider uppercase"
-              style={{ background: 'rgba(255,255,255,0.85)', border: '1px solid rgba(0,0,0,0.15)', color: '#44474c', borderRadius: '0.25rem' }}>
+              className="px-3 py-1.5 flex items-center gap-1.5 transition-all text-[9px] font-bold tracking-wider uppercase rounded-xl hover:bg-white"
+              style={{ background: 'rgba(255,255,255,0.95)', border: '1px solid rgba(0,0,0,0.15)', color: '#000000' }}>
               {localCameraVisible ? <EyeOff size={12} /> : <Eye size={12} />}
               {localCameraVisible ? 'HIDE' : 'SHOW'}
             </button>
@@ -105,10 +105,10 @@ function LocalCameraCard({
               onClick={e => { e.stopPropagation(); toggleCamera(); }}
               disabled={isCameraToggling}
               title={cameraActive ? 'Stop Camera' : 'Start Camera'}
-              className="px-2 py-1.5 flex items-center gap-1.5 transition-all text-[9px] font-bold tracking-wider uppercase"
+              className="px-3 py-1.5 flex items-center gap-1.5 transition-all text-[9px] font-bold tracking-wider uppercase rounded-xl"
               style={cameraActive
-                ? { background: 'rgba(186,26,26,0.1)', border: '1px solid rgba(186,26,26,0.3)', color: '#ba1a1a', borderRadius: '0.25rem' }
-                : { background: 'rgba(36,128,255,0.1)', border: '1px solid rgba(36,128,255,0.3)', color: '#2480ff', borderRadius: '0.25rem' }
+                ? { background: '#ba1a1a', border: '1px solid #ba1a1a', color: '#ffffff' }
+                : { background: 'var(--color-primary)', border: '1px solid var(--color-primary)', color: '#ffffff' }
               }>
               {isCameraToggling ? <Loader2 size={12} className="animate-spin" /> : <Power size={12} />}
               {cameraActive ? 'OFF' : 'ON'}
@@ -117,8 +117,8 @@ function LocalCameraCard({
           {isStreaming && (
             <button
               onClick={e => { e.stopPropagation(); onMaximize('LOCAL CAMERA', localFeedId); }}
-              className="px-4 py-2 text-[10px] font-bold uppercase tracking-widest transition-all"
-              style={{ background: 'rgba(36,128,255,0.85)', color: '#ffffff', border: '1px solid rgba(36,128,255,0.3)', borderRadius: '0.25rem' }}>
+              className="px-4 py-2 text-[10px] font-bold uppercase tracking-widest transition-all rounded-xl hover:bg-[#0d6efd]"
+              style={{ background: 'var(--color-primary)', color: '#ffffff', border: '1px solid var(--color-primary)' }}>
               Full View
             </button>
           )}
@@ -158,22 +158,22 @@ function UrlCameraCard({
       style={{
         aspectRatio: '16/9',
         border: isStreaming
-          ? '1px solid rgba(36,128,255,0.2)'
-          : '1px dashed rgba(0,0,0,0.1)',
+          ? '2px solid var(--color-primary)'
+          : '2px dashed var(--color-outline-variant)',
         opacity: isStreaming ? 1 : 0.7,
         cursor: isStreaming ? 'pointer' : 'default',
-        background: '#e0e3e5',
+        background: 'var(--color-surface)',
         overflow: 'hidden',
-        borderRadius: '0.375rem',
+        borderRadius: '1rem',
         transition: 'all 0.2s',
       }}
     >
       {/* Offline placeholder */}
       {!isStreaming && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-          <EyeOff size={28} style={{ color: '#c4c6cc' }} />
-          <p className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: '#74777d' }}>Sector Offline</p>
-          <p className="text-[9px] font-bold uppercase" style={{ color: '#c4c6cc' }}>{cam.name}</p>
+          <EyeOff size={28} style={{ color: 'var(--color-outline-variant)' }} />
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: 'var(--color-outline)' }}>Sector Offline</p>
+          <p className="text-[9px] font-bold uppercase" style={{ color: 'var(--color-outline-variant)' }}>{cam.name}</p>
         </div>
       )}
 
@@ -191,7 +191,7 @@ function UrlCameraCard({
         {isStreaming && streamLoaded && (
           <span className="flex items-center gap-1.5 px-2.5 py-1 text-[0.6rem] font-bold"
             style={{ background: 'rgba(36,128,255,0.85)', border: '1px solid rgba(36,128,255,0.3)', color: '#ffffff', backdropFilter: 'blur(6px)' }}>
-            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#e0e3e5' }} />
+            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--color-surface)' }} />
             LIVE
           </span>
         )}
@@ -211,8 +211,8 @@ function UrlCameraCard({
             <button
               onClick={e => { e.stopPropagation(); onToggleVisibility(cam.id); }}
               title={cam.visible ? 'Hide Camera' : 'Show Camera'}
-              className="px-2 py-1.5 flex items-center gap-1.5 transition-all text-[9px] font-bold tracking-wider uppercase"
-              style={{ background: 'rgba(255,255,255,0.85)', border: '1px solid rgba(0,0,0,0.15)', color: '#44474c', borderRadius: '0.25rem' }}>
+              className="px-3 py-1.5 flex items-center gap-1.5 transition-all text-[9px] font-bold tracking-wider uppercase rounded-xl hover:bg-white"
+              style={{ background: 'rgba(255,255,255,0.95)', border: '1px solid rgba(0,0,0,0.15)', color: '#000000' }}>
               {cam.visible ? <EyeOff size={12} /> : <Eye size={12} />}
               {cam.visible ? 'HIDE' : 'SHOW'}
             </button>
@@ -220,10 +220,10 @@ function UrlCameraCard({
               onClick={e => { e.stopPropagation(); onToggle(cam.id); }}
               disabled={toggling}
               title={cam.active ? 'Stop Camera' : 'Start Camera'}
-              className="px-2 py-1.5 flex items-center gap-1.5 transition-all text-[9px] font-bold tracking-wider uppercase"
+              className="px-3 py-1.5 flex items-center gap-1.5 transition-all text-[9px] font-bold tracking-wider uppercase rounded-xl"
               style={cam.active
-                ? { background: 'rgba(186,26,26,0.1)', border: '1px solid rgba(186,26,26,0.3)', color: '#ba1a1a', borderRadius: '0.25rem' }
-                : { background: 'rgba(36,128,255,0.1)', border: '1px solid rgba(36,128,255,0.3)', color: '#2480ff', borderRadius: '0.25rem' }
+                ? { background: '#ba1a1a', border: '1px solid #ba1a1a', color: '#ffffff' }
+                : { background: 'var(--color-primary)', border: '1px solid var(--color-primary)', color: '#ffffff' }
               }>
               {toggling ? <Loader2 size={12} className="animate-spin" /> : <Power size={12} />}
               {cam.active ? 'OFF' : 'ON'}
@@ -232,8 +232,8 @@ function UrlCameraCard({
           {isStreaming && (
             <button
               onClick={e => { e.stopPropagation(); onMaximize(cam.name, `url-${cam.id}`); }}
-              className="px-4 py-2 text-[10px] font-bold uppercase tracking-widest transition-all"
-              style={{ background: 'rgba(36,128,255,0.85)', color: '#ffffff', border: '1px solid rgba(36,128,255,0.3)', borderRadius: '0.25rem' }}>
+              className="px-4 py-2 text-[10px] font-bold uppercase tracking-widest transition-all rounded-xl hover:bg-[#0d6efd]"
+              style={{ background: 'var(--color-primary)', color: '#ffffff', border: '1px solid var(--color-primary)' }}>
               Full View
             </button>
           )}
@@ -293,13 +293,13 @@ const Monitor: React.FC = () => {
             className="fixed inset-0 z-[100] bg-black/20 backdrop-blur-md flex items-center justify-center p-6">
             <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }}
               className="w-full max-w-4xl flex flex-col"
-              style={{ background: '#e0e3e5', border: '1px solid rgba(0,0,0,0.1)', boxShadow: '0 8px 40px rgba(0,0,0,0.15)', borderRadius: '0.5rem' }}>
-              <div className="p-4 flex justify-between items-center" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)', background: '#f2f4f6', borderRadius: '0.5rem 0.5rem 0 0' }}>
+              style={{ background: 'var(--color-surface)', border: '1px solid rgba(0,0,0,0.1)', boxShadow: '0 8px 40px rgba(0,0,0,0.15)', borderRadius: '0.5rem' }}>
+              <div className="p-4 flex justify-between items-center" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)', background: 'var(--color-surface-container-low)', borderRadius: '0.5rem 0.5rem 0 0' }}>
                 <div>
-                  <h3 className="text-[14px] font-bold tracking-wide" style={{ color: '#191c1e', fontFamily: "'Manrope', sans-serif" }}>Location</h3>
-                  <p className="text-[10px] mt-0.5" style={{ color: '#74777d' }}>ID: {mapAlert.location?.id}</p>
+                  <h3 className="text-[14px] font-bold tracking-wide" style={{ color: 'var(--color-on-surface)', fontFamily: "'Manrope', sans-serif" }}>Location</h3>
+                  <p className="text-[10px] mt-0.5" style={{ color: 'var(--color-outline)' }}>ID: {mapAlert.location?.id}</p>
                 </div>
-                <button onClick={() => setMapAlert(null)} className="p-2 transition-all" style={{ color: '#74777d' }}>
+                <button onClick={() => setMapAlert(null)} className="p-2 transition-all" style={{ color: 'var(--color-outline)' }}>
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -310,16 +310,16 @@ const Monitor: React.FC = () => {
                     src={`https://www.google.com/maps?q=${mapAlert.location?.lat},${mapAlert.location?.lon}&z=14&output=embed`}
                     allowFullScreen />
                 </div>
-                <div className="w-64 p-5 flex flex-col gap-4" style={{ borderLeft: '1px solid rgba(0,0,0,0.07)', background: '#e0e3e5' }}>
+                <div className="w-64 p-5 flex flex-col gap-4" style={{ borderLeft: '1px solid rgba(0,0,0,0.07)', background: 'var(--color-surface)' }}>
                   <div>
-                    <p className="text-[9px] font-semibold tracking-widest mb-1 uppercase" style={{ color: '#74777d' }}>Coordinates</p>
-                    <p className="text-sm font-bold" style={{ color: '#2480ff' }}>{mapAlert.location?.lat}Â° N</p>
-                    <p className="text-sm font-bold" style={{ color: '#2480ff' }}>{mapAlert.location?.lon}Â° E</p>
+                    <p className="text-[9px] font-semibold tracking-widest mb-1 uppercase" style={{ color: 'var(--color-outline)' }}>Coordinates</p>
+                    <p className="text-sm font-bold" style={{ color: 'var(--color-primary)' }}>{mapAlert.location?.lat}Â° N</p>
+                    <p className="text-sm font-bold" style={{ color: 'var(--color-primary)' }}>{mapAlert.location?.lon}Â° E</p>
                   </div>
                   <div className="mt-auto">
                     <button onClick={() => window.open(mapAlert.location?.maps, '_blank')}
                       className="w-full py-2.5 font-bold text-[10px] tracking-widest uppercase"
-                      style={{ background: '#2480ff', color: '#ffffff', borderRadius: '0.375rem' }}>
+                      style={{ background: 'var(--color-primary)', color: '#ffffff', borderRadius: '0.375rem' }}>
                       Open in Maps
                     </button>
                   </div>
@@ -358,7 +358,7 @@ const Monitor: React.FC = () => {
                     <div>
                       <h2 className="font-bold uppercase tracking-widest" style={{ color: '#ffffff', fontFamily: "'Manrope',sans-serif" }}>{maximizedFeed.name}</h2>
                       <div className="flex items-center gap-2 mt-1">
-                        <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#2480ff' }} />
+                        <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--color-primary)' }} />
                         <span className="text-[9px] font-bold uppercase tracking-[0.2em]" style={{ color: 'rgba(255,255,255,0.6)' }}>Channel Live</span>
                       </div>
                     </div>
@@ -400,14 +400,14 @@ const Monitor: React.FC = () => {
                 initial={{ scale: 0.85, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.85, opacity: 0 }}
                 onClick={e => e.stopPropagation()}
                 className="relative w-full max-w-sm overflow-hidden"
-                style={{ background: '#e0e3e5', border: '1px solid rgba(0,0,0,0.1)', borderRadius: '0.5rem', boxShadow: '0 8px 32px rgba(0,0,0,0.15)' }}
+                style={{ background: 'var(--color-surface)', border: '1px solid rgba(0,0,0,0.1)', borderRadius: '0.5rem', boxShadow: '0 8px 32px rgba(0,0,0,0.15)' }}
               >
                 {['top-0 left-0 border-t-2 border-l-2', 'top-0 right-0 border-t-2 border-r-2', 'bottom-0 left-0 border-b-2 border-l-2', 'bottom-0 right-0 border-b-2 border-r-2'].map((c, i) => (
                   <div key={i} className={`absolute w-6 h-6 ${c} z-10`} style={{ borderColor: 'rgba(36,128,255,0.4)' }} />
                 ))}
                 <button onClick={() => setSelectedPerson(null)}
                   className="absolute top-3 right-3 z-20 p-1.5 transition-all"
-                  style={{ background: 'rgba(255,255,255,0.9)', border: '1px solid rgba(0,0,0,0.1)', color: '#74777d', borderRadius: '0.25rem' }}>
+                  style={{ background: 'rgba(255,255,255,0.9)', border: '1px solid rgba(0,0,0,0.1)', color: 'var(--color-outline)', borderRadius: '0.25rem' }}>
                   <X className="w-4 h-4" />
                 </button>
                 <div className="relative w-full aspect-square bg-gray-100 overflow-hidden">
@@ -415,23 +415,23 @@ const Monitor: React.FC = () => {
                   <div className="absolute inset-x-0 top-0 h-[2px] animate-scanner" style={{ background: 'rgba(36,128,255,0.6)' }} />
                   <div className="absolute inset-0 bg-gradient-to-t from-white/30 via-transparent to-transparent" />
                   <div className="absolute top-3 left-3 px-2.5 py-1 text-[9px] font-bold tracking-widest rounded"
-                    style={selectedPerson.status === 'NEW' ? { background: '#2480ff', color: '#ffffff' } : { background: '#47607e', color: '#ffffff' }}>
+                    style={selectedPerson.status === 'NEW' ? { background: 'var(--color-primary)', color: '#ffffff' } : { background: '#47607e', color: '#ffffff' }}>
                     {selectedPerson.status}
                   </div>
                 </div>
                 <div className="p-5 space-y-4">
                   <div>
-                    <p className="text-[9px] font-semibold tracking-[0.2em] mb-1 uppercase" style={{ color: '#74777d' }}>Subject ID</p>
-                    <p className="text-xl font-bold" style={{ color: '#191c1e', fontFamily: "'Manrope', sans-serif" }}>{selectedPerson.person_id}</p>
+                    <p className="text-[9px] font-semibold tracking-[0.2em] mb-1 uppercase" style={{ color: 'var(--color-outline)' }}>Subject ID</p>
+                    <p className="text-xl font-bold" style={{ color: 'var(--color-on-surface)', fontFamily: "'Manrope', sans-serif" }}>{selectedPerson.person_id}</p>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="p-3 rounded" style={{ background: '#f2f4f6', border: '1px solid rgba(0,0,0,0.07)' }}>
-                      <p className="text-[8px] font-semibold tracking-widest mb-1 uppercase" style={{ color: '#74777d' }}>Feed</p>
-                      <p className="text-[11px] font-bold" style={{ color: '#2480ff' }}>{selectedPerson.feed_id.toUpperCase()}</p>
+                    <div className="p-3 rounded" style={{ background: 'var(--color-surface-container-low)', border: '1px solid rgba(0,0,0,0.07)' }}>
+                      <p className="text-[8px] font-semibold tracking-widest mb-1 uppercase" style={{ color: 'var(--color-outline)' }}>Feed</p>
+                      <p className="text-[11px] font-bold" style={{ color: 'var(--color-primary)' }}>{selectedPerson.feed_id.toUpperCase()}</p>
                     </div>
-                    <div className="p-3 rounded" style={{ background: '#f2f4f6', border: '1px solid rgba(0,0,0,0.07)' }}>
-                      <p className="text-[8px] font-semibold tracking-widest mb-1 uppercase" style={{ color: '#74777d' }}>Detected</p>
-                      <p className="text-[11px] font-bold" style={{ color: '#191c1e' }}>{selectedPerson.timestamp}</p>
+                    <div className="p-3 rounded" style={{ background: 'var(--color-surface-container-low)', border: '1px solid rgba(0,0,0,0.07)' }}>
+                      <p className="text-[8px] font-semibold tracking-widest mb-1 uppercase" style={{ color: 'var(--color-outline)' }}>Detected</p>
+                      <p className="text-[11px] font-bold" style={{ color: 'var(--color-on-surface)' }}>{selectedPerson.timestamp}</p>
                     </div>
                   </div>
                   <button
@@ -439,7 +439,7 @@ const Monitor: React.FC = () => {
                     className="w-full py-3 font-bold text-[10px] tracking-[0.15em] transition-all flex items-center justify-center gap-2 rounded"
                     style={focusedPersonId === selectedPerson.person_id
                       ? { background: 'rgba(186,26,26,0.08)', border: '1px solid rgba(186,26,26,0.25)', color: '#ba1a1a' }
-                      : { background: 'rgba(36,128,255,0.06)', border: '1px solid rgba(36,128,255,0.25)', color: '#2480ff' }}>
+                      : { background: 'rgba(36,128,255,0.06)', border: '1px solid rgba(36,128,255,0.25)', color: 'var(--color-primary)' }}>
                     <Target className="w-3.5 h-3.5" />
                     {focusedPersonId === selectedPerson.person_id ? 'Release Focus' : 'Set Focus'}
                   </button>
@@ -451,20 +451,20 @@ const Monitor: React.FC = () => {
       )}
 
       {/* â”€â”€â”€ LEFT: CAMERA GRID â”€â”€â”€ */}
-      <section className="flex-1 overflow-y-auto" style={{ background: '#e8ecf0' }}>
+      <section className="flex-1 overflow-y-auto" style={{ background: 'var(--color-background)' }}>
         <div className="p-6 space-y-6 pb-12">
 
           {/* â”€â”€ KPI Cards â”€â”€ */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { label: 'Total Nodes',      value: totalNodes,    color: '#191c1e', bg: '#e0e3e5',                    border: 'rgba(0,0,0,0.12)',           icon: <Video size={20} /> },
-              { label: 'Active Readiness', value: activeNodes,   color: '#2480ff', bg: 'rgba(36,128,255,0.06)',       border: 'rgba(36,128,255,0.2)',        icon: <Activity size={20} /> },
-              { label: 'Feed Live',        value: liveFeedCount, color: '#16a34a', bg: 'rgba(22,163,74,0.06)',        border: 'rgba(22,163,74,0.2)',         icon: null },
-              { label: 'Node Offline',     value: offlineCount,  color: '#74777d', bg: '#f2f4f6',                    border: 'rgba(0,0,0,0.1)',             icon: null },
+              { label: 'Total Nodes',      value: totalNodes,    color: 'var(--color-on-surface)', bg: 'var(--color-surface)',                    border: 'var(--color-outline-variant)',           icon: <Video size={20} /> },
+              { label: 'Active Readiness', value: activeNodes,   color: 'var(--color-primary)', bg: 'var(--color-surface)',       border: 'var(--color-primary)',        icon: <Activity size={20} /> },
+              { label: 'Feed Live',        value: liveFeedCount, color: '#16a34a', bg: 'var(--color-surface)',        border: '#16a34a',         icon: null },
+              { label: 'Node Offline',     value: offlineCount,  color: 'var(--color-outline)', bg: 'var(--color-surface-container-low)',                    border: 'var(--color-outline-variant)',             icon: null },
             ].map(kpi => (
-              <div key={kpi.label} className="p-5 flex flex-col justify-between relative overflow-hidden rounded-xl"
-                style={{ background: kpi.bg, border: `1px solid ${kpi.border}`, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
-                <p className="text-[9px] font-bold uppercase tracking-widest mb-3" style={{ color: '#74777d' }}>{kpi.label}</p>
+              <div key={kpi.label} className="p-5 flex flex-col justify-between relative overflow-hidden rounded-2xl"
+                style={{ background: kpi.bg, border: `1px solid ${kpi.border}`, boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+                <p className="text-[9px] font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--color-outline)' }}>{kpi.label}</p>
                 <p className="text-3xl font-bold tracking-tighter" style={{ color: kpi.color, fontFamily: "'Manrope',sans-serif" }}>
                   {kpi.value.toString().padStart(2, '0')}
                 </p>
@@ -479,18 +479,18 @@ const Monitor: React.FC = () => {
           </div>
 
           {/* â”€â”€ Header bar â”€â”€ */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 rounded-xl"
-            style={{ background: '#e0e3e5', border: '1px solid rgba(0,0,0,0.1)', boxShadow: '0 2px 8px rgba(0,0,0,0.07)' }}>
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 rounded-2xl"
+            style={{ background: 'var(--color-surface)', border: '1px solid var(--color-outline-variant)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
             <div className="flex items-center gap-4">
-              <div className="p-2.5 rounded-lg" style={{ background: 'rgba(36,128,255,0.08)', border: '1px solid rgba(36,128,255,0.15)', color: '#2480ff' }}>
+              <div className="p-2.5 rounded-xl" style={{ background: 'var(--color-surface-container)', border: '1px solid var(--color-outline-variant)', color: 'var(--color-primary)' }}>
                 <LayoutGrid className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-sm font-bold uppercase tracking-wide" style={{ color: '#191c1e', fontFamily: "'Manrope',sans-serif" }}>
+                <h3 className="text-sm font-bold uppercase tracking-wide" style={{ color: 'var(--color-on-surface)', fontFamily: "'Manrope',sans-serif" }}>
                   Camera Grid
                 </h3>
-                <p className="text-[9px] font-bold uppercase tracking-widest mt-1 flex items-center gap-2" style={{ color: '#74777d' }}>
-                  <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#2480ff' }} />
+                <p className="text-[9px] font-bold uppercase tracking-widest mt-1 flex items-center gap-2" style={{ color: 'var(--color-outline)' }}>
+                  <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--color-primary)' }} />
                   {activeNodes} Nodes Online
                   {systemLatency !== null && (
                     <span style={{ color: '#16a34a' }}>
