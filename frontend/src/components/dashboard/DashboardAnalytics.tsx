@@ -409,7 +409,10 @@ const DashboardAnalytics: React.FC<Props> = ({ alerts, detectedPersons, isConnec
         </div>
 
         {/* Events Table */}
-        <div className="border border-[rgba(0,0,0,0.1)] bg-[#e0e3e5] p-6 shadow-sm">
+        <motion.div
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}
+          className="border border-[rgba(0,0,0,0.1)] bg-[#e0e3e5] p-6 shadow-sm"
+        >
           <div className="flex items-center gap-2.5 mb-6">
               <TrendingUp size={16} className="text-[#2480ff]" />
               <div>
