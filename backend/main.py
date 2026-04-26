@@ -334,6 +334,11 @@ async def lifespan(app: FastAPI):
         camera.set_class_sounds(saved_sounds)
         print(f"[DB] Loaded {len(saved_sounds)} class sounds from database.")
 
+    # Load persisted camera mode from DB
+    saved_mode = _db_get("camera_mode", "both")
+    camera.set_mode(saved_mode)
+    print(f"[DB] Loaded camera mode: {saved_mode}")
+
     # Seed cameras from JSON if DB is empty
     _seed_cameras_from_json()
 
@@ -658,9 +663,15 @@ def get_alert_history(db: Session = Depends(get_db)):
         "location": {"lat": float(a.location_lat or 0), "lon": float(a.location_lon or 0)}
     } for a in alerts]
 
+@app.get("/api/camera/mode")
+def get_camera_mode():
+    """Return the current detection mode so the frontend can restore UI state."""
+    return {"mode": camera.mode}
+
 @app.post("/api/camera/mode")
 def set_camera_mode(body: ModeUpdate):
     camera.set_mode(body.mode)
+    _db_set("camera_mode", body.mode)   # persist across restarts
     return {"status": "success", "mode": camera.mode}
 
 @app.post("/api/camera/sound")

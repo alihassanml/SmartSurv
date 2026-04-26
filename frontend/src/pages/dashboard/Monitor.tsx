@@ -243,9 +243,6 @@ function UrlCameraCard({
   );
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   MAIN MONITOR PAGE
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 const Monitor: React.FC = () => {
   const {
     alerts, detectedPersons, setDetectedPersons, selectedPerson, setSelectedPerson,
@@ -258,6 +255,7 @@ const Monitor: React.FC = () => {
     urlCameras, toggleUrlCamera, toggleUrlCameraVisibility,
     localCameraVisible, toggleLocalCameraVisibility,
     systemLatency,
+    cameraMode, handleModeChange,
   } = useApp();
 
   const [maximizedFeed, setMaximizedFeed] = useState<{ name: string; feedId: string } | null>(null);
@@ -499,6 +497,28 @@ const Monitor: React.FC = () => {
                   )}
                 </p>
               </div>
+            </div>
+
+            {/* Detection Mode Selector */}
+            <div className="flex items-center gap-1 p-1 rounded-xl" style={{ background: 'var(--color-surface-container-low)', border: '1px solid var(--color-outline-variant)' }}>
+              {(['detection', 'search', 'both'] as const).map((key) => {
+                const label = key === 'detection' ? 'DETECT' : key === 'search' ? 'SEARCH' : 'HYBRID';
+                const tip   = key === 'detection' ? 'YOLO object detection only' : key === 'search' ? 'FaceNet person search only' : 'Object detection + Face search';
+                return (
+                  <button
+                    key={key}
+                    onClick={() => handleModeChange(key)}
+                    title={tip}
+                    className="px-3 py-1.5 text-[9px] font-black tracking-widest uppercase transition-all duration-200 rounded-lg"
+                    style={cameraMode === key
+                      ? { background: 'var(--color-primary)', color: '#ffffff', boxShadow: '0 2px 8px rgba(36,128,255,0.35)' }
+                      : { background: 'transparent', color: 'var(--color-outline)' }
+                    }
+                  >
+                    {label}
+                  </button>
+                );
+              })}
             </div>
           </div>
 

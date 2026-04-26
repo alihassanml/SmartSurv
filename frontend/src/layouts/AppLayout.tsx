@@ -65,6 +65,8 @@ export interface AppContextValue {
   userEmail: string;
   role: string;
   handleLogout: () => void;
+  cameraMode: 'detection' | 'search' | 'both' | null;
+  handleModeChange: (mode: 'detection' | 'search' | 'both') => Promise<void>;
 }
 
 export const AppContext = React.createContext<AppContextValue | null>(null);
@@ -135,6 +137,9 @@ const AppLayout: React.FC = () => {
   const [focusedPersonId, setFocusedPersonId] = useState<string | null>(null);
   const [focusedPersonVisible, setFocusedPersonVisible] = useState(false);
 
+  // --- Camera detection mode (null = not yet loaded from DB) ---
+  const [cameraMode, setCameraMode] = useState<'detection' | 'search' | 'both' | null>(null);
+
   // --- Semantic search ---
   const [semanticQuery, setSemanticQuery] = useState('');
   const [semanticResults, setSemanticResults] = useState<{ id: string; score: number }[]>([]);
@@ -162,11 +167,11 @@ const AppLayout: React.FC = () => {
 
   // --- Init system info ---
   useEffect(() => {
-    fetch(`${API}/api/camera/mode`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode: 'both' }),
-    }).catch(() => {});
+    // Load current mode from DB (don't force-reset it)
+    fetch(`${API}/api/camera/mode`)
+      .then(r => r.json())
+      .then(d => { if (d.mode) setCameraMode(d.mode as 'detection' | 'search' | 'both'); })
+      .catch(() => {});
 
     fetch(`${API}/api/camera/feeds`)
       .then(r => r.json())
@@ -479,6 +484,20 @@ const AppLayout: React.FC = () => {
     } catch (_) {}
   };
 
+  const handleModeChange = async (mode: 'detection' | 'search' | 'both') => {
+    setCameraMode(mode); // optimistic
+    try {
+      await fetch(`${API}/api/camera/mode`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode }),
+      });
+    } catch (_) {
+      // roll back on failure
+      setCameraMode(cameraMode);
+    }
+  };
+
   const handleSemanticSearch = (val: string) => {
     setSemanticQuery(val);
     if (semanticDebounceRef.current) clearTimeout(semanticDebounceRef.current);
@@ -513,6 +532,7 @@ const AppLayout: React.FC = () => {
     semanticQuery, semanticResults, semanticLoading, handleSemanticSearch,
     isReconnecting, username, userEmail, role, handleLogout,
     systemLatency,
+    cameraMode, handleModeChange,
   };
 
   return (
