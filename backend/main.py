@@ -1029,12 +1029,28 @@ async def persons_endpoint(websocket: WebSocket):
 @app.websocket("/ws/remote-input")
 async def remote_input_endpoint(websocket: WebSocket, client_id: str = Query("1")):
     await websocket.accept()
+    import base64 as _b64
     print(f"[WS] Remote camera {client_id} connected.")
     try:
         while app.state.is_running:
-            data = await websocket.receive_bytes()
+            # Handle both binary (bytes) and text (base64) for compatibility
+            message = await websocket.receive()
+            data = None
+            
+            if "bytes" in message:
+                data = message["bytes"]
+            elif "text" in message:
+                try:
+                    # Decode base64 text to bytes
+                    text_data = message["text"]
+                    if "," in text_data: text_data = text_data.split(",")[1]
+                    data = _b64.b64decode(text_data)
+                except Exception as e:
+                    print(f"[WS] Base64 decode error: {e}")
+            
             if data:
                 camera.push_remote_frame(data, client_id)
+                
     except (WebSocketDisconnect, asyncio.CancelledError, RuntimeError):
         print(f"[WS] Remote camera {client_id} disconnected.")
     except Exception as e:

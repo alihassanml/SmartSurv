@@ -1,13 +1,74 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Platform } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, RefreshControl, Dimensions, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
-import { Power, Eye, RefreshCw, LayoutGrid, Radio } from 'lucide-react-native';
+import { Power, Eye, RefreshCw, LayoutGrid, Radio, Video, VideoOff } from 'lucide-react-native';
 import { API_URL } from '../../constants/Config';
 import { THEME, SPACING, FONTS } from '../../constants/Theme';
+import axios from 'axios';
+import * as SecureStore from 'expo-secure-store';
+
+const { width } = Dimensions.get('window');
 
 export default function MonitorScreen() {
   const [activeFeed, setActiveFeed] = useState('local');
+  const [cameras, setCameras] = useState<any[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const [systemActive, setSystemActive] = useState(false);
+
+  const fetchCameras = async () => {
+    try {
+      const token = await SecureStore.getItemAsync('token');
+      const headers = { Authorization: `Bearer ${token}` };
+
+      // Get Active Feeds
+      const feedsRes = await axios.get(`${API_URL}/api/camera/feeds`, { headers });
+      const activeFeeds = feedsRes.data?.feeds || [];
+      setSystemActive(activeFeeds.length > 0);
+
+      // Get All URL Cameras
+      const urlCamsRes = await axios.get(`${API_URL}/api/url-cameras`, { headers });
+      const urlCams = urlCamsRes.data?.cameras || [];
+
+      // Combine for UI (Local + URL)
+      const allCams = [
+        { id: 'local', name: 'Server Local Cam', active: activeFeeds.includes('local'), isLocal: true },
+        ...urlCams.map((c: any) => ({ ...c, isLocal: false }))
+      ];
+      setCameras(allCams);
+    } catch (err) {
+      console.log('Fetch cameras error:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchCameras();
+    const interval = setInterval(fetchCameras, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchCameras();
+    setRefreshing(false);
+  };
+
+  const toggleCamera = async (id: any, isLocal: boolean, currentActive: boolean) => {
+    try {
+      const token = await SecureStore.getItemAsync('token');
+      const headers = { Authorization: `Bearer ${token}` };
+
+      if (isLocal) {
+        const endpoint = currentActive ? '/api/camera/stop' : '/api/camera/start';
+        await axios.post(`${API_URL}${endpoint}`, {}, { headers });
+      } else {
+        await axios.post(`${API_URL}/api/url-cameras/${id}/toggle`, {}, { headers });
+      }
+      fetchCameras();
+    } catch (err) {
+      console.log('Toggle error:', err);
+    }
+  };
 
   const streamUrl = `${API_URL}/api/camera/stream/${activeFeed}`;
 
@@ -15,27 +76,36 @@ export default function MonitorScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>Live Monitor</Text>
-          <Text style={styles.headerSubtitle}>Real-time surveillance feeds</Text>
+          <Text style={styles.headerTitle}>Monitor Grid</Text>
+          <Text style={styles.headerSubtitle}>{systemActive ? 'System Live & Protected' : 'System Standby'}</Text>
         </View>
-        <TouchableOpacity style={styles.iconBtn}>
+        <TouchableOpacity style={styles.refreshBtn} onPress={onRefresh}>
           <RefreshCw size={18} color={THEME.text} />
         </TouchableOpacity>
       </View>
 
       <View style={styles.viewportContainer}>
         <View style={styles.viewport}>
-          <WebView 
-            source={{ uri: streamUrl }}
-            scrollEnabled={false}
-            style={styles.webview}
-            containerStyle={styles.webviewContainer}
-          />
+          {systemActive ? (
+            <WebView 
+              source={{ uri: streamUrl }}
+              scrollEnabled={false}
+              style={styles.webview}
+              containerStyle={styles.webviewContainer}
+            />
+          ) : (
+            <View style={styles.offlinePlaceholder}>
+              <VideoOff size={48} color={THEME.outline} opacity={0.3} />
+              <Text style={styles.offlineText}>SYSTEM OFFLINE</Text>
+            </View>
+          )}
           
-          <View style={styles.liveBadge}>
-            <View style={styles.pulseDot} />
-            <Text style={styles.liveText}>LIVE</Text>
-          </View>
+          {systemActive && (
+            <View style={styles.liveBadge}>
+              <View style={styles.pulseDot} />
+              <Text style={styles.liveText}>LIVE</Text>
+            </View>
+          )}
 
           <View style={styles.viewportOverlay}>
             <View style={styles.camLabel}>
@@ -46,39 +116,44 @@ export default function MonitorScreen() {
         </View>
       </View>
 
-      <View style={styles.controls}>
-        <Text style={styles.sectionLabel}>Switch Feed</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.feedList}>
-          {['local', 'remote-1', 'remote-2'].map((id) => (
+      <ScrollView 
+        style={styles.controls} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      >
+        <Text style={styles.sectionLabel}>Camera Controls</Text>
+        
+        {cameras.map((cam) => (
+          <View key={cam.id} style={styles.cameraRow}>
             <TouchableOpacity 
-              key={id} 
-              onPress={() => setActiveFeed(id)}
-              style={[styles.feedCard, activeFeed === id && styles.activeFeedCard]}
+              style={styles.camInfo} 
+              onPress={() => cam.active && setActiveFeed(cam.isLocal ? 'local' : cam.id)}
             >
-              <View style={[styles.feedIcon, { backgroundColor: activeFeed === id ? THEME.primary : THEME.surfaceContainer }]} />
-              <Text style={[styles.feedName, activeFeed === id && styles.activeFeedName]}>
-                {id === 'local' ? 'Server Cam' : `Node ${id.split('-')[1]}`}
-              </Text>
+              <View style={[styles.camIcon, { backgroundColor: cam.active ? 'rgba(22, 163, 74, 0.1)' : 'rgba(115, 118, 134, 0.1)' }]}>
+                <Video size={20} color={cam.active ? THEME.success : THEME.outline} />
+              </View>
+              <View>
+                <Text style={[styles.camName, activeFeed === (cam.isLocal ? 'local' : cam.id) && cam.active && styles.activeCamName]}>
+                  {cam.name}
+                </Text>
+                <Text style={styles.camStatus}>{cam.active ? 'ONLINE' : 'OFFLINE'}</Text>
+              </View>
             </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        <View style={styles.actionGrid}>
-          <TouchableOpacity style={styles.controlBtn}>
-            <View style={[styles.btnIcon, { backgroundColor: 'rgba(186,26,26,0.1)' }]}>
-              <Power size={22} color={THEME.error} />
+            
+            <View style={styles.toggleRow}>
+              <Text style={[styles.toggleText, { color: cam.active ? THEME.success : THEME.outline }]}>
+                {cam.active ? 'ON' : 'OFF'}
+              </Text>
+              <Switch 
+                value={cam.active}
+                onValueChange={() => toggleCamera(cam.id, cam.isLocal, cam.active)}
+                trackColor={{ false: THEME.outlineVariant, true: THEME.success }}
+                thumbColor="white"
+              />
             </View>
-            <Text style={styles.btnText}>Stop System</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.controlBtn}>
-            <View style={[styles.btnIcon, { backgroundColor: 'rgba(0,74,198,0.1)' }]}>
-              <Eye size={22} color={THEME.primary} />
-            </View>
-            <Text style={styles.btnText}>View AI Logic</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+          </View>
+        ))}
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -93,42 +168,64 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: SPACING.lg,
+    backgroundColor: THEME.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: THEME.outlineVariant,
   },
   headerTitle: {
     fontSize: 24,
-    fontWeight: '700',
+    fontWeight: '800',
     color: THEME.text,
     fontFamily: FONTS.heading,
   },
   headerSubtitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: THEME.textSecondary,
     marginTop: 2,
     fontFamily: FONTS.body,
   },
-  iconBtn: {
-    width: 44,
-    height: 44,
+  refreshBtn: {
+    width: 40,
+    height: 40,
     borderRadius: 12,
-    backgroundColor: THEME.surface,
+    backgroundColor: THEME.background,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: THEME.outlineVariant,
   },
   viewportContainer: {
-    paddingHorizontal: SPACING.lg,
-    marginBottom: 24,
+    padding: SPACING.lg,
+    backgroundColor: THEME.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: THEME.outlineVariant,
   },
   viewport: {
     aspectRatio: 16/9,
-    backgroundColor: '#000',
+    backgroundColor: '#111',
     borderRadius: 16,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#333',
   },
   webview: {
     flex: 1,
   },
   webviewContainer: {
     backgroundColor: 'black',
+  },
+  offlinePlaceholder: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  offlineText: {
+    color: THEME.outline,
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 2,
+    fontFamily: FONTS.heading,
   },
   liveBadge: {
     position: 'absolute',
@@ -139,8 +236,10 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 10,
     paddingVertical: 6,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
     borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
   },
   pulseDot: {
     width: 6,
@@ -151,7 +250,7 @@ const styles = StyleSheet.create({
   liveText: {
     color: 'white',
     fontSize: 10,
-    fontWeight: '800',
+    fontWeight: '900',
     letterSpacing: 1,
     fontFamily: FONTS.bodyBold,
   },
@@ -164,86 +263,82 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
   },
   camLabelText: {
     color: 'white',
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: '800',
     letterSpacing: 0.5,
     fontFamily: FONTS.bodyBold,
   },
   controls: {
     flex: 1,
-    padding: SPACING.lg,
+    paddingHorizontal: SPACING.lg,
   },
   sectionLabel: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: THEME.text,
+    fontSize: 12,
+    fontWeight: '800',
+    color: THEME.textSecondary,
+    marginTop: 24,
     marginBottom: 16,
     textTransform: 'uppercase',
-    letterSpacing: 1,
+    letterSpacing: 1.5,
     fontFamily: FONTS.heading,
   },
-  feedList: {
-    maxHeight: 110,
-    marginBottom: 32,
-  },
-  feedCard: {
-    width: 110,
-    marginRight: 16,
-    backgroundColor: THEME.surface,
-    padding: 12,
-    borderRadius: 14,
-    alignItems: 'center',
-  },
-  activeFeedCard: {
-    backgroundColor: THEME.surface,
-  },
-  feedIcon: {
-    width: '100%',
-    height: 50,
-    borderRadius: 8,
-    marginBottom: 10,
-    opacity: 0.8,
-  },
-  feedName: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: THEME.textSecondary,
-    fontFamily: FONTS.bodyBold,
-  },
-  activeFeedName: {
-    color: THEME.primary,
-    fontWeight: '700',
-  },
-  actionGrid: {
+  cameraRow: {
     flexDirection: 'row',
-    gap: 16,
-  },
-  controlBtn: {
-    flex: 1,
-    backgroundColor: THEME.surface,
-    padding: 20,
-    borderRadius: 16,
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 12,
+    backgroundColor: THEME.surface,
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: THEME.outlineVariant,
   },
-  btnIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  camInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    flex: 1,
+  },
+  camIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  btnText: {
-    fontSize: 13,
+  camName: {
+    fontSize: 15,
     fontWeight: '700',
     color: THEME.text,
+    fontFamily: FONTS.bodyBold,
+  },
+  activeCamName: {
+    color: THEME.primary,
+  },
+  camStatus: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: THEME.textSecondary,
+    marginTop: 2,
+    fontFamily: FONTS.body,
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  toggleText: {
+    fontSize: 11,
+    fontWeight: '800',
     fontFamily: FONTS.bodyBold,
   },
 });

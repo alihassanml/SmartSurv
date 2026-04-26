@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, FlatList, Image, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
+import { StyleSheet, View, Text, FlatList, Image, TouchableOpacity, ActivityIndicator, RefreshControl, Share } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { AlertTriangle, MapPin, Clock, Search, ChevronRight } from 'lucide-react-native';
+import { AlertTriangle, MapPin, Clock, Search, ChevronRight, FileText, Download, Share2 } from 'lucide-react-native';
 import { API_URL } from '../../constants/Config';
 import { THEME, SPACING, FONTS } from '../../constants/Theme';
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
 
 interface Detection {
   label: string;
@@ -19,11 +21,14 @@ interface Alert {
   detections: Detection[];
   image: string;
   is_person_search_match: boolean;
+  location_lat?: number;
+  location_lon?: number;
 }
 
 export default function AlertsScreen() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const fetchAlerts = async () => {
     try {
@@ -36,39 +41,97 @@ export default function AlertsScreen() {
       console.log('Alerts fetch error:', err);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
   useEffect(() => {
     fetchAlerts();
-    const interval = setInterval(fetchAlerts, 5000); 
+    const interval = setInterval(fetchAlerts, 10000); 
     return () => clearInterval(interval);
   }, []);
 
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchAlerts();
+  };
+
+  const generatePDF = async () => {
+    const html = `
+      <html>
+        <head>
+          <style>
+            body { font-family: 'Helvetica'; padding: 40px; color: #131b2e; }
+            h1 { color: #004ac6; border-bottom: 2px solid #004ac6; padding-bottom: 10px; }
+            .alert { margin-bottom: 20px; padding: 15px; border: 1px solid #c3c6d7; border-radius: 8px; page-break-inside: avoid; }
+            .critical { border-left: 5px solid #ba1a1a; background: #fff5f5; }
+            .timestamp { font-size: 12px; color: #737686; }
+            .title { font-weight: bold; font-size: 16px; margin: 5px 0; }
+            .details { font-size: 14px; }
+            .img { width: 100%; max-width: 400px; margin-top: 10px; border-radius: 4px; }
+          </style>
+        </head>
+        <body>
+          <h1>SmartSurv Security Log Report</h1>
+          <p>Generated on: ${new Date().toLocaleString()}</p>
+          <p>Total Incidents: ${alerts.length}</p>
+          ${alerts.map(a => {
+            const isCritical = a.detections.some(d => ['gun', 'knife', 'violence'].includes(d.label.toLowerCase())) || a.is_person_search_match;
+            return `
+              <div class="alert ${isCritical ? 'critical' : ''}">
+                <div class="timestamp">${a.timestamp} | NODE: ${a.feed_id.toUpperCase()}</div>
+                <div class="title">${a.is_person_search_match ? 'WATCHLIST MATCH' : 'ACTIVITY DETECTED'}</div>
+                <div class="details">
+                  Detections: ${a.detections.map(d => `${d.label} (${Math.round(d.confidence * 100)}%)`).join(', ')}
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </body>
+      </html>
+    `;
+
+    try {
+      const { uri } = await Print.printToFileAsync({ html });
+      await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
+    } catch (error) {
+      console.error("PDF Error:", error);
+    }
+  };
+
   const renderItem = ({ item }: { item: Alert }) => {
-    const isCritical = item.detections.some(d => 
-        ['gun', 'knife', 'violence', 'smoking'].includes(d.label.toLowerCase())
-    ) || item.is_person_search_match;
+    if (!item) return null;
+
+    const detections = item.detections || [];
+    const isCritical = detections.some(d => 
+        ['gun', 'knife', 'violence', 'smoking'].includes(d.label?.toLowerCase() || '')
+    ) || !!item.is_person_search_match;
 
     return (
       <View style={[styles.card, isCritical && styles.criticalCard]}>
         <View style={styles.imageBox}>
-          <Image 
-            source={{ uri: item.image.startsWith('data:') ? item.image : `data:image/jpeg;base64,${item.image}` }} 
-            style={styles.image} 
-          />
+          {item.image ? (
+            <Image 
+              source={{ uri: item.image.startsWith('data:') ? item.image : `data:image/jpeg;base64,${item.image}` }} 
+              style={styles.image} 
+            />
+          ) : (
+            <View style={[styles.image, { backgroundColor: '#111', alignItems: 'center', justifyContent: 'center' }]}>
+              <AlertTriangle color={THEME.outline} size={30} opacity={0.3} />
+            </View>
+          )}
           {item.is_person_search_match && (
             <View style={styles.targetBadge}>
-              <Text style={styles.targetText}>MATCH FOUND</Text>
+              <Text style={styles.targetText}>TARGET MATCH</Text>
             </View>
           )}
         </View>
 
         <View style={styles.details}>
           <View style={styles.detailRow}>
-            <View style={[styles.typeBadge, { backgroundColor: isCritical ? 'rgba(186,26,26,0.1)' : 'rgba(0,74,198,0.1)' }]}>
+            <View style={[styles.typeBadge, { backgroundColor: isCritical ? 'rgba(186,26,26,0.08)' : 'rgba(37,99,235,0.08)' }]}>
               <Text style={[styles.typeText, { color: isCritical ? THEME.error : THEME.primary }]}>
-                {isCritical ? 'CRITICAL THREAT' : 'ACTIVITY DETECTED'}
+                {isCritical ? 'CRITICAL THREAT' : 'ACTIVITY LOG'}
               </Text>
             </View>
             <View style={styles.timeBox}>
@@ -78,10 +141,10 @@ export default function AlertsScreen() {
           </View>
 
           <View style={styles.detectionRow}>
-            {item.detections.map((d, i) => (
+            {detections.map((d, i) => (
               <View key={i} style={styles.labelBadge}>
-                <Text style={styles.labelText}>{d.label}</Text>
-                <Text style={styles.confText}>{Math.round(d.confidence * 100)}%</Text>
+                <Text style={styles.labelText}>{(d.label || 'Unknown').toUpperCase()}</Text>
+                <Text style={styles.confText}>{Math.round((d.confidence || 0) * 100)}%</Text>
               </View>
             ))}
           </View>
@@ -89,10 +152,10 @@ export default function AlertsScreen() {
           <View style={styles.cardFooter}>
             <View style={styles.locationBox}>
               <MapPin size={12} color={THEME.textSecondary} />
-              <Text style={styles.locationText}>{item.feed_id.toUpperCase()}</Text>
+              <Text style={styles.locationText}>{(item.feed_id || 'UNKNOWN').toUpperCase()}</Text>
             </View>
             <TouchableOpacity style={styles.detailBtn}>
-              <Text style={styles.detailBtnText}>View Details</Text>
+              <Text style={styles.detailBtnText}>Incident Data</Text>
               <ChevronRight size={14} color={THEME.primary} />
             </TouchableOpacity>
           </View>
@@ -105,11 +168,12 @@ export default function AlertsScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>Security Log</Text>
-          <Text style={styles.headerSubtitle}>Real-time activity history</Text>
+          <Text style={styles.headerTitle}>Security Logs</Text>
+          <Text style={styles.headerSubtitle}>Database incident history</Text>
         </View>
-        <TouchableOpacity style={styles.searchBtn}>
-          <Search size={20} color={THEME.text} />
+        <TouchableOpacity style={styles.pdfBtn} onPress={generatePDF}>
+          <FileText size={20} color={THEME.primary} />
+          <Text style={styles.pdfBtnText}>PDF</Text>
         </TouchableOpacity>
       </View>
 
@@ -120,14 +184,15 @@ export default function AlertsScreen() {
       ) : (
         <FlatList
           data={alerts}
-          keyExtractor={(item, index) => index.toString()}
+          keyExtractor={(item, index) => item?.id?.toString() || index.toString()}
           renderItem={renderItem}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           ListEmptyComponent={
             <View style={styles.empty}>
               <AlertTriangle size={48} color={THEME.outline} opacity={0.2} />
-              <Text style={styles.emptyText}>No events recorded</Text>
+              <Text style={styles.emptyText}>No security events recorded</Text>
             </View>
           }
         />
@@ -145,27 +210,39 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: SPACING.lg,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
     backgroundColor: THEME.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: THEME.outlineVariant,
   },
   headerTitle: {
     fontSize: 24,
-    fontWeight: '700',
+    fontWeight: '800',
     color: THEME.text,
     fontFamily: FONTS.heading,
   },
   headerSubtitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: THEME.textSecondary,
     fontFamily: FONTS.body,
   },
-  searchBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: THEME.background,
+  pdfBtn: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(37,99,235,0.08)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(37,99,235,0.1)',
+  },
+  pdfBtnText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: THEME.primary,
+    fontFamily: FONTS.bodyBold,
   },
   center: {
     flex: 1,
@@ -174,21 +251,18 @@ const styles = StyleSheet.create({
   },
   list: {
     padding: SPACING.lg,
+    paddingBottom: 40,
   },
   card: {
     backgroundColor: THEME.surface,
-    borderRadius: 16,
+    borderRadius: 20,
     marginBottom: 20,
     overflow: 'hidden',
-    // Ambient Shadow
-    shadowColor: THEME.text,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: THEME.outlineVariant,
   },
   criticalCard: {
-    backgroundColor: THEME.surface,
+    borderColor: 'rgba(186,26,26,0.1)',
   },
   imageBox: {
     width: '100%',
@@ -201,17 +275,21 @@ const styles = StyleSheet.create({
   },
   targetBadge: {
     position: 'absolute',
-    bottom: 12,
+    top: 12,
     right: 12,
     backgroundColor: THEME.error,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 6,
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
   },
   targetText: {
     color: 'white',
-    fontSize: 10,
-    fontWeight: '800',
+    fontSize: 9,
+    fontWeight: '900',
     letterSpacing: 1,
     fontFamily: FONTS.bodyBold,
   },
@@ -222,18 +300,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
   },
   typeBadge: {
     paddingHorizontal: 10,
     paddingVertical: 5,
-    borderRadius: 6,
+    borderRadius: 8,
   },
   typeText: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.5,
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 1,
     fontFamily: FONTS.bodyBold,
+    textTransform: 'uppercase',
   },
   timeBox: {
     flexDirection: 'row',
@@ -241,8 +320,8 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   timeText: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '700',
     color: THEME.textSecondary,
     fontFamily: FONTS.bodyBold,
   },
@@ -250,26 +329,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginBottom: 16,
+    marginBottom: 20,
   },
   labelBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: THEME.background,
     paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
+    paddingVertical: 8,
+    borderRadius: 10,
     gap: 6,
+    borderWidth: 1,
+    borderColor: THEME.outlineVariant,
   },
   labelText: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 10,
+    fontWeight: '800',
     color: THEME.text,
     fontFamily: FONTS.bodyBold,
   },
   confText: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 10,
+    fontWeight: '800',
     color: THEME.primary,
     fontFamily: FONTS.bodyBold,
   },
@@ -277,7 +358,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 12,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: THEME.outlineVariant,
   },
   locationBox: {
     flexDirection: 'row',
@@ -285,8 +368,8 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   locationText: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '700',
     color: THEME.textSecondary,
     fontFamily: FONTS.bodyBold,
   },
@@ -296,21 +379,21 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   detailBtnText: {
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '800',
     color: THEME.primary,
     fontFamily: FONTS.bodyBold,
   },
   empty: {
-    paddingVertical: 100,
+    paddingVertical: 120,
     alignItems: 'center',
-    opacity: 0.5,
+    justifyContent: 'center',
   },
   emptyText: {
-    color: THEME.textSecondary,
+    color: THEME.outline,
     fontSize: 14,
-    fontWeight: '600',
-    marginTop: 16,
+    fontWeight: '700',
+    marginTop: 20,
     fontFamily: FONTS.bodyBold,
   },
 });

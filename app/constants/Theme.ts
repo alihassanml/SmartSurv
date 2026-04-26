@@ -35,8 +35,8 @@ export const Colors = {
 };
 
 export const FONTS = {
-  heading: Platform.OS === 'ios' ? 'SpaceGrotesk_700Bold' : 'SpaceGrotesk_700Bold',
-  subheading: 'SpaceGrotesk_700Bold',
+  heading: 'Inter_700Bold',
+  subheading: 'Inter_700Bold',
   body: 'Inter_400Regular',
   bodyBold: 'Inter_700Bold',
   fallback: Platform.OS === 'ios' ? 'System' : 'sans-serif',

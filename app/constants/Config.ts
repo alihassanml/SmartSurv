@@ -1,6 +1,6 @@
 // Replace with your machine's local IP to test on a physical device
-export const API_URL = 'http://192.168.1.100:8000'; 
-export const WS_URL = 'ws://192.168.1.100:8000';
+export const API_URL = 'http://192.168.1.103:8000'; 
+export const WS_URL = 'ws://192.168.1.103:8000';
 
 export const COLORS = {
   primary: '#2480ff',

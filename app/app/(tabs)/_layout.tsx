@@ -1,7 +1,7 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
 import { COLORS } from '@/constants/Config';
-import { Home, Video, Bell, User } from 'lucide-react-native';
+import { Home, Video, Bell, User, Radio } from 'lucide-react-native';
 
 export default function TabLayout() {
   return (
@@ -36,6 +36,13 @@ export default function TabLayout() {
         options={{
           title: 'Monitor',
           tabBarIcon: ({ color }) => <Video size={22} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="broadcast"
+        options={{
+          title: 'Broadcast',
+          tabBarIcon: ({ color }) => <Radio size={22} color={color} />,
         }}
       />
       <Tabs.Screen
