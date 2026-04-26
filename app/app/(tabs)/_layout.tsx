@@ -39,13 +39,6 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="broadcast"
-        options={{
-          title: 'Broadcast',
-          tabBarIcon: ({ color }) => <Radio size={22} color={color} />,
-        }}
-      />
-      <Tabs.Screen
         name="alerts"
         options={{
           title: 'Alerts',
