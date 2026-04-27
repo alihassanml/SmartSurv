@@ -306,9 +306,13 @@ async def alert_broadcaster():
                             location_lon=str(alert["location"].get("lon", ""))
                         )
                         db.add(new_alert)
-                    except: pass
+                        db.commit()
+                        db.refresh(new_alert)
+                        alert["id"] = new_alert.id
+                    except: 
+                        db.rollback()
+                        
                     await manager.broadcast(alert)
-                db.commit()
                 db.close()
             await asyncio.sleep(0.05)
         except Exception as e:

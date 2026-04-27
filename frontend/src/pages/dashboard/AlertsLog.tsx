@@ -5,7 +5,7 @@ import {
   Activity, CheckCircle, X, Eye, Camera, Clock, FileText, Trash2, Check,
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
-import { useApp } from '../../layouts/AppLayout';
+import { useApp } from '../../context/AppContext';
 import type { Alert } from '../../types/dashboard';
 
 type FilterSeverity = 'ALL' | 'CRITICAL' | 'HIGH' | 'ALERT' | 'MATCH';

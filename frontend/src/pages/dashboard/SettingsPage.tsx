@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   User, Mail, Shield, Sliders, RefreshCw, Volume2, Radio, ChevronDown,
 } from 'lucide-react';
-import { useApp } from '../../layouts/AppLayout';
+import { useApp } from '../../context/AppContext';
 
 const Toggle: React.FC<{ on: boolean; onToggle: () => void; id?: string }> = ({ on, onToggle, id }) => (
   <button

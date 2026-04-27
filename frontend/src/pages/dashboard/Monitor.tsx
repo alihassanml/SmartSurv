@@ -4,12 +4,12 @@ import {
   Camera, Power, Eye, EyeOff, Activity, Video,
   LayoutGrid, X, Loader2, Maximize2, Target,
 } from 'lucide-react';
-import { useApp } from '../../layouts/AppLayout';
+import { useApp } from '../../context/AppContext';
 import CameraStream from '../../components/dashboard/CameraStream';
 import AlertsPanel from '../../components/dashboard/AlertsPanel';
 import PersonsPanel from '../../components/dashboard/PersonsPanel';
 import type { Alert } from '../../types/dashboard';
-import type { UrlCamera } from '../../layouts/AppLayout';
+import type { UrlCamera } from '../../context/AppContext';
 
 
 function LocalCameraCard({

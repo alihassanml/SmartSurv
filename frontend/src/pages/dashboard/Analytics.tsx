@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Activity, Download, Shield, AlertTriangle, User, Camera, Eye, X, ZoomIn } from 'lucide-react';
-import { useApp } from '../../layouts/AppLayout';
+import { useApp } from '../../context/AppContext';
 import DashboardAnalytics from '../../components/dashboard/DashboardAnalytics';
 import type { Alert } from '../../types/dashboard';
 

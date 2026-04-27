@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Shield, Cpu, Zap, HardDrive, AlertCircle, Monitor, Activity, TrendingUp } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { API } from '../../types/dashboard';
-import { useApp } from '../../layouts/AppLayout';
+import { useApp } from '../../context/AppContext';
 
 interface SystemSpecs {
   os: string;

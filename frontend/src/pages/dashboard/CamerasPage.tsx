@@ -4,9 +4,9 @@ import {
   Camera, Plus, Trash2, Edit2, Search, X, Loader2,
   Video, LayoutGrid, Save, Laptop,
 } from 'lucide-react';
-import { useApp } from '../../layouts/AppLayout';
+import { useApp } from '../../context/AppContext';
 import { API } from '../../types/dashboard';
-import type { UrlCamera } from '../../layouts/AppLayout';
+import type { UrlCamera } from '../../context/AppContext';
 
 /* ── tiny confirm modal ─────────────────────────────────────────────────────── */
 function ConfirmModal({ open, title, message, onConfirm, onCancel, loading }: {

@@ -288,6 +288,7 @@ class CameraFeed:
                 # ── Handle Alerts & Re-ID ────────────────────────────────────
                 # ── Draw HUD (Latency & Performance) ─────────────────────────
                 latency_ms = (time.time() - loop_start) * 1000
+                inf_tag = "CUDA" if torch.cuda.is_available() else "CPU"
                 fps_tag = f"FPS: {int(1.0/(time.time() - loop_start + 0.001))} | LAT: {latency_ms:.1f}ms"
                 fps_tag = f"SRC: {int(getattr(self.cap, 'get', lambda x: 30)(cv2.CAP_PROP_FPS) or 30)}FPS" if self.source != "remote" else "REMOTE"
                 

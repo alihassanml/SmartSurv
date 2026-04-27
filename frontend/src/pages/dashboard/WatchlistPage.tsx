@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Target, Plus, Trash2, User, Upload, X, Pencil, Check, AlertTriangle, Camera, RotateCcw } from 'lucide-react';
-import { useApp } from '../../layouts/AppLayout';
+import { useApp } from '../../context/AppContext';
 import { API } from '../../types/dashboard';
 
 type AddMode = 'upload' | 'camera';

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Shield, Target, MapPin, Crosshair, X, Maximize2, Trash2, Check, Square } from 'lucide-react';
-import { useApp } from '../../layouts/AppLayout';
+import { useApp } from '../../context/AppContext';
 import type { Alert } from '../../types/dashboard';
 
 interface AlertsPanelProps {
