@@ -10,7 +10,7 @@ from typing import Dict, Optional, List
 from contextlib import asynccontextmanager
 import time
 from aiortc import RTCPeerConnection, RTCSessionDescription
-from webrtc_utils import CameraStreamTrack
+from webrtc_utils import CameraStreamTrack, IngestTrackReceiver
 
 pcs = set()
 import torch
@@ -315,6 +315,25 @@ async def alert_broadcaster():
             print(f"[Broadcaster] Error: {e}")
             await asyncio.sleep(1)
 
+async def retention_cleanup_task():
+    """Background task to delete alerts older than the retention policy."""
+    while True:
+        try:
+            retention_days = _db_get("retention_days", 30)
+            if retention_days > 0:
+                cutoff_ts = (time.time() - (retention_days * 86400)) * 1000
+                db = SessionLocal()
+                deleted_count = db.query(Alert).filter(Alert.backend_ts < cutoff_ts).delete()
+                db.commit()
+                if deleted_count > 0:
+                    print(f"[Cleanup] Deleted {deleted_count} alerts older than {retention_days} days.")
+                db.close()
+        except Exception as e:
+            print(f"[Cleanup] Error: {e}")
+        
+        # Run cleanup once an hour
+        await asyncio.sleep(3600)
+
 # --- LIFESPAN MANAGEMENT ---
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -345,8 +364,9 @@ async def lifespan(app: FastAPI):
     # User must explicitly start monitoring from the UI.
     print("SMARTSURV_READY. System idle.")
 
-    # Start the background broadcaster task
+    # Start the background tasks
     asyncio.create_task(alert_broadcaster())
+    asyncio.create_task(retention_cleanup_task())
 
     yield
     # Shutdown: close all WebRTC peer connections then stop camera
@@ -411,6 +431,33 @@ async def offer(params: Offer):
 
     video_track = CameraStreamTrack(camera, params.feed_id)
     pc.addTrack(video_track)
+
+    await pc.setRemoteDescription(offer)
+    answer = await pc.createAnswer()
+    await pc.setLocalDescription(answer)
+
+    return JSONResponse(content={"sdp": pc.localDescription.sdp, "type": pc.localDescription.type})
+
+@app.post("/ingest")
+async def ingest(params: Offer):
+    offer = RTCSessionDescription(sdp=params.sdp, type=params.type)
+    pc = RTCPeerConnection()
+    pcs.add(pc)
+
+    client_id = params.feed_id or "mobile-node"
+    receiver = IngestTrackReceiver(camera, client_id)
+
+    @pc.on("track")
+    def on_track(track):
+        if track.kind == "video":
+            asyncio.create_task(receiver.start(track))
+
+    @pc.on("connectionstatechange")
+    async def on_connectionstatechange():
+        if pc.connectionState == "failed" or pc.connectionState == "closed":
+            await receiver.stop()
+            await pc.close()
+            pcs.discard(pc)
 
     await pc.setRemoteDescription(offer)
     answer = await pc.createAnswer()
@@ -649,9 +696,10 @@ def stop_camera():
 
 @app.get("/api/alerts/history")
 def get_alert_history(db: Session = Depends(get_db)):
-    """Fetch last 24 hours of alerts for the dashboard graph."""
-    one_day_ago = (time.time() - 86400) * 1000
-    alerts = db.query(Alert).filter(Alert.backend_ts >= one_day_ago).order_by(Alert.backend_ts.desc()).limit(1000).all()
+    """Fetch recent alerts based on the display_days setting (default 1)."""
+    display_days = _db_get("display_days", 1)
+    cutoff_ts = (time.time() - (display_days * 86400)) * 1000
+    alerts = db.query(Alert).filter(Alert.backend_ts >= cutoff_ts).order_by(Alert.backend_ts.desc()).limit(2000).all()
     
     return [{
         "timestamp": a.timestamp,
@@ -662,6 +710,23 @@ def get_alert_history(db: Session = Depends(get_db)):
         "image": a.image_base64,
         "location": {"lat": float(a.location_lat or 0), "lon": float(a.location_lon or 0)}
     } for a in alerts]
+
+class DataSettingsUpdate(BaseModel):
+    display_days: int
+    retention_days: int
+
+@app.get("/api/settings/data")
+def get_data_settings():
+    return {
+        "display_days": _db_get("display_days", 1),
+        "retention_days": _db_get("retention_days", 30)
+    }
+
+@app.post("/api/settings/data")
+def update_data_settings(body: DataSettingsUpdate):
+    _db_set("display_days", body.display_days)
+    _db_set("retention_days", body.retention_days)
+    return {"status": "success", "message": "Data settings updated"}
 
 @app.get("/api/camera/mode")
 def get_camera_mode():

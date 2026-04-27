@@ -46,3 +46,42 @@ class CameraStreamTrack(MediaStreamTrack):
             self._timestamp = 0
         return self._timestamp, fractions.Fraction(1, 90000)
 
+class IngestTrackReceiver:
+    """Consumes an incoming WebRTC track and pushes frames to the CameraEngine."""
+    def __init__(self, camera_engine, client_id):
+        self.camera_engine = camera_engine
+        self.client_id = client_id
+        self.running = False
+        self.task = None
+
+    async def start(self, track):
+        self.running = True
+        self.task = asyncio.create_task(self._run(track))
+
+    async def stop(self):
+        self.running = False
+        if self.task:
+            self.task.cancel()
+            try: await self.task
+            except asyncio.CancelledError: pass
+
+    async def _run(self, track):
+        print(f"[WebRTC-Ingest] Started receiver for: {self.client_id}")
+        try:
+            while self.running:
+                frame = await track.recv()
+                if frame is None: break
+                
+                # Convert PyAV frame to numpy (BGR)
+                img = frame.to_ndarray(format="bgr24")
+                
+                # Encode to JPEG bytes (CameraEngine expects bytes for remote frames)
+                _, buf = cv2.imencode('.jpg', img)
+                self.camera_engine.push_remote_frame(buf.tobytes(), self.client_id)
+                
+        except Exception as e:
+            print(f"[WebRTC-Ingest] Receiver error for {self.client_id}: {e}")
+        finally:
+            self.running = False
+            print(f"[WebRTC-Ingest] Stopped receiver for: {self.client_id}")
+
