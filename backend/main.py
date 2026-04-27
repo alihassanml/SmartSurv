@@ -702,6 +702,7 @@ def get_alert_history(db: Session = Depends(get_db)):
     alerts = db.query(Alert).filter(Alert.backend_ts >= cutoff_ts).order_by(Alert.backend_ts.desc()).limit(2000).all()
     
     return [{
+        "id": a.id,
         "timestamp": a.timestamp,
         "backend_ts": a.backend_ts,
         "feed_id": a.feed_id,
@@ -714,6 +715,16 @@ def get_alert_history(db: Session = Depends(get_db)):
 class DataSettingsUpdate(BaseModel):
     display_days: int
     retention_days: int
+
+class AlertDeleteRequest(BaseModel):
+    ids: List[int]
+
+@app.delete("/api/alerts")
+def delete_alerts(body: AlertDeleteRequest, db: Session = Depends(get_db)):
+    """Delete specific alerts from the history."""
+    db.query(Alert).filter(Alert.id.in_(body.ids)).delete(synchronize_session=False)
+    db.commit()
+    return {"status": "deleted", "count": len(body.ids)}
 
 @app.get("/api/settings/data")
 def get_data_settings():

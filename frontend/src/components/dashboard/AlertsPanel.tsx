@@ -1,6 +1,7 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Shield, Target, MapPin, Crosshair, X, Maximize2 } from 'lucide-react';
+import { Shield, Target, MapPin, Crosshair, X, Maximize2, Trash2, Check, Square } from 'lucide-react';
+import { useApp } from '../../layouts/AppLayout';
 import type { Alert } from '../../types/dashboard';
 
 interface AlertsPanelProps {
@@ -18,7 +19,10 @@ const AlertsPanel: React.FC<AlertsPanelProps> = ({
   setMapAlert,
   scrollRef,
 }) => {
+  const { deleteAlerts } = useApp();
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
 
   return (
     <aside className="w-[340px] flex flex-col shrink-0"
@@ -41,11 +45,43 @@ const AlertsPanel: React.FC<AlertsPanelProps> = ({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {alerts.length > 0 && (
-            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded"
-              style={{ background: 'rgba(36,128,255,0.1)', border: '1px solid rgba(36,128,255,0.2)', color: 'var(--color-primary)' }}>
-              {alerts.length}
-            </span>
+          {isSelectionMode ? (
+            <div className="flex items-center gap-2">
+              {selectedIds.length > 0 && (
+                <button
+                  onClick={() => { deleteAlerts(selectedIds); setSelectedIds([]); setIsSelectionMode(false); }}
+                  className="p-1.5 transition-all rounded hover:bg-red-50 text-red-600"
+                  style={{ border: '1px solid rgba(186,26,26,0.2)' }}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
+              <button
+                onClick={() => { setIsSelectionMode(false); setSelectedIds([]); }}
+                className="p-1.5 transition-all rounded hover:bg-gray-100 text-gray-500"
+                style={{ border: '1px solid rgba(0,0,0,0.1)' }}
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ) : (
+            <>
+              {alerts.length > 0 && (
+                <button
+                  onClick={() => setIsSelectionMode(true)}
+                  className="p-1.5 transition-all rounded hover:bg-blue-50 text-blue-600"
+                  style={{ border: '1px solid rgba(36,128,255,0.2)' }}
+                >
+                  <Square className="w-3.5 h-3.5" />
+                </button>
+              )}
+              {alerts.length > 0 && (
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded"
+                  style={{ background: 'rgba(36,128,255,0.1)', border: '1px solid rgba(36,128,255,0.2)', color: 'var(--color-primary)' }}>
+                  {alerts.length}
+                </span>
+              )}
+            </>
           )}
           <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
         </div>
@@ -72,9 +108,27 @@ const AlertsPanel: React.FC<AlertsPanelProps> = ({
                   : { border: '1px solid rgba(0,0,0,0.1)', background: 'var(--color-surface)', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }
                 }
               >
+                {/* Selection Checkbox */}
+                {isSelectionMode && (
+                  <div 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedIds(prev => prev.includes(alert.id) ? prev.filter(id => id !== alert.id) : [...prev, alert.id]);
+                    }}
+                    className="absolute top-2 left-2 z-20 w-4 h-4 rounded flex items-center justify-center cursor-pointer transition-all"
+                    style={{ 
+                      background: selectedIds.includes(alert.id) ? 'var(--color-primary)' : 'white',
+                      border: '1px solid rgba(0,0,0,0.1)',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                    }}
+                  >
+                    {selectedIds.includes(alert.id) && <Check className="w-3 text-white" />}
+                  </div>
+                )}
+
                 {/* ID badge */}
                 <div
-                  className="absolute top-0 right-0 px-2 py-0.5 text-[8px] font-bold flex items-center gap-1.5"
+                  className="absolute top-0 right-0 px-2 py-0.5 text-[8px] font-bold flex items-center gap-1.5 z-10"
                   style={alert.is_person_search_match
                     ? { background: '#ba1a1a', color: '#fff', borderRadius: '0 0.5rem 0 0.25rem' }
                     : { background: 'var(--color-surface-container-low)', color: 'var(--color-outline)', borderRadius: '0 0.5rem 0 0.25rem' }
@@ -168,6 +222,16 @@ const AlertsPanel: React.FC<AlertsPanelProps> = ({
                         Map
                       </button>
                     )}
+
+                    <button
+                      onClick={(e) => { e.stopPropagation(); deleteAlerts([alert.id]); }}
+                      className="ml-auto p-1.5 transition-all opacity-0 group-hover:opacity-100 rounded hover:bg-red-50 text-red-500"
+                      style={{ border: '1px solid transparent' }}
+                      onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(186,26,26,0.2)')}
+                      onMouseLeave={e => (e.currentTarget.style.borderColor = 'transparent')}
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
                   </div>
                 </div>
               </motion.div>

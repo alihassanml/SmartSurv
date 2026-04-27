@@ -69,6 +69,7 @@ export interface AppContextValue {
   handleLogout: () => void;
   cameraMode: 'detection' | 'search' | 'both' | null;
   handleModeChange: (mode: 'detection' | 'search' | 'both') => Promise<void>;
+  deleteAlerts: (ids: number[]) => Promise<void>;
 }
 
 export const AppContext = React.createContext<AppContextValue | null>(null);
@@ -543,6 +544,19 @@ const AppLayout: React.FC = () => {
     }
   };
 
+  const deleteAlerts = async (ids: number[]) => {
+    try {
+      const res = await fetch(`${API}/api/alerts`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
+      });
+      if (res.ok) {
+        setAlerts(prev => prev.filter(a => !ids.includes(a.id)));
+      }
+    } catch (_) {}
+  };
+
   const pageTitle = pageTitles[location.pathname] ?? 'Dashboard';
   const [showProfileMenu, setShowProfileMenu] = useState(false);
 
@@ -564,6 +578,7 @@ const AppLayout: React.FC = () => {
     isReconnecting, username, userEmail, role, handleLogout,
     systemLatency,
     cameraMode, handleModeChange,
+    deleteAlerts,
   };
 
   return (

@@ -5,6 +5,7 @@ export interface Detection {
 }
 
 export interface Alert {
+  id: number;
   timestamp: string;
   backend_ts?: number;
   detections: Detection[];

@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Shield, AlertTriangle, ShieldAlert, User, MapPin, Download,
-  Activity, CheckCircle, X, Eye, Camera, Clock, FileText,
+  Activity, CheckCircle, X, Eye, Camera, Clock, FileText, Trash2, Check,
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { useApp } from '../../layouts/AppLayout';
@@ -26,10 +26,11 @@ const SEV_MAP = {
 };
 
 const AlertsLog: React.FC = () => {
-  const { alerts } = useApp();
+  const { alerts, deleteAlerts } = useApp();
   const [filterSeverity, setFilterSeverity] = useState<FilterSeverity>('ALL');
   const [filterQuery, setFilterQuery] = useState('');
   const [viewingAlert, setViewingAlert] = useState<Alert | null>(null);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
   const metrics = useMemo(() => {
     const total = alerts.length;
@@ -403,15 +404,28 @@ const AlertsLog: React.FC = () => {
               </div>
             </div>
           </div>
-          <button
-            onClick={handleExportCSV}
-            className="flex items-center gap-2 px-4 py-2 text-[10px] font-bold tracking-widest uppercase transition-all rounded-xl"
-            style={{ background: 'rgba(36,128,255,0.06)', border: '1px solid rgba(36,128,255,0.15)', color: 'var(--color-primary)' }}
-            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--color-primary)'; (e.currentTarget as HTMLButtonElement).style.color = '#ffffff'; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(36,128,255,0.06)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-primary)'; }}
-          >
-            <Download className="w-3.5 h-3.5" /> EXPORT CSV
-          </button>
+          <div className="flex items-center gap-2">
+            {selectedIds.length > 0 && (
+              <button
+                onClick={() => { deleteAlerts(selectedIds); setSelectedIds([]); }}
+                className="flex items-center gap-2 px-4 py-2 text-[10px] font-bold tracking-widest uppercase transition-all rounded-xl"
+                style={{ background: 'rgba(186,26,26,0.08)', border: '1px solid rgba(186,26,26,0.25)', color: '#ba1a1a' }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#ba1a1a'; (e.currentTarget as HTMLButtonElement).style.color = '#ffffff'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(186,26,26,0.08)'; (e.currentTarget as HTMLButtonElement).style.color = '#ba1a1a'; }}
+              >
+                <Trash2 className="w-3.5 h-3.5" /> DELETE ({selectedIds.length})
+              </button>
+            )}
+            <button
+              onClick={handleExportCSV}
+              className="flex items-center gap-2 px-4 py-2 text-[10px] font-bold tracking-widest uppercase transition-all rounded-xl"
+              style={{ background: 'rgba(36,128,255,0.06)', border: '1px solid rgba(36,128,255,0.15)', color: 'var(--color-primary)' }}
+              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--color-primary)'; (e.currentTarget as HTMLButtonElement).style.color = '#ffffff'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(36,128,255,0.06)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-primary)'; }}
+            >
+              <Download className="w-3.5 h-3.5" /> EXPORT CSV
+            </button>
+          </div>
         </div>
 
         {/* Metric cards */}
@@ -499,6 +513,22 @@ const AlertsLog: React.FC = () => {
                     onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--color-outline-variant)'; (e.currentTarget as HTMLDivElement).style.boxShadow = '0 2px 8px rgba(0,0,0,0.02)'; }}
                     onClick={() => setViewingAlert(alert)}
                   >
+                    {/* Checkbox */}
+                    <div 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedIds(prev => prev.includes(alert.id) ? prev.filter(id => id !== alert.id) : [...prev, alert.id]);
+                      }}
+                      className="w-5 h-5 shrink-0 rounded flex items-center justify-center transition-all"
+                      style={{ 
+                        border: '1px solid var(--color-outline-variant)',
+                        background: selectedIds.includes(alert.id) ? 'var(--color-primary)' : 'transparent',
+                        borderColor: selectedIds.includes(alert.id) ? 'var(--color-primary)' : 'var(--color-outline-variant)'
+                      }}
+                    >
+                      {selectedIds.includes(alert.id) && <Check className="w-3.5 h-3.5 text-white" />}
+                    </div>
+
                     {/* Thumbnail or Fallback Icon */}
                     {alert.image ? (
                       <div className="w-12 h-12 shrink-0 overflow-hidden shadow-sm"
@@ -591,6 +621,15 @@ const AlertsLog: React.FC = () => {
                         onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--color-primary)'; }}
                       >
                         <Eye className="w-3.5 h-3.5" /> INSPECT
+                      </button>
+                      <button
+                        onClick={e => { e.stopPropagation(); deleteAlerts([alert.id]); }}
+                        className="p-2 transition-all rounded-xl hover:bg-red-50 hover:text-red-600"
+                        style={{ background: 'rgba(0,0,0,0.03)', border: '1px solid var(--color-outline-variant)', color: 'var(--color-outline)' }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#ba1a1a'; (e.currentTarget as HTMLButtonElement).style.color = '#ba1a1a'; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--color-outline-variant)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-outline)'; }}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </motion.div>
