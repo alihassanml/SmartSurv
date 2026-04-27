@@ -7,6 +7,8 @@ import { THEME, SPACING, FONTS } from '../../constants/Theme';
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 
+import { StatusBar } from 'expo-status-bar';
+
 const { width } = Dimensions.get('window');
 
 export default function DashboardScreen() {
@@ -15,6 +17,7 @@ export default function DashboardScreen() {
     activeFeeds: 0,
     avgConfidence: 0,
     systemMode: 'HYBRID',
+    distribution: {} as Record<string, number>,
   });
   const [recentAlerts, setRecentAlerts] = useState<any[]>([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -28,6 +31,18 @@ export default function DashboardScreen() {
       const alertsRes = await axios.get(`${API_URL}/api/alerts/history`, { headers });
       const alerts = alertsRes.data || [];
       
+      // Calculate Distribution
+      const dist: Record<string, number> = {};
+      alerts.forEach((a: any) => {
+        (a.detections || []).forEach((d: any) => {
+          const label = d.label || 'Unknown';
+          dist[label] = (dist[label] || 0) + 1;
+        });
+        if (a.is_person_search_match) {
+          dist['Watchlist'] = (dist['Watchlist'] || 0) + 1;
+        }
+      });
+
       // Fetch Active Feeds
       const feedsRes = await axios.get(`${API_URL}/api/camera/feeds`, { headers });
       const feeds = feedsRes.data?.feeds || [];
@@ -45,6 +60,7 @@ export default function DashboardScreen() {
         activeFeeds: feeds.length,
         avgConfidence: Math.round(avg),
         systemMode: currentMode.toUpperCase(),
+        distribution: dist,
       });
       setRecentAlerts(alerts.slice(0, 5));
     } catch (err) {
@@ -62,43 +78,63 @@ export default function DashboardScreen() {
     setRefreshing(false);
   }, []);
 
-  // Simple Graph Component
-  const SecurityGraph = () => {
+  // Class Distribution Graph Component
+  const DetectionGraph = () => {
+    const data = Object.entries(stats.distribution)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6);
+
+    const maxVal = Math.max(...data.map(d => d[1]), 1);
+
     return (
       <View style={styles.graphContainer}>
         <View style={styles.graphHeader}>
-          <Text style={styles.graphTitle}>Security Traffic</Text>
-          <Text style={styles.graphSubtitle}>Detections per hour</Text>
+          <Text style={styles.graphTitle}>Detection Distribution</Text>
+          <Text style={styles.graphSubtitle}>Most frequent object classes</Text>
         </View>
-        <View style={styles.barsRow}>
-          {[40, 70, 45, 90, 65, 80, 50, 60, 85, 40, 55, 75].map((h, i) => (
-            <View key={i} style={styles.barWrapper}>
-              <View style={[styles.bar, { height: h, opacity: i === 3 || i === 8 ? 1 : 0.4 }]} />
-            </View>
-          ))}
+        <View style={styles.distRows}>
+          {data.length === 0 ? (
+             <Text style={styles.noDataText}>No detection data available</Text>
+          ) : (
+            data.map(([label, count], i) => (
+              <View key={i} style={styles.distRow}>
+                <View style={styles.labelCol}>
+                  <Text style={styles.distLabel}>{label}</Text>
+                  <Text style={styles.distCount}>{count}</Text>
+                </View>
+                <View style={styles.barTrack}>
+                  <View style={[styles.barFill, { width: `${(count / maxVal) * 100}%` }]} />
+                </View>
+              </View>
+            ))
+          )}
         </View>
       </View>
     );
   };
 
+  const getGreeting = () => {
+    const hours = new Date().getHours();
+    if (hours < 12) return 'GOOD MORNING';
+    if (hours < 17) return 'GOOD AFTERNOON';
+    return 'GOOD EVENING';
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      {/* Clean Modern Header */}
+      <StatusBar style="dark" />
+      
+      {/* Minimalist Floating Header */}
       <View style={styles.header}>
-        <View style={styles.headerInfo}>
-          <Text style={styles.greeting}>COMMAND CENTER</Text>
-          <Text style={styles.headerTitle}>Dashboard</Text>
+        <View>
+          <Text style={styles.headerSubtitle}>{getGreeting()}</Text>
+          <Text style={styles.headerTitle}>Overview</Text>
         </View>
-        <View style={styles.headerActions}>
-          <View style={styles.statusPill}>
-            <View style={styles.onlineDot} />
-            <Text style={styles.statusPillText}>LIVE</Text>
-          </View>
-          <TouchableOpacity style={styles.notificationBtn}>
-            <Bell size={22} color={THEME.text} />
-            {stats.totalAlerts > 0 && <View style={styles.badge} />}
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity style={styles.headerIconBtn}>
+          <Bell size={22} color={THEME.text} />
+          <View style={styles.liveDot} />
+          {stats.totalAlerts > 0 && <View style={styles.notificationDot} />}
+        </TouchableOpacity>
       </View>
 
       <ScrollView 
@@ -106,70 +142,69 @@ export default function DashboardScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={THEME.primary} />}
         showsVerticalScrollIndicator={false}
       >
-        {/* KPI Grid */}
-        <View style={styles.statsGrid}>
-          <View style={styles.statCard}>
-            <View style={[styles.statIconBox, { backgroundColor: 'rgba(37, 99, 235, 0.08)' }]}>
-              <Shield size={20} color={THEME.primary} />
+        {/* Hero Bento Section */}
+        <View style={styles.bentoGrid}>
+          {/* Main Stat: Alerts */}
+          <View style={[styles.bentoCard, { flex: 2, backgroundColor: '#fdf2f2' }]}>
+            <View style={styles.bentoIconBox}>
+              <Shield size={20} color="#dc2626" />
             </View>
-            <Text style={styles.statValue}>{stats.totalAlerts}</Text>
-            <Text style={styles.statLabel}>Security Events</Text>
+            <Text style={styles.bentoValue}>{stats.totalAlerts}</Text>
+            <Text style={styles.bentoLabel}>Security Events</Text>
           </View>
 
-          <View style={styles.statCard}>
-            <View style={[styles.statIconBox, { backgroundColor: 'rgba(22, 163, 74, 0.08)' }]}>
-              <Video size={20} color={THEME.success} />
+          <View style={{ flex: 1.2, gap: 12 }}>
+            {/* Active Nodes */}
+            <View style={[styles.bentoCard, { backgroundColor: '#f0fdf4' }]}>
+              <Text style={[styles.bentoValueSmall, { color: '#16a34a' }]}>{stats.activeFeeds}</Text>
+              <Text style={styles.bentoLabel}>Active Nodes</Text>
             </View>
-            <Text style={styles.statValue}>{stats.activeFeeds}</Text>
-            <Text style={styles.statLabel}>Active Nodes</Text>
-          </View>
-
-          <View style={styles.statCard}>
-            <View style={[styles.statIconBox, { backgroundColor: 'rgba(0, 104, 122, 0.08)' }]}>
-              <TrendingUp size={20} color={THEME.secondary} />
+            {/* AI Confidence */}
+            <View style={[styles.bentoCard, { backgroundColor: '#eff6ff' }]}>
+              <Text style={[styles.bentoValueSmall, { color: '#2563eb' }]}>{stats.avgConfidence}%</Text>
+              <Text style={styles.bentoLabel}>Confidence</Text>
             </View>
-            <Text style={stats.avgConfidence > 80 ? styles.statValueSuccess : styles.statValue}>{stats.avgConfidence}%</Text>
-            <Text style={styles.statLabel}>AI Accuracy</Text>
-          </View>
-
-          <View style={styles.statCard}>
-            <View style={[styles.statIconBox, { backgroundColor: 'rgba(186, 26, 26, 0.08)' }]}>
-              <Activity size={20} color={THEME.error} />
-            </View>
-            <Text style={styles.statValueSmall}>{stats.systemMode}</Text>
-            <Text style={styles.statLabel}>Current Mode</Text>
           </View>
         </View>
 
-        {/* Security Graph */}
-        <SecurityGraph />
+        {/* Distribution Card */}
+        <View style={styles.glassCard}>
+           <DetectionGraph />
+        </View>
 
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Recent Incidents</Text>
+        <View style={styles.sectionTitleRow}>
+          <Text style={styles.sectionHeading}>Recent Activity</Text>
           <TouchableOpacity>
-            <Text style={styles.viewAll}>View All</Text>
+            <Text style={styles.viewAllBtn}>History</Text>
           </TouchableOpacity>
         </View>
 
-        {recentAlerts.length === 0 ? (
-          <View style={styles.emptyActivity}>
-            <Server size={32} color={THEME.outline} opacity={0.3} />
-            <Text style={styles.emptyText}>No recent activity found in database</Text>
-          </View>
-        ) : (
-          recentAlerts.map((alert, index) => (
-            <View key={index} style={styles.activityItem}>
-              <View style={[styles.activityDot, { backgroundColor: alert.is_person_search_match ? THEME.error : THEME.primary }]} />
-              <View style={styles.activityInfo}>
-                <Text style={styles.activityTitle}>
-                  {alert.is_person_search_match ? 'Watchlist Match' : (alert.detections[0]?.label || 'Activity')} Detected
-                </Text>
-                <Text style={styles.activityTime}>{alert.timestamp} • {alert.feed_id.toUpperCase()}</Text>
-              </View>
-              <ChevronRight size={16} color={THEME.outline} />
+        {/* Activity Items */}
+        <View style={styles.activityContainer}>
+          {recentAlerts.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Server size={32} color={THEME.outline} opacity={0.2} />
+              <Text style={styles.emptyStateText}>Waiting for incidents...</Text>
             </View>
-          ))
-        )}
+          ) : (
+            recentAlerts.map((alert, index) => (
+              <TouchableOpacity key={index} style={styles.logItem}>
+                <View style={[styles.logIconBox, { backgroundColor: alert.is_person_search_match ? '#fef2f2' : '#f8fafc' }]}>
+                  {alert.is_person_search_match ? (
+                    <Target size={18} color="#dc2626" />
+                  ) : (
+                    <Activity size={18} color={THEME.primary} />
+                  )}
+                </View>
+                <View style={styles.logContent}>
+                  <Text style={styles.logTitle}>{alert.is_person_search_match ? 'Watchlist Match' : (alert.detections[0]?.label || 'Activity')}</Text>
+                  <Text style={styles.logMeta}>{alert.timestamp} • {alert.feed_id.toUpperCase()}</Text>
+                </View>
+                <ChevronRight size={14} color={THEME.outline} />
+              </TouchableOpacity>
+            ))
+          )}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -178,241 +213,229 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: THEME.background,
+    backgroundColor: '#ffffff',
   },
   header: {
-    backgroundColor: THEME.surface,
-    paddingHorizontal: SPACING.lg,
-    paddingTop: 12,
+    paddingHorizontal: 24,
+    paddingTop: 20,
     paddingBottom: 20,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: THEME.outlineVariant,
+    alignItems: 'flex-end',
+    backgroundColor: '#ffffff',
   },
-  headerInfo: {
-    flex: 1,
-  },
-  greeting: {
+  headerSubtitle: {
     fontSize: 10,
     fontWeight: '800',
     color: THEME.textSecondary,
     letterSpacing: 1.5,
-    fontFamily: FONTS.bodyBold,
-    marginBottom: 2,
+    marginBottom: 4,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: '800',
+    fontSize: 32,
+    fontWeight: '900',
     color: THEME.text,
-    fontFamily: FONTS.heading,
+    letterSpacing: -1,
   },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  statusPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    backgroundColor: 'rgba(22, 163, 74, 0.08)',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(22, 163, 74, 0.1)',
-  },
-  statusPillText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: THEME.success,
-    letterSpacing: 0.5,
-    fontFamily: FONTS.bodyBold,
-  },
-  onlineDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: THEME.success,
-  },
-  notificationBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: THEME.surface,
+  headerIconBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#f8fafc',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: THEME.outlineVariant,
+    borderColor: '#f1f5f9',
   },
-  badge: {
+  liveDot: {
     position: 'absolute',
-    top: 10,
-    right: 10,
+    top: 4,
+    right: 4,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: THEME.success,
+    borderWidth: 2,
+    borderColor: '#ffffff',
+  },
+  notificationDot: {
+    position: 'absolute',
+    bottom: 4,
+    left: 4,
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: THEME.error,
-    borderWidth: 1.5,
-    borderColor: THEME.surface,
+    backgroundColor: '#dc2626',
+    borderWidth: 2,
+    borderColor: '#ffffff',
   },
   scrollContent: {
-    padding: SPACING.lg,
+    paddingHorizontal: 24,
     paddingBottom: 40,
   },
-  statsGrid: {
+  bentoGrid: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: 12,
-    marginBottom: 24,
+    marginBottom: 20,
   },
-  statCard: {
-    width: (width - SPACING.lg * 2 - 12) / 2,
-    backgroundColor: THEME.surface,
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: THEME.outlineVariant,
+  bentoCard: {
+    borderRadius: 24,
+    padding: 20,
+    justifyContent: 'center',
   },
-  statIconBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+  bentoIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#ffffff',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
   },
-  statValue: {
-    fontSize: 20,
-    fontWeight: '800',
+  bentoValue: {
+    fontSize: 32,
+    fontWeight: '900',
     color: THEME.text,
-    fontFamily: FONTS.heading,
+    letterSpacing: -1,
   },
-  statValueSuccess: {
+  bentoValueSmall: {
     fontSize: 20,
-    fontWeight: '800',
-    color: THEME.success,
-    fontFamily: FONTS.heading,
+    fontWeight: '900',
+    letterSpacing: -0.5,
   },
-  statValueSmall: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: THEME.text,
-    fontFamily: FONTS.heading,
-  },
-  statLabel: {
-    fontSize: 11,
+  bentoLabel: {
+    fontSize: 12,
     fontWeight: '600',
     color: THEME.textSecondary,
-    marginTop: 2,
-    fontFamily: FONTS.body,
+    marginTop: 4,
+  },
+  glassCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.03,
+    shadowRadius: 20,
   },
   graphContainer: {
-    backgroundColor: THEME.surface,
-    padding: 20,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: THEME.outlineVariant,
-    marginBottom: 24,
+    // Overriding internal graph styles if needed
   },
   graphHeader: {
-    marginBottom: 20,
+    marginBottom: 16,
   },
   graphTitle: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '800',
     color: THEME.text,
-    fontFamily: FONTS.heading,
   },
   graphSubtitle: {
     fontSize: 11,
     color: THEME.textSecondary,
-    fontFamily: FONTS.body,
+    marginTop: 2,
   },
-  barsRow: {
+  distRows: {
+    gap: 12,
+  },
+  distRow: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'center',
+    gap: 12,
+  },
+  labelCol: {
+    width: 80,
+    flexDirection: 'row',
     justifyContent: 'space-between',
-    height: 100,
   },
-  barWrapper: {
-    width: 12,
-    height: '100%',
-    justifyContent: 'flex-end',
+  distLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: THEME.text,
   },
-  bar: {
-    width: '100%',
-    backgroundColor: THEME.primary,
+  distCount: {
+    fontSize: 10,
+    color: THEME.textSecondary,
+  },
+  barTrack: {
+    flex: 1,
+    height: 8,
+    backgroundColor: '#f1f5f9',
     borderRadius: 4,
+    overflow: 'hidden',
   },
-  sectionHeader: {
+  barFill: {
+    height: '100%',
+    backgroundColor: THEME.primary,
+  },
+  sectionTitleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
   },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: '800',
+  sectionHeading: {
+    fontSize: 18,
+    fontWeight: '900',
     color: THEME.text,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    fontFamily: FONTS.heading,
+    letterSpacing: -0.5,
   },
-  viewAll: {
-    fontSize: 12,
+  viewAllBtn: {
+    fontSize: 13,
     fontWeight: '700',
     color: THEME.primary,
-    fontFamily: FONTS.bodyBold,
   },
-  emptyActivity: {
-    paddingVertical: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: THEME.surface,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: THEME.outlineVariant,
+  activityContainer: {
+    gap: 10,
   },
-  emptyText: {
-    fontSize: 12,
-    color: THEME.outline,
-    marginTop: 12,
-    fontWeight: '600',
-    fontFamily: FONTS.body,
-  },
-  activityItem: {
+  logItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: THEME.surface,
+    backgroundColor: '#ffffff',
     padding: 16,
-    borderRadius: 14,
-    marginBottom: 10,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: THEME.outlineVariant,
+    borderColor: '#f1f5f9',
   },
-  activityDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  logIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginRight: 16,
   },
-  activityInfo: {
+  logContent: {
     flex: 1,
   },
-  activityTitle: {
+  logTitle: {
     fontSize: 14,
     fontWeight: '700',
     color: THEME.text,
-    fontFamily: FONTS.bodyBold,
   },
-  activityTime: {
+  logMeta: {
     fontSize: 11,
     color: THEME.textSecondary,
     marginTop: 2,
-    fontFamily: FONTS.body,
+  },
+  emptyState: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  emptyStateText: {
+    fontSize: 13,
+    color: THEME.outline,
+    fontWeight: '500',
+  },
+  noDataText: {
+    fontSize: 12,
+    color: THEME.outline,
+    textAlign: 'center',
   },
 });

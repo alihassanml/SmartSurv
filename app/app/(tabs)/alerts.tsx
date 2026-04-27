@@ -8,6 +8,7 @@ import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import { StatusBar } from 'expo-status-bar';
 
 interface Detection {
   label: string;
@@ -165,15 +166,16 @@ export default function AlertsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['left', 'right']}>
+      <StatusBar style="dark" />
       <View style={styles.header}>
         <View>
+          <Text style={styles.headerSubtitle}>DATABASE HISTORY</Text>
           <Text style={styles.headerTitle}>Security Logs</Text>
-          <Text style={styles.headerSubtitle}>Database incident history</Text>
         </View>
         <TouchableOpacity style={styles.pdfBtn} onPress={generatePDF}>
           <FileText size={20} color={THEME.primary} />
-          <Text style={styles.pdfBtnText}>PDF</Text>
+          <Text style={styles.pdfBtnText}>EXPORT</Text>
         </TouchableOpacity>
       </View>
 
@@ -204,45 +206,46 @@ export default function AlertsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: THEME.background,
+    backgroundColor: '#ffffff',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
-    backgroundColor: THEME.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: THEME.outlineVariant,
+    alignItems: 'flex-end',
+    paddingHorizontal: 24,
+    paddingTop: 50,
+    paddingBottom: 20,
+    backgroundColor: '#ffffff',
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: '800',
+    fontSize: 32,
+    fontWeight: '900',
     color: THEME.text,
-    fontFamily: FONTS.heading,
+    letterSpacing: -1,
   },
   headerSubtitle: {
-    fontSize: 13,
+    fontSize: 10,
+    fontWeight: '800',
     color: THEME.textSecondary,
-    fontFamily: FONTS.body,
+    letterSpacing: 1.5,
+    marginBottom: 4,
   },
   pdfBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(37,99,235,0.08)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
+    gap: 8,
+    backgroundColor: '#f8fafc',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 24,
     borderWidth: 1,
-    borderColor: 'rgba(37,99,235,0.1)',
+    borderColor: '#f1f5f9',
   },
   pdfBtnText: {
     fontSize: 11,
     fontWeight: '800',
     color: THEME.primary,
-    fontFamily: FONTS.bodyBold,
+    letterSpacing: 0.5,
   },
   center: {
     flex: 1,
@@ -250,24 +253,29 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   list: {
-    padding: SPACING.lg,
+    padding: 24,
     paddingBottom: 40,
   },
   card: {
-    backgroundColor: THEME.surface,
-    borderRadius: 20,
+    backgroundColor: '#ffffff',
+    borderRadius: 28,
     marginBottom: 20,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: THEME.outlineVariant,
+    borderColor: '#f1f5f9',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    elevation: 2,
   },
   criticalCard: {
-    borderColor: 'rgba(186,26,26,0.1)',
+    borderColor: 'rgba(220, 38, 38, 0.1)',
   },
   imageBox: {
     width: '100%',
     aspectRatio: 16/9,
-    backgroundColor: '#000',
+    backgroundColor: '#0f172a',
   },
   image: {
     width: '100%',
@@ -275,26 +283,21 @@ const styles = StyleSheet.create({
   },
   targetBadge: {
     position: 'absolute',
-    top: 12,
-    right: 12,
-    backgroundColor: THEME.error,
+    top: 16,
+    right: 16,
+    backgroundColor: '#dc2626',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
+    borderRadius: 12,
   },
   targetText: {
     color: 'white',
     fontSize: 9,
     fontWeight: '900',
     letterSpacing: 1,
-    fontFamily: FONTS.bodyBold,
   },
   details: {
-    padding: 16,
+    padding: 20,
   },
   detailRow: {
     flexDirection: 'row',
@@ -305,13 +308,12 @@ const styles = StyleSheet.create({
   typeBadge: {
     paddingHorizontal: 10,
     paddingVertical: 5,
-    borderRadius: 8,
+    borderRadius: 10,
   },
   typeText: {
     fontSize: 9,
     fontWeight: '800',
     letterSpacing: 1,
-    fontFamily: FONTS.bodyBold,
     textTransform: 'uppercase',
   },
   timeBox: {
@@ -323,7 +325,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: THEME.textSecondary,
-    fontFamily: FONTS.bodyBold,
   },
   detectionRow: {
     flexDirection: 'row',
@@ -334,25 +335,23 @@ const styles = StyleSheet.create({
   labelBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: THEME.background,
-    paddingHorizontal: 10,
+    backgroundColor: '#f8fafc',
+    paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 10,
+    borderRadius: 12,
     gap: 6,
     borderWidth: 1,
-    borderColor: THEME.outlineVariant,
+    borderColor: '#f1f5f9',
   },
   labelText: {
     fontSize: 10,
     fontWeight: '800',
     color: THEME.text,
-    fontFamily: FONTS.bodyBold,
   },
   confText: {
     fontSize: 10,
     fontWeight: '800',
     color: THEME.primary,
-    fontFamily: FONTS.bodyBold,
   },
   cardFooter: {
     flexDirection: 'row',
@@ -360,7 +359,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: THEME.outlineVariant,
+    borderTopColor: '#f1f5f9',
   },
   locationBox: {
     flexDirection: 'row',
@@ -371,7 +370,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: THEME.textSecondary,
-    fontFamily: FONTS.bodyBold,
   },
   detailBtn: {
     flexDirection: 'row',
@@ -382,7 +380,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
     color: THEME.primary,
-    fontFamily: FONTS.bodyBold,
   },
   empty: {
     paddingVertical: 120,
@@ -394,6 +391,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     marginTop: 20,
-    fontFamily: FONTS.bodyBold,
   },
 });

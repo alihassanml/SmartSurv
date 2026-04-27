@@ -20,7 +20,9 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.smartsurv"
+      "package": "com.anonymous.smartsurv",
+      "compileSdkVersion": 35,
+      "targetSdkVersion": 35
     },
     "web": {
       "output": "static",

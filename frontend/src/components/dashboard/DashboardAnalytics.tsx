@@ -333,29 +333,39 @@ const DashboardAnalytics: React.FC<Props> = ({ alerts, detectedPersons, isConnec
                     <Target size={16} className="text-[#ffbb33]" />
                     <div>
                         <p className="text-[8px] tracking-[0.4em] mb-0.5 font-black uppercase" style={{ color: 'var(--color-outline)' }}>Model Insights</p>
-                        <p className="text-xs font-bold text-[var(--color-on-surface)]">CLASSIFICATION_MAP</p>
+                        <p className="text-xs font-bold text-[var(--color-on-surface)]">CLASS_DISTRIBUTION</p>
                     </div>
                 </div>
                 <p className="text-[9px] font-black text-[var(--color-outline)]">{data.activityBreakdown.length} CLASSES</p>
             </div>
-            <div className="space-y-4 max-h-[220px] overflow-y-auto pr-2 custom-scrollbar">
-                {data.activityBreakdown.map((act, i) => (
-                    <div key={act.name} className="group">
-                        <div className="flex justify-between items-center mb-1.5">
-                            <span className="text-[9px] font-black tracking-widest text-[var(--color-on-surface)] group-hover:text-[var(--color-primary)] transition-colors uppercase">{act.name}</span>
-                            <span className="text-[9px] font-mono font-bold" style={{ color: 'var(--color-outline)' }}>{act.count} UNITS</span>
-                        </div>
-                        <div className="h-1.5 bg-[var(--color-surface-container)] rounded-full overflow-hidden">
-                            <motion.div
-                                initial={{ width: 0 }}
-                                animate={{ width: data.totalDetections > 0 ? `${Math.round((act.count / data.totalDetections) * 100)}%` : '0%' }}
-                                transition={{ duration: 1, delay: 0.5 + i * 0.05 }}
-                                className="h-full rounded-full"
-                                style={{ background: COLORS[i % COLORS.length] }}
+            <div className="h-[220px]">
+                {data.activityBreakdown.length === 0 ? (
+                    <div className="h-full flex items-center justify-center opacity-30 text-[10px] font-bold tracking-[0.3em] uppercase">No Class Data</div>
+                ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={data.activityBreakdown} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.03)" vertical={false} />
+                            <XAxis 
+                                dataKey="name" 
+                                tick={{ fill: 'var(--color-outline)', fontSize: 7, fontWeight: 900 }}
+                                axisLine={false}
+                                tickLine={false}
                             />
-                        </div>
-                    </div>
-                ))}
+                            <YAxis 
+                                tick={{ fill: 'var(--color-outline)', fontSize: 7, fontWeight: 700 }}
+                                axisLine={false}
+                                tickLine={false}
+                                allowDecimals={false}
+                            />
+                            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0,0,0,0.02)' }} />
+                            <Bar dataKey="count" name="DETECTIONS" radius={[4, 4, 0, 0]} barSize={30}>
+                                {data.activityBreakdown.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                ))}
+                            </Bar>
+                        </BarChart>
+                    </ResponsiveContainer>
+                )}
             </div>
           </motion.div>
 

@@ -7,15 +7,16 @@ import { THEME, SPACING, FONTS } from '../../constants/Theme';
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 
 export default function ProfileScreen() {
   const router = useRouter();
   const [profile, setProfile] = useState({
-    username: 'SmartSurv_Admin',
-    role: 'ADMINISTRATOR',
-    orgName: 'Intelligence Surveillance Agency',
+    username: 'Admin_User',
+    role: 'SYSTEM ADMINISTRATOR',
+    orgName: 'Security Ops Center',
     email: 'admin@smartsurv.ai',
-    location: 'Sector 7G, Command Unit'
+    location: 'Main Control Unit'
   });
 
   const [settings, setSettings] = useState({
@@ -43,13 +44,19 @@ export default function ProfileScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['left', 'right']}>
+      <StatusBar style="dark" />
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Account Settings</Text>
-        <Text style={styles.headerSubtitle}>Manage security preferences & node info</Text>
+        <View>
+          <Text style={styles.headerSubtitle}>ACCOUNT SETTINGS</Text>
+          <Text style={styles.headerTitle}>Profile</Text>
+        </View>
+        <TouchableOpacity style={styles.headerIconBtn} onPress={handleLogout}>
+          <LogOut size={22} color="#dc2626" />
+        </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         <View style={styles.profileCard}>
           <View style={styles.avatarContainer}>
             <View style={styles.avatarBox}>
@@ -68,11 +75,11 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Preferences</Text>
+          <Text style={styles.sectionTitle}>PREFERENCES</Text>
           
           <View style={styles.row}>
             <View style={styles.rowInfo}>
-              <View style={[styles.iconContainer, { backgroundColor: 'rgba(37,99,235,0.08)' }]}>
+              <View style={[styles.iconContainer, { backgroundColor: '#eff6ff' }]}>
                 <Bell size={18} color={THEME.primary} />
               </View>
               <Text style={styles.rowLabel}>Push Notifications</Text>
@@ -80,44 +87,29 @@ export default function ProfileScreen() {
             <Switch 
               value={settings.pushNotifications} 
               onValueChange={(v) => setSettings({...settings, pushNotifications: v})}
-              trackColor={{ false: THEME.outlineVariant, true: THEME.primary }}
+              trackColor={{ false: '#f1f5f9', true: THEME.primary }}
               thumbColor="white"
             />
           </View>
 
           <View style={styles.row}>
             <View style={styles.rowInfo}>
-              <View style={[styles.iconContainer, { backgroundColor: 'rgba(22, 163, 74, 0.08)' }]}>
+              <View style={[styles.iconContainer, { backgroundColor: '#f0fdf4' }]}>
                 <Mail size={18} color={THEME.success} />
               </View>
-              <Text style={styles.rowLabel}>Email Alert Reports</Text>
+              <Text style={styles.rowLabel}>Email Reports</Text>
             </View>
             <Switch 
               value={settings.emailAlerts} 
               onValueChange={(v) => setSettings({...settings, emailAlerts: v})}
-              trackColor={{ false: THEME.outlineVariant, true: THEME.primary }}
-              thumbColor="white"
-            />
-          </View>
-
-          <View style={styles.row}>
-            <View style={styles.rowInfo}>
-              <View style={[styles.iconContainer, { backgroundColor: 'rgba(0, 104, 122, 0.08)' }]}>
-                <MapPin size={18} color={THEME.secondary} />
-              </View>
-              <Text style={styles.rowLabel}>Location Services</Text>
-            </View>
-            <Switch 
-              value={settings.locationTracking} 
-              onValueChange={(v) => setSettings({...settings, locationTracking: v})}
-              trackColor={{ false: THEME.outlineVariant, true: THEME.primary }}
+              trackColor={{ false: '#f1f5f9', true: THEME.primary }}
               thumbColor="white"
             />
           </View>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Information</Text>
+          <Text style={styles.sectionTitle}>SYSTEM INFO</Text>
           
           <TouchableOpacity style={styles.navRow}>
             <View style={styles.rowInfo}>
@@ -151,18 +143,13 @@ export default function ProfileScreen() {
                 <Info size={18} color={THEME.textSecondary} />
               </View>
               <View>
-                <Text style={styles.navLabel}>About SmartSurv AI</Text>
-                <Text style={styles.navValue}>Version 1.0.8 Production</Text>
+                <Text style={styles.navLabel}>About SmartSurv</Text>
+                <Text style={styles.navValue}>v1.0.8 Stable</Text>
               </View>
             </View>
             <ChevronRight size={16} color={THEME.outline} />
           </TouchableOpacity>
         </View>
-
-        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-          <LogOut size={18} color={THEME.error} />
-          <Text style={styles.logoutText}>Terminate Session</Text>
-        </TouchableOpacity>
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>SECURE PROTOCOL ACTIVE</Text>
@@ -176,56 +163,72 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: THEME.background,
+    backgroundColor: '#ffffff',
   },
   header: {
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
-    backgroundColor: THEME.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: THEME.outlineVariant,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    paddingHorizontal: 24,
+    paddingTop: 50,
+    paddingBottom: 20,
+    backgroundColor: '#ffffff',
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: '800',
+    fontSize: 32,
+    fontWeight: '900',
     color: THEME.text,
-    fontFamily: FONTS.heading,
+    letterSpacing: -1,
   },
   headerSubtitle: {
-    fontSize: 13,
+    fontSize: 10,
+    fontWeight: '800',
     color: THEME.textSecondary,
-    marginTop: 2,
-    fontFamily: FONTS.body,
+    letterSpacing: 1.5,
+    marginBottom: 4,
+  },
+  headerIconBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#fef2f2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#fee2e2',
   },
   content: {
     flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 40,
   },
   profileCard: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 24,
-    backgroundColor: THEME.surface,
+    backgroundColor: '#ffffff',
     borderBottomWidth: 1,
-    borderBottomColor: THEME.outlineVariant,
+    borderBottomColor: '#f1f5f9',
   },
   avatarContainer: {
     position: 'relative',
     marginRight: 20,
   },
   avatarBox: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: THEME.background,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#f8fafc',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: THEME.outlineVariant,
+    borderColor: '#f1f5f9',
   },
   verifyBadge: {
     position: 'absolute',
-    bottom: 0,
-    right: 0,
+    bottom: 4,
+    right: 4,
     width: 20,
     height: 20,
     borderRadius: 10,
@@ -233,56 +236,51 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: THEME.surface,
+    borderColor: '#ffffff',
   },
   profileInfo: {
     flex: 1,
   },
   userName: {
-    fontSize: 18,
-    fontWeight: '800',
+    fontSize: 20,
+    fontWeight: '900',
     color: THEME.text,
-    fontFamily: FONTS.heading,
   },
   roleBadge: {
     marginTop: 6,
-    backgroundColor: 'rgba(37,99,235,0.08)',
+    backgroundColor: '#eff6ff',
     paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 6,
+    paddingVertical: 4,
+    borderRadius: 8,
     alignSelf: 'flex-start',
   },
   roleText: {
     fontSize: 9,
-    fontWeight: '800',
+    fontWeight: '900',
     color: THEME.primary,
     letterSpacing: 0.5,
-    fontFamily: FONTS.bodyBold,
   },
   section: {
     marginTop: 24,
-    backgroundColor: THEME.surface,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: THEME.outlineVariant,
-    paddingVertical: 8,
+    paddingHorizontal: 24,
   },
   sectionTitle: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '800',
     color: THEME.textSecondary,
-    textTransform: 'uppercase',
     letterSpacing: 1.5,
-    marginHorizontal: SPACING.lg,
-    marginVertical: 12,
-    fontFamily: FONTS.heading,
+    marginBottom: 16,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: SPACING.lg,
+    backgroundColor: '#ffffff',
+    padding: 16,
+    borderRadius: 24,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
   },
   rowInfo: {
     flexDirection: 'row',
@@ -290,10 +288,10 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   iconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: THEME.background,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#f8fafc',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -301,45 +299,27 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: THEME.text,
-    fontFamily: FONTS.bodyBold,
   },
   navRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 14,
-    paddingHorizontal: SPACING.lg,
+    backgroundColor: '#ffffff',
+    padding: 16,
+    borderRadius: 24,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
   },
   navLabel: {
     fontSize: 11,
-    fontWeight: '600',
     color: THEME.textSecondary,
-    fontFamily: FONTS.body,
   },
   navValue: {
     fontSize: 14,
     fontWeight: '700',
     color: THEME.text,
     marginTop: 1,
-    fontFamily: FONTS.bodyBold,
-  },
-  logoutBtn: {
-    margin: 24,
-    backgroundColor: THEME.surface,
-    padding: 16,
-    borderRadius: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(186,26,26,0.1)',
-  },
-  logoutText: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: THEME.error,
-    fontFamily: FONTS.bodyBold,
   },
   footer: {
     paddingVertical: 40,
@@ -351,6 +331,5 @@ const styles = StyleSheet.create({
     color: THEME.outline,
     fontWeight: '800',
     letterSpacing: 1.5,
-    fontFamily: FONTS.bodyBold,
   },
 });

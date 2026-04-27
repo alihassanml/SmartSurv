@@ -57,7 +57,7 @@ function LocalCameraCard({
       {!isStreaming && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
           <EyeOff size={28} style={{ color: 'var(--color-outline-variant)' }} />
-          <p className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: 'var(--color-outline)' }}>Sector Offline</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: 'var(--color-on-surface-variant)' }}>Sector Offline</p>
           <p className="text-[9px] font-bold" style={{ color: 'var(--color-outline-variant)' }}>LOCAL CAMERA</p>
         </div>
       )}
@@ -172,7 +172,7 @@ function UrlCameraCard({
       {!isStreaming && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
           <EyeOff size={28} style={{ color: 'var(--color-outline-variant)' }} />
-          <p className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: 'var(--color-outline)' }}>Sector Offline</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: 'var(--color-on-surface-variant)' }}>Sector Offline</p>
           <p className="text-[9px] font-bold uppercase" style={{ color: 'var(--color-outline-variant)' }}>{cam.name}</p>
         </div>
       )}
@@ -487,7 +487,7 @@ const Monitor: React.FC = () => {
                 <h3 className="text-sm font-bold uppercase tracking-wide" style={{ color: 'var(--color-on-surface)', fontFamily: "'Manrope',sans-serif" }}>
                   Camera Grid
                 </h3>
-                <p className="text-[9px] font-bold uppercase tracking-widest mt-1 flex items-center gap-2" style={{ color: 'var(--color-outline)' }}>
+                <p className="text-[9px] font-bold uppercase tracking-widest mt-1 flex items-center gap-2" style={{ color: 'var(--color-on-surface-variant)' }}>
                   <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--color-primary)' }} />
                   {activeNodes} Nodes Online
                   {systemLatency !== null && (
@@ -504,18 +504,26 @@ const Monitor: React.FC = () => {
               {(['detection', 'search', 'both'] as const).map((key) => {
                 const label = key === 'detection' ? 'DETECT' : key === 'search' ? 'SEARCH' : 'HYBRID';
                 const tip   = key === 'detection' ? 'YOLO object detection only' : key === 'search' ? 'FaceNet person search only' : 'Object detection + Face search';
+                const active = cameraMode === key;
                 return (
                   <button
                     key={key}
                     onClick={() => handleModeChange(key)}
                     title={tip}
-                    className="px-3 py-1.5 text-[9px] font-black tracking-widest uppercase transition-all duration-200 rounded-lg"
-                    style={cameraMode === key
-                      ? { background: 'var(--color-primary)', color: '#ffffff', boxShadow: '0 2px 8px rgba(36,128,255,0.35)' }
-                      : { background: 'transparent', color: 'var(--color-outline)' }
-                    }
+                    className="relative px-4 py-2 text-[9px] font-black tracking-widest uppercase transition-all duration-300 rounded-lg group"
+                    style={{ color: active ? '#ffffff' : 'var(--color-on-surface-variant)' }}
                   >
-                    {label}
+                    {active && (
+                      <motion.div
+                        layoutId="mode-pill"
+                        className="absolute inset-0 z-0 bg-[var(--color-primary)] shadow-[0_2px_10px_rgba(36,128,255,0.4)]"
+                        style={{ borderRadius: '0.5rem' }}
+                        transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+                      />
+                    )}
+                    <span className="relative z-10 transition-colors group-hover:text-[var(--color-on-surface)] group-data-[active=true]:text-white" data-active={active}>
+                      {label}
+                    </span>
                   </button>
                 );
               })}

@@ -120,7 +120,7 @@ const Signup: React.FC = () => {
               style={{ fontFamily: "'Manrope', sans-serif", color: 'var(--color-on-surface)', letterSpacing: '0.08em' }}>
               Create Account
             </h1>
-            <p className="text-[11px] tracking-[0.2em]" style={{ color: 'var(--color-outline)' }}>
+            <p className="text-[11px] tracking-[0.2em]" style={{ color: 'var(--color-on-surface-variant)' }}>
               Register for access
             </p>
           </div>
@@ -138,7 +138,7 @@ const Signup: React.FC = () => {
             {/* Username */}
             <div>
               <label className="block text-[10px] uppercase tracking-[0.15em] mb-2 font-semibold"
-                style={{ color: 'var(--color-outline)' }}>Username</label>
+                style={{ color: 'var(--color-on-surface-variant)' }}>Username</label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5"
                   style={{ color: 'var(--color-outline-variant)' }} />
@@ -153,7 +153,7 @@ const Signup: React.FC = () => {
             {/* Email */}
             <div>
               <label className="block text-[10px] uppercase tracking-[0.15em] mb-2 font-semibold"
-                style={{ color: 'var(--color-outline)' }}>Email Address</label>
+                style={{ color: 'var(--color-on-surface-variant)' }}>Email Address</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5"
                   style={{ color: 'var(--color-outline-variant)' }} />
@@ -168,7 +168,7 @@ const Signup: React.FC = () => {
             {/* Role */}
             <div>
               <label className="block text-[10px] uppercase tracking-[0.15em] mb-2 font-semibold"
-                style={{ color: 'var(--color-outline)' }}>Account Type</label>
+                style={{ color: 'var(--color-on-surface-variant)' }}>Account Type</label>
               <div className="relative">
                 <Shield className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5"
                   style={{ color: 'var(--color-outline-variant)' }} />
@@ -180,9 +180,9 @@ const Signup: React.FC = () => {
                   className="w-full pl-9 pr-3 py-3 text-sm transition-all duration-200 appearance-none bg-transparent"
                   style={inputStyle}
                 >
-                  <option value="admin" className="text-black bg-white">ADMIN (MASTER_CONTROL)</option>
-                  <option value="user" className="text-black bg-white">USER (OPERATOR)</option>
-                  <option value="organization" className="text-black bg-white">ORGANIZATION (ALERT_FEED)</option>
+                  <option value="admin" className="text-black bg-white">ADMIN</option>
+                  <option value="user" className="text-black bg-white">USER</option>
+                  <option value="organization" className="text-black bg-white">ORGANIZATION</option>
                 </select>
               </div>
             </div>
@@ -225,7 +225,7 @@ const Signup: React.FC = () => {
             {/* Password */}
             <div>
               <label className="block text-[10px] uppercase tracking-[0.15em] mb-2 font-semibold"
-                style={{ color: 'var(--color-outline)' }}>Password</label>
+                style={{ color: 'var(--color-on-surface-variant)' }}>Password</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5"
                   style={{ color: 'var(--color-outline-variant)' }} />

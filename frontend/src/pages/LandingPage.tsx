@@ -106,7 +106,7 @@ const LandingPage: React.FC = () => {
           className="text-6xl md:text-[5rem] font-extrabold tracking-tight leading-[1.1] mb-6 text-[var(--color-on-surface)] font-[var(--font-display)]">
           Intelligent
           <span className="block text-transparent bg-clip-text bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-secondary)]">Surveillance</span>
-          <span className="block text-4xl md:text-5xl font-medium tracking-wide text-[var(--color-outline)] mt-2">
+          <span className="block text-4xl md:text-5xl font-medium tracking-wide text-[var(--color-on-surface-variant)] mt-2">
             Automated Reality.
           </span>
         </motion.h1>

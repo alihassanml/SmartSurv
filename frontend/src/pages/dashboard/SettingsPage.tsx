@@ -27,7 +27,7 @@ const Card: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 
 const Section: React.FC<{ title: string; children: React.ReactNode; noBorder?: boolean }> = ({ title, children, noBorder }) => (
   <div className="px-6 py-5" style={noBorder ? {} : { borderBottom: '1px solid var(--color-outline-variant)' }}>
-    <p className="text-xs font-bold mb-4" style={{ color: 'var(--color-outline)' }}>{title}</p>
+    <p className="text-xs font-bold mb-4" style={{ color: 'var(--color-on-surface-variant)' }}>{title}</p>
     {children}
   </div>
 );
@@ -61,6 +61,7 @@ const SettingsPage: React.FC = () => {
     isReconnecting,
     watchlist,
     browserSoundEnabled, toggleBrowserSound,
+    dataSettings, updateDataSettings,
   } = useApp();
 
   const navigate = useNavigate();
@@ -128,7 +129,7 @@ const SettingsPage: React.FC = () => {
                   style={{ background: 'var(--color-surface-container-low)', border: '1px solid var(--color-outline-variant)' }}>
                   <div>
                     <p className="text-3xl font-bold" style={{ color: 'var(--color-primary)', fontFamily: "'Manrope', sans-serif" }}>{watchlist.length}</p>
-                    <p className="text-sm mt-0.5" style={{ color: 'var(--color-outline)' }}>Active Targets</p>
+                    <p className="text-sm mt-0.5" style={{ color: 'var(--color-on-surface-variant)' }}>Active Targets</p>
                   </div>
                   <button
                     onClick={() => navigate('/dashboard/watchlist')}
@@ -180,6 +181,43 @@ const SettingsPage: React.FC = () => {
                 <div className="-mt-2">
                   <ToggleRow icon={<Shield className="w-4 h-4" style={{ color: '#47607e' }} />} label="Privacy Guard" desc="Selective face redaction on feeds" on={privacyMode} onToggle={togglePrivacy} />
                   <ToggleRow icon={<User className="w-4 h-4" style={{ color: 'var(--color-primary)' }} />} label="Person Log Panel" desc="Show Re-ID sidebar and face crops" on={personLogEnabled} onToggle={togglePersonLog} id="person-log-toggle-btn" />
+                </div>
+              </Section>
+            </Card>
+
+            {/* Data Retention & History */}
+            <Card>
+              <Section title="Data Retention & History" noBorder>
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex justify-between items-center mb-1.5">
+                      <label className="text-sm font-medium" style={{ color: 'var(--color-on-surface)' }}>Display Buffer</label>
+                      <span className="text-xs font-bold" style={{ color: 'var(--color-primary)' }}>{dataSettings.display_days} Days</span>
+                    </div>
+                    <p className="text-[11px] mb-3" style={{ color: 'var(--color-outline)' }}>How many days of history to show on Dashboard charts</p>
+                    <input 
+                      type="range" min={1} max={30} step={1} 
+                      value={dataSettings.display_days}
+                      onChange={(e) => updateDataSettings(parseInt(e.target.value), dataSettings.retention_days)}
+                      className="w-full appearance-none h-1.5 rounded-full outline-none cursor-pointer"
+                      style={{ background: `linear-gradient(to right, var(--color-primary) 0%, var(--color-primary) ${(dataSettings.display_days / 30) * 100}%, var(--color-surface-container) ${(dataSettings.display_days / 30) * 100}%, var(--color-surface-container) 100%)` }}
+                    />
+                  </div>
+
+                  <div style={{ paddingTop: '12px', borderTop: '1px solid var(--color-outline-variant)' }}>
+                    <div className="flex justify-between items-center mb-1.5">
+                      <label className="text-sm font-medium" style={{ color: 'var(--color-on-surface)' }}>Auto-Delete Policy</label>
+                      <span className="text-xs font-bold" style={{ color: '#ba1a1a' }}>{dataSettings.retention_days} Days</span>
+                    </div>
+                    <p className="text-[11px] mb-3" style={{ color: 'var(--color-outline)' }}>Alerts older than this will be permanently deleted</p>
+                    <input 
+                      type="range" min={1} max={365} step={1} 
+                      value={dataSettings.retention_days}
+                      onChange={(e) => updateDataSettings(dataSettings.display_days, parseInt(e.target.value))}
+                      className="w-full appearance-none h-1.5 rounded-full outline-none cursor-pointer"
+                      style={{ background: `linear-gradient(to right, #ba1a1a 0%, #ba1a1a ${(dataSettings.retention_days / 365) * 100}%, var(--color-surface-container) ${(dataSettings.retention_days / 365) * 100}%, var(--color-surface-container) 100%)` }}
+                    />
+                  </div>
                 </div>
               </Section>
             </Card>

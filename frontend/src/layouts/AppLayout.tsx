@@ -59,6 +59,8 @@ export interface AppContextValue {
   semanticResults: { id: string; score: number }[];
   semanticLoading: boolean;
   handleSemanticSearch: (val: string) => void;
+  dataSettings: { display_days: number; retention_days: number };
+  updateDataSettings: (display: number, retention: number) => Promise<void>;
   systemLatency: number | null;
   isReconnecting: boolean;
   username: string;
@@ -147,6 +149,8 @@ const AppLayout: React.FC = () => {
   const [lastAlert, setLastAlert] = useState<Alert | null>(null);
   const semanticDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const [dataSettings, setDataSettings] = useState({ display_days: 1, retention_days: 30 });
+
   // â”€â”€ Unread alerts badge â”€â”€
   const [unreadAlerts, setUnreadAlerts] = useState(0);
   const [systemLatency, setSystemLatency] = useState<number | null>(null);
@@ -206,6 +210,11 @@ const AppLayout: React.FC = () => {
     fetch(`${API}/api/settings/ui`)
       .then(r => r.json())
       .then(d => { if (typeof d.person_log_enabled === 'boolean') setPersonLogEnabled(d.person_log_enabled); })
+      .catch(() => {});
+
+    fetch(`${API}/api/settings/data`)
+      .then(r => r.json())
+      .then(d => { if (d.display_days) setDataSettings(d); })
       .catch(() => {});
   }, []);
 
@@ -513,6 +522,27 @@ const AppLayout: React.FC = () => {
     }, 600);
   };
 
+  const updateDataSettings = async (display: number, retention: number) => {
+    // Optimistic update for instant slider feedback
+    setDataSettings({ display_days: display, retention_days: retention });
+    
+    try {
+      const res = await fetch(`${API}/api/settings/data`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ display_days: display, retention_days: retention }),
+      });
+      if (res.ok) {
+        // Refresh history to reflect new display buffer
+        fetch(`${API}/api/alerts/history`)
+          .then(r => r.json())
+          .then(d => { if (Array.isArray(d)) setAlerts(d); });
+      }
+    } catch (_) {
+      // Rollback on failure could be added here if needed
+    }
+  };
+
   const pageTitle = pageTitles[location.pathname] ?? 'Dashboard';
   const [showProfileMenu, setShowProfileMenu] = useState(false);
 
@@ -530,6 +560,7 @@ const AppLayout: React.FC = () => {
     saveStatus, handleSoundToggle, smtpEmail, systemIp,
     focusedPersonId, handleSetFocus, focusedPersonVisible,
     semanticQuery, semanticResults, semanticLoading, handleSemanticSearch,
+    dataSettings, updateDataSettings,
     isReconnecting, username, userEmail, role, handleLogout,
     systemLatency,
     cameraMode, handleModeChange,
@@ -662,16 +693,22 @@ const AppLayout: React.FC = () => {
           </AnimatePresence>
 
           {/* --- Page content --- */}
-          <main className="flex-1 overflow-hidden">
-            <motion.div
-              key={location.pathname}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.2 }}
-              className="h-full"
-            >
-              <Outlet />
-            </motion.div>
+          <main className="flex-1 overflow-hidden relative">
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={location.pathname}
+                initial={{ opacity: 0, y: 10, filter: 'blur(4px)' }}
+                animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                exit={{ opacity: 0, y: -10, filter: 'blur(4px)' }}
+                transition={{ 
+                  duration: 0.3, 
+                  ease: [0.4, 0, 0.2, 1] 
+                }}
+                className="h-full w-full"
+              >
+                <Outlet />
+              </motion.div>
+            </AnimatePresence>
           </main>
       </div>
 

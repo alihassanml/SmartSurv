@@ -1,5 +1,5 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { AnimatePresence } from 'framer-motion';
 import LandingPage from './pages/LandingPage';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
@@ -23,10 +23,15 @@ const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   return children;
 };
 
-const App: React.FC = () => {
+const AnimatedRoutes = () => {
+  const location = useLocation();
+  // Don't animate nested routes here, they are handled inside AppLayout
+  // We only want to animate transitions between top-level pages and the dashboard root
+  const isDashboard = location.pathname.startsWith('/dashboard');
+
   return (
-    <Router>
-      <Routes>
+    <AnimatePresence mode="wait" initial={false}>
+      <Routes location={location} key={isDashboard ? 'dashboard' : location.pathname}>
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
@@ -52,6 +57,14 @@ const App: React.FC = () => {
           <Route path="organization-controls" element={<OrganizationControls />} />
         </Route>
       </Routes>
+    </AnimatePresence>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <Router>
+      <AnimatedRoutes />
     </Router>
   );
 };

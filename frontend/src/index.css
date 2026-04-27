@@ -14,8 +14,8 @@
 
   --color-background: #f8fafc; /* Slate 50 */
   --color-surface: #ffffff;
-  --color-on-surface: #0f172a; /* Slate 900 */
-  --color-on-surface-variant: #475569; /* Slate 600 */
+  --color-on-surface: #000000; /* Pure Black */
+  --color-on-surface-variant: #1a1a1a; /* Very Dark Gray (Sidebar-like) */
 
   --color-surface-container-lowest: #ffffff;
   --color-surface-container-low: #f8fafc;
@@ -23,8 +23,8 @@
   --color-surface-container-high: #e2e8f0;
   --color-surface-container-highest: #cbd5e1;
 
-  --color-outline: #cbd5e1;
-  --color-outline-variant: #e2e8f0;
+  --color-outline: #94a3b8; /* Darkened for better contrast */
+  --color-outline-variant: #cbd5e1;
 
   --color-error: #ef4444;
   --color-on-error: #ffffff;

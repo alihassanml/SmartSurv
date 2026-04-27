@@ -85,7 +85,7 @@ const Login: React.FC = () => {
               style={{ fontFamily: "'Manrope', sans-serif", color: 'var(--color-on-surface)', letterSpacing: '0.08em' }}>
               Sign In
             </h1>
-            <p className="text-[11px] tracking-[0.2em]" style={{ color: 'var(--color-outline)' }}>
+            <p className="text-[11px] tracking-[0.2em]" style={{ color: 'var(--color-on-surface-variant)' }}>
               Enter your credentials to continue
             </p>
           </div>
@@ -103,7 +103,7 @@ const Login: React.FC = () => {
             {/* Username */}
             <div>
               <label className="block text-[10px] uppercase tracking-[0.15em] mb-2 font-semibold"
-                style={{ color: 'var(--color-outline)' }}>
+                style={{ color: 'var(--color-on-surface-variant)' }}>
                 Username
               </label>
               <div className="relative">
@@ -133,7 +133,7 @@ const Login: React.FC = () => {
             {/* Password */}
             <div>
               <label className="block text-[10px] uppercase tracking-[0.15em] mb-2 font-semibold"
-                style={{ color: 'var(--color-outline)' }}>
+                style={{ color: 'var(--color-on-surface-variant)' }}>
                 Password
               </label>
               <div className="relative">
@@ -186,7 +186,7 @@ const Login: React.FC = () => {
 
           {/* Footer link */}
           <div className="mt-6 pt-5 text-center" style={{ borderTop: '1px solid rgba(0,0,0,0.1)' }}>
-            <span className="text-[11px]" style={{ color: 'var(--color-outline)' }}>Don't have an account? </span>
+            <span className="text-[11px]" style={{ color: 'var(--color-on-surface-variant)' }}>Don't have an account? </span>
             <button
               id="login-to-signup-link"
               onClick={() => navigate('/signup')}

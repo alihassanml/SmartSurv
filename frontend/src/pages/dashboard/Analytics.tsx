@@ -1,4 +1,4 @@
-﻿import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Activity, Download, Shield, AlertTriangle, User, Camera, Eye, X, ZoomIn } from 'lucide-react';
 import { useApp } from '../../layouts/AppLayout';
@@ -155,15 +155,23 @@ const Analytics: React.FC = () => {
       {/* Tab bar */}
       <div className="shrink-0 flex items-center justify-between px-6 py-3"
         style={{ borderBottom: '1px solid rgba(0,0,0,0.1)', background: 'var(--color-surface)' }}>
-        <div className="flex gap-1 p-1" style={{ background: 'rgba(0,0,0,0.03)', borderRadius: '0.25rem', border: '1px solid rgba(0,0,0,0.1)' }}>
+        <div className="flex gap-1 p-1" style={{ background: 'rgba(0,0,0,0.03)', borderRadius: '0.5rem', border: '1px solid rgba(0,0,0,0.1)' }}>
           {(['charts', 'live'] as const).map(t => (
             <button key={t} onClick={() => setTab(t)}
-              className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest transition-all"
-              style={tab === t
-                ? { background: 'var(--color-primary)', color: '#ffffff', borderRadius: '0.125rem' }
-                : { color: 'var(--color-outline)', borderRadius: '0.125rem' }
-              }>
-              {t === 'charts' ? 'Analytics' : 'Live Alerts'}
+              className="px-6 py-2 text-[10px] font-bold uppercase tracking-widest transition-all relative group"
+              style={{ color: tab === t ? '#ffffff' : 'var(--color-outline)' }}
+            >
+              {tab === t && (
+                <motion.div 
+                  layoutId="analytics-tab" 
+                  className="absolute inset-0 z-0 bg-[var(--color-primary)] shadow-[0_2px_8px_rgba(36,128,255,0.3)]"
+                  style={{ borderRadius: '0.375rem' }}
+                  transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+                />
+              )}
+              <span className="relative z-10 transition-colors group-hover:text-[var(--color-on-surface)] group-data-[active=true]:text-white" data-active={tab === t}>
+                {t === 'charts' ? 'Analytics Engine' : 'Live Incident Log'}
+              </span>
             </button>
           ))}
         </div>

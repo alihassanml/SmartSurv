@@ -93,36 +93,35 @@ const Sidebar: React.FC = () => {
             <button
               key={item.path}
               onClick={() => navigate(item.path)}
-              className="flex items-center gap-3 px-3 py-2.5 w-full text-left transition-all duration-200 relative group"
+              className="flex items-center gap-3 px-3 py-2.5 w-full text-left transition-colors duration-200 relative group"
               style={{
-                borderRadius: '0.5rem',
-                background: active ? 'var(--color-primary-container)' : 'transparent',
+                borderRadius: '0px',
                 color: active ? 'var(--color-primary)' : 'var(--color-on-surface-variant)',
               }}
-              onMouseEnter={e => {
-                if (!active) {
-                  (e.currentTarget as HTMLButtonElement).style.background = 'var(--color-surface-container)';
-                  (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-on-surface)';
-                }
-              }}
-              onMouseLeave={e => {
-                (e.currentTarget as HTMLButtonElement).style.background = active ? 'var(--color-primary-container)' : 'transparent';
-                (e.currentTarget as HTMLButtonElement).style.color = active ? 'var(--color-primary)' : 'var(--color-on-surface-variant)';
-              }}
             >
-              {/* Active indicator */}
               {active && (
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-r"
-                  style={{ background: 'var(--color-primary)' }} />
+                <motion.div
+                  layoutId="active-pill"
+                  className="absolute inset-0 z-0"
+                  style={{ 
+                    background: 'var(--color-primary-container)', 
+                    borderRadius: '0px',
+                    borderLeft: '2px solid var(--color-primary)'
+                  }}
+                  transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+                />
               )}
-              <item.icon className="w-4 h-4 shrink-0" />
+              
+              <item.icon className={`w-4 h-4 shrink-0 z-10 ${active ? 'text-[var(--color-primary)]' : 'group-hover:text-[var(--color-on-surface)]'}`} />
+              
               <AnimatePresence>
                 {!collapsed && (
                   <motion.span
-                    initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: 'auto' }}
-                    exit={{ opacity: 0, width: 0 }}
+                    initial={{ opacity: 0, x: -10 }} 
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -10 }}
                     transition={{ duration: 0.2 }}
-                    className="text-sm font-medium tracking-wide overflow-hidden whitespace-nowrap"
+                    className="text-sm font-medium tracking-wide overflow-hidden whitespace-nowrap z-10"
                     style={{ fontFamily: "'Inter', sans-serif" }}
                   >
                     {item.label}
@@ -143,35 +142,35 @@ const Sidebar: React.FC = () => {
             <button
               key={item.path}
               onClick={() => navigate(item.path)}
-              className="flex items-center gap-3 px-3 py-2.5 w-full text-left transition-all duration-200 relative"
+              className="flex items-center gap-3 px-3 py-2.5 w-full text-left transition-colors duration-200 relative group"
               style={{
-                borderRadius: '0.5rem',
-                background: active ? 'var(--color-primary-container)' : 'transparent',
+                borderRadius: '0px',
                 color: active ? 'var(--color-primary)' : 'var(--color-on-surface-variant)',
-              }}
-              onMouseEnter={e => {
-                if (!active) {
-                  (e.currentTarget as HTMLButtonElement).style.background = 'var(--color-surface-container)';
-                  (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-on-surface)';
-                }
-              }}
-              onMouseLeave={e => {
-                (e.currentTarget as HTMLButtonElement).style.background = active ? 'var(--color-primary-container)' : 'transparent';
-                (e.currentTarget as HTMLButtonElement).style.color = active ? 'var(--color-primary)' : 'var(--color-on-surface-variant)';
               }}
             >
               {active && (
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-r"
-                  style={{ background: 'var(--color-primary)' }} />
+                <motion.div
+                  layoutId="active-pill-bottom"
+                  className="absolute inset-0 z-0"
+                  style={{ 
+                    background: 'var(--color-primary-container)', 
+                    borderRadius: '0px',
+                    borderLeft: '2px solid var(--color-primary)'
+                  }}
+                  transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+                />
               )}
-              <item.icon className="w-4 h-4 shrink-0" />
+              
+              <item.icon className={`w-4 h-4 shrink-0 z-10 ${active ? 'text-[var(--color-primary)]' : 'group-hover:text-[var(--color-on-surface)]'}`} />
+              
               <AnimatePresence>
                 {!collapsed && (
                   <motion.span
-                    initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: 'auto' }}
-                    exit={{ opacity: 0, width: 0 }}
+                    initial={{ opacity: 0, x: -10 }} 
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -10 }}
                     transition={{ duration: 0.2 }}
-                    className="text-sm font-medium tracking-wide overflow-hidden whitespace-nowrap"
+                    className="text-sm font-medium tracking-wide overflow-hidden whitespace-nowrap z-10"
                     style={{ fontFamily: "'Inter', sans-serif" }}
                   >
                     {item.label}

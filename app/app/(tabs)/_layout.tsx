@@ -41,8 +41,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="broadcast"
         options={{
-          title: 'Broadcast',
-          tabBarIcon: ({ color }) => <Radio size={22} color={color} />,
+          href: null, // This hides it from the bottom tab bar
         }}
       />
       <Tabs.Screen
