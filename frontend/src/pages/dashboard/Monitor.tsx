@@ -37,20 +37,23 @@ function LocalCameraCard({
       layout
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.95 }}
+      whileHover={{ scale: 1.02 }}
       onClick={() => isStreaming && onMaximize('LOCAL CAMERA', localFeedId)}
       className="group relative"
       style={{
         aspectRatio: '16/9',
         border: isStreaming
-          ? '2px solid var(--color-primary)'
-          : '2px dashed var(--color-outline-variant)',
+          ? '1px solid rgba(0,0,0,0.08)'
+          : '1px dashed var(--color-outline-variant)',
+        boxShadow: isStreaming 
+          ? '0 25px 50px -12px rgba(0, 0, 0, 0.12), 0 10px 20px -10px rgba(0, 0, 0, 0.08)' 
+          : '0 4px 10px rgba(0,0,0,0.03)',
         opacity: isStreaming ? 1 : 0.7,
         cursor: isStreaming ? 'pointer' : 'default',
         background: 'var(--color-surface)',
         overflow: 'hidden',
-        borderRadius: '1rem',
-        transition: 'all 0.2s',
+        borderRadius: '1.25rem',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
       }}
     >
       {/* Offline placeholder */}
@@ -74,56 +77,48 @@ function LocalCameraCard({
       {/* Name + LIVE badge */}
       <div className="absolute top-3 left-3 z-10 flex gap-2 items-center">
         {isStreaming && streamLoaded && (
-          <span className="flex items-center gap-1.5 px-2.5 py-1 text-[0.6rem] font-bold"
-            style={{ background: 'rgba(36,128,255,0.85)', border: '1px solid rgba(36,128,255,0.3)', color: '#ffffff', backdropFilter: 'blur(6px)' }}>
-            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--color-surface)' }} />
+          <span className="flex items-center gap-1.5 px-2.5 py-1 text-[0.6rem] font-bold rounded-full"
+            style={{ background: 'rgba(36,128,255,0.85)', color: '#ffffff', backdropFilter: 'blur(8px)' }}>
+            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#ffffff' }} />
             LIVE
           </span>
         )}
-        <span className="px-2 py-1 text-[0.6rem] font-bold uppercase"
-          style={{ background: 'rgba(0,0,0,0.45)', color: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(4px)' }}>
+        <span className="px-2.5 py-1 text-[0.6rem] font-black uppercase rounded-full border border-blue-100 shadow-sm"
+          style={{ background: 'rgba(239, 246, 255, 0.9)', color: 'rgba(37, 99, 235, 1)', backdropFilter: 'blur(10px)' }}>
           LOCAL CAMERA
         </span>
       </div>
 
-      {/* Hover overlay */}
-      <div
-        className="absolute inset-0 flex flex-col justify-end p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none group-hover:pointer-events-auto"
-        style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 55%)' }}
-      >
-        <div className="flex justify-between items-center">
-          <div className="flex gap-2">
-            <button
-              onClick={e => { e.stopPropagation(); toggleLocalCameraVisibility(); }}
-              title={localCameraVisible ? 'Hide Camera' : 'Show Camera'}
-              className="px-3 py-1.5 flex items-center gap-1.5 transition-all text-[9px] font-bold tracking-wider uppercase rounded-xl hover:bg-white"
-              style={{ background: 'rgba(255,255,255,0.95)', border: '1px solid rgba(0,0,0,0.15)', color: '#000000' }}>
-              {localCameraVisible ? <EyeOff size={12} /> : <Eye size={12} />}
-              {localCameraVisible ? 'HIDE' : 'SHOW'}
-            </button>
-            <button
-              onClick={e => { e.stopPropagation(); toggleCamera(); }}
-              disabled={isCameraToggling}
-              title={cameraActive ? 'Stop Camera' : 'Start Camera'}
-              className="px-3 py-1.5 flex items-center gap-1.5 transition-all text-[9px] font-bold tracking-wider uppercase rounded-xl"
-              style={cameraActive
-                ? { background: '#ba1a1a', border: '1px solid #ba1a1a', color: '#ffffff' }
-                : { background: 'var(--color-primary)', border: '1px solid var(--color-primary)', color: '#ffffff' }
-              }>
-              {isCameraToggling ? <Loader2 size={12} className="animate-spin" /> : <Power size={12} />}
-              {cameraActive ? 'OFF' : 'ON'}
-            </button>
-          </div>
-          {isStreaming && (
-            <button
-              onClick={e => { e.stopPropagation(); onMaximize('LOCAL CAMERA', localFeedId); }}
-              className="px-4 py-2 text-[10px] font-bold uppercase tracking-widest transition-all rounded-xl hover:bg-[#0d6efd]"
-              style={{ background: 'var(--color-primary)', color: '#ffffff', border: '1px solid var(--color-primary)' }}>
-              Full View
-            </button>
-          )}
-        </div>
+      {/* Top Right Controls (Floating Icons) */}
+      <div className="absolute top-3 right-3 z-20 flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300">
+        <button
+          onClick={e => { e.stopPropagation(); toggleLocalCameraVisibility(); }}
+          className="p-2 rounded-full backdrop-blur-md border border-white/10 shadow-lg transition-all hover:scale-110 active:scale-95"
+          style={{ background: 'rgba(255,255,255,0.9)', color: '#000000' }}>
+          {localCameraVisible ? <EyeOff size={14} /> : <Eye size={14} />}
+        </button>
+        <button
+          onClick={e => { e.stopPropagation(); toggleCamera(); }}
+          disabled={isCameraToggling}
+          className="p-2 rounded-full backdrop-blur-md border border-white/10 shadow-lg transition-all hover:scale-110 active:scale-95"
+          style={cameraActive
+            ? { background: 'rgba(220,38,38,0.9)', color: '#ffffff' }
+            : { background: 'rgba(37,99,235,0.9)', color: '#ffffff' }
+          }>
+          {isCameraToggling ? <Loader2 size={14} className="animate-spin" /> : <Power size={14} />}
+        </button>
       </div>
+
+      {/* Full View Button (Bottom Center) */}
+      {isStreaming && (
+        <div className="absolute inset-0 flex items-end justify-center pb-6 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none">
+          <button
+            onClick={e => { e.stopPropagation(); onMaximize('LOCAL CAMERA', localFeedId); }}
+            className="px-6 py-2.5 bg-white text-black text-[10px] font-black uppercase tracking-[0.2em] rounded-full shadow-2xl pointer-events-auto hover:bg-blue-600 hover:text-white transition-all">
+            Full View
+          </button>
+        </div>
+      )}
     </motion.div>
   );
 }
@@ -152,20 +147,23 @@ function UrlCameraCard({
       layout
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.95 }}
+      whileHover={{ scale: 1.02 }}
       onClick={() => isStreaming && onMaximize(cam.name, `url-${cam.id}`)}
       className="group relative"
       style={{
         aspectRatio: '16/9',
         border: isStreaming
-          ? '2px solid var(--color-primary)'
-          : '2px dashed var(--color-outline-variant)',
+          ? '1px solid rgba(0,0,0,0.08)'
+          : '1px dashed var(--color-outline-variant)',
+        boxShadow: isStreaming 
+          ? '0 25px 50px -12px rgba(0, 0, 0, 0.12), 0 10px 20px -10px rgba(0, 0, 0, 0.08)' 
+          : '0 4px 10px rgba(0,0,0,0.03)',
         opacity: isStreaming ? 1 : 0.7,
         cursor: isStreaming ? 'pointer' : 'default',
         background: 'var(--color-surface)',
         overflow: 'hidden',
-        borderRadius: '1rem',
-        transition: 'all 0.2s',
+        borderRadius: '1.25rem',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
       }}
     >
       {/* Offline placeholder */}
@@ -189,59 +187,53 @@ function UrlCameraCard({
       {/* Name + LIVE badge */}
       <div className="absolute top-3 left-3 z-10 flex gap-2 items-center">
         {isStreaming && streamLoaded && (
-          <span className="flex items-center gap-1.5 px-2.5 py-1 text-[0.6rem] font-bold"
-            style={{ background: 'rgba(36,128,255,0.85)', border: '1px solid rgba(36,128,255,0.3)', color: '#ffffff', backdropFilter: 'blur(6px)' }}>
-            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--color-surface)' }} />
+          <span className="flex items-center gap-1.5 px-2.5 py-1 text-[0.6rem] font-bold rounded-full"
+            style={{ background: 'rgba(36,128,255,0.85)', color: '#ffffff', backdropFilter: 'blur(8px)' }}>
+            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#ffffff' }} />
             LIVE
           </span>
         )}
-        <span className="px-2 py-1 text-[0.6rem] font-bold uppercase"
-          style={{ background: 'rgba(0,0,0,0.45)', color: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(4px)' }}>
+        <span className="px-2.5 py-1 text-[0.6rem] font-black uppercase rounded-full border border-blue-100 shadow-sm"
+          style={{ background: 'rgba(239, 246, 255, 0.9)', color: 'rgba(37, 99, 235, 1)', backdropFilter: 'blur(10px)' }}>
           {cam.name}
         </span>
       </div>
 
-      {/* Hover overlay */}
-      <div
-        className="absolute inset-0 flex flex-col justify-end p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none group-hover:pointer-events-auto"
-        style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 55%)' }}
-      >
-        <div className="flex justify-between items-center">
-          <div className="flex gap-2">
-            <button
-              onClick={e => { e.stopPropagation(); onToggleVisibility(cam.id); }}
-              title={cam.visible ? 'Hide Camera' : 'Show Camera'}
-              className="px-3 py-1.5 flex items-center gap-1.5 transition-all text-[9px] font-bold tracking-wider uppercase rounded-xl hover:bg-white"
-              style={{ background: 'rgba(255,255,255,0.95)', border: '1px solid rgba(0,0,0,0.15)', color: '#000000' }}>
-              {cam.visible ? <EyeOff size={12} /> : <Eye size={12} />}
-              {cam.visible ? 'HIDE' : 'SHOW'}
-            </button>
-            <button
-              onClick={e => { e.stopPropagation(); onToggle(cam.id); }}
-              disabled={toggling}
-              title={cam.active ? 'Stop Camera' : 'Start Camera'}
-              className="px-3 py-1.5 flex items-center gap-1.5 transition-all text-[9px] font-bold tracking-wider uppercase rounded-xl"
-              style={cam.active
-                ? { background: '#ba1a1a', border: '1px solid #ba1a1a', color: '#ffffff' }
-                : { background: 'var(--color-primary)', border: '1px solid var(--color-primary)', color: '#ffffff' }
-              }>
-              {toggling ? <Loader2 size={12} className="animate-spin" /> : <Power size={12} />}
-              {cam.active ? 'OFF' : 'ON'}
-            </button>
-          </div>
-          {isStreaming && (
-            <button
-              onClick={e => { e.stopPropagation(); onMaximize(cam.name, `url-${cam.id}`); }}
-              className="px-4 py-2 text-[10px] font-bold uppercase tracking-widest transition-all rounded-xl hover:bg-[#0d6efd]"
-              style={{ background: 'var(--color-primary)', color: '#ffffff', border: '1px solid var(--color-primary)' }}>
-              Full View
-            </button>
-          )}
-        </div>
+      {/* Top Right Controls (Floating Icons) */}
+      <div className="absolute top-3 right-3 z-20 flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300">
+        <button
+          onClick={e => { e.stopPropagation(); onToggleVisibility(cam.id); }}
+          className="p-2 rounded-full backdrop-blur-md border border-white/10 shadow-lg transition-all hover:scale-110 active:scale-95"
+          style={{ background: 'rgba(255,255,255,0.9)', color: '#000000' }}>
+          {cam.visible ? <EyeOff size={14} /> : <Eye size={14} />}
+        </button>
+        <button
+          onClick={e => { e.stopPropagation(); onToggle(cam.id); }}
+          disabled={toggling}
+          className="p-2 rounded-full backdrop-blur-md border border-white/10 shadow-lg transition-all hover:scale-110 active:scale-95"
+          style={cam.active
+            ? { background: 'rgba(220,38,38,0.9)', color: '#ffffff' }
+            : { background: 'rgba(37,99,235,0.9)', color: '#ffffff' }
+          }>
+          {toggling ? <Loader2 size={14} className="animate-spin" /> : <Power size={14} />}
+        </button>
       </div>
+
+      {/* Full View Button (Bottom Center) */}
+      {isStreaming && (
+        <div className="absolute inset-0 flex items-end justify-center pb-6 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none">
+          <button
+            onClick={e => { e.stopPropagation(); onMaximize(cam.name, `url-${cam.id}`); }}
+            className="px-6 py-2.5 bg-white text-black text-[10px] font-black uppercase tracking-[0.2em] rounded-full shadow-2xl pointer-events-auto hover:bg-blue-600 hover:text-white transition-all">
+            Full View
+          </button>
+        </div>
+      )}
     </motion.div>
   );
 }
+
+
 
 const Monitor: React.FC = () => {
   const {
@@ -401,7 +393,7 @@ const Monitor: React.FC = () => {
           {selectedPerson && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               onClick={() => setSelectedPerson(null)}
-              className="fixed inset-0 z-[500] bg-black/85 backdrop-blur-lg flex items-center justify-center p-8">
+              className="fixed inset-0 z-[500] bg-white/80 backdrop-blur-2xl flex items-center justify-center p-8">
               <motion.div
                 initial={{ scale: 0.85, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.85, opacity: 0 }}
                 onClick={e => e.stopPropagation()}
@@ -463,10 +455,10 @@ const Monitor: React.FC = () => {
           {/* ── KPI Cards ── */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { label: 'Total Nodes',      value: totalNodes,    color: 'var(--color-on-surface)', border: 'var(--color-outline-variant)', bg: 'white' },
-              { label: 'Active Readiness', value: activeNodes,   color: '#2563eb', border: '#2563eb', bg: 'white' },
-              { label: 'Feed Live',        value: liveFeedCount, color: '#16a34a', border: '#16a34a', bg: 'white' },
-              { label: 'Node Offline',     value: offlineCount,  color: 'var(--color-outline)', border: 'var(--color-outline-variant)', bg: 'rgba(241, 245, 249, 0.5)' },
+              { label: 'Total Nodes',      value: totalNodes,    color: 'var(--color-on-surface)', border: 'var(--color-outline-variant)', bg: 'rgba(100, 116, 139, 0.05)' },
+              { label: 'Active Readiness', value: activeNodes,   color: '#2563eb', border: 'rgba(37, 99, 235, 0.3)', bg: 'rgba(37, 99, 235, 0.05)' },
+              { label: 'Feed Live',        value: liveFeedCount, color: '#16a34a', border: 'rgba(22, 163, 74, 0.3)', bg: 'rgba(22, 163, 74, 0.05)' },
+              { label: 'Node Offline',     value: offlineCount,  color: 'var(--color-outline)', border: 'var(--color-outline-variant)', bg: 'rgba(241, 245, 249, 0.8)' },
             ].map(kpi => (
               <div key={kpi.label} className="p-6 flex flex-col justify-between relative overflow-hidden rounded-[1.25rem] transition-all hover:shadow-md h-32"
                 style={{ 
