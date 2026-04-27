@@ -16,3 +16,4 @@ Testing
 videos
 backend/smartsurv.db
 smartsurv.db
+backend/.env

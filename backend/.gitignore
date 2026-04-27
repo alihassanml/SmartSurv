@@ -1,0 +1,4 @@
+smartsurv.db
+.env
+.env.local
+backend/.env
