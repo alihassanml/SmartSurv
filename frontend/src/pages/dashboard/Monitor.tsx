@@ -330,58 +330,66 @@ const Monitor: React.FC = () => {
 
       <AnimatePresence>
         {maximizedFeed && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-12">
             <motion.div
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               onClick={() => setMaximizedFeed(null)}
-              className="absolute inset-0 bg-black/95 backdrop-blur-3xl"
+              className="absolute inset-0 bg-white/70 backdrop-blur-2xl"
             />
             <motion.div
-              initial={{ opacity: 0, scale: 0.85, y: 30 }}
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.85, y: 30 }}
-              transition={{ type: 'spring', damping: 30, stiffness: 250 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
               className="relative w-full h-full max-w-7xl overflow-hidden z-[101]"
-              style={{ maxHeight: '90vh', background: '#000', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '0.5rem' }}
+              style={{ 
+                maxHeight: '85vh', 
+                background: '#f8fafc', 
+                border: '1px solid var(--color-outline-variant)', 
+                borderRadius: '1.5rem',
+                boxShadow: '0 20px 50px rgba(0,0,0,0.1)' 
+              }}
             >
               {/* Header overlay */}
               <div className="absolute top-0 inset-x-0 p-6 flex justify-between items-start z-10 pointer-events-none"
-                style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.8), transparent)' }}>
-                <div className="px-5 py-3 pointer-events-auto"
-                  style={{ background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(12px)', borderRadius: '0.375rem' }}>
-                  <div className="flex items-center gap-3">
-                    <div className="p-1.5" style={{ background: 'rgba(36,128,255,0.3)', border: '1px solid rgba(36,128,255,0.3)', color: '#ffffff', borderRadius: '0.25rem' }}>
-                      <Eye size={16} />
+                style={{ background: 'linear-gradient(to bottom, rgba(255,255,255,0.9), transparent)' }}>
+                <div className="px-6 py-4 pointer-events-auto"
+                  style={{ background: 'rgba(255,255,255,0.8)', border: '1px solid #f1f5f9', backdropFilter: 'blur(16px)', borderRadius: '1rem', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
+                  <div className="flex items-center gap-4">
+                    <div className="p-2 bg-blue-50 text-[#2563eb] rounded-xl">
+                      <Maximize2 size={20} />
                     </div>
                     <div>
-                      <h2 className="font-bold uppercase tracking-widest" style={{ color: '#ffffff', fontFamily: "'Manrope',sans-serif" }}>{maximizedFeed.name}</h2>
+                      <h2 className="text-sm font-black uppercase tracking-[0.15em]" style={{ color: 'var(--color-on-surface)', fontFamily: "'Manrope',sans-serif" }}>{maximizedFeed.name}</h2>
                       <div className="flex items-center gap-2 mt-1">
-                        <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--color-primary)' }} />
-                        <span className="text-[9px] font-bold uppercase tracking-[0.2em]" style={{ color: 'rgba(255,255,255,0.6)' }}>Channel Live</span>
+                        <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#16a34a' }} />
+                        <span className="text-[9px] font-black uppercase tracking-widest" style={{ color: '#16a34a' }}>Channel Live & Active</span>
                       </div>
                     </div>
                   </div>
                 </div>
                 <button
                   onClick={() => setMaximizedFeed(null)}
-                  className="p-3 transition-all pointer-events-auto"
-                  style={{ background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)', borderRadius: '0.375rem', backdropFilter: 'blur(12px)' }}
-                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(186,26,26,0.4)'; e.currentTarget.style.color = '#ffffff'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,0,0,0.5)'; e.currentTarget.style.color = 'rgba(255,255,255,0.6)'; }}>
-                  <X size={22} />
+                  className="p-4 transition-all pointer-events-auto hover:scale-110 active:scale-95"
+                  style={{ background: 'white', border: '1px solid #f1f5f9', color: 'var(--color-outline)', borderRadius: '1rem', backdropFilter: 'blur(12px)', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}
+                  onMouseEnter={e => { e.currentTarget.style.color = '#dc2626'; }}
+                  onMouseLeave={e => { e.currentTarget.style.color = 'var(--color-outline)'; }}>
+                  <X size={24} />
                 </button>
               </div>
 
-              {/* Corner decorations */}
-              <div className="absolute inset-0 pointer-events-none z-10">
-                {['top-8 left-8 border-t border-l', 'top-8 right-8 border-t border-r', 'bottom-8 left-8 border-b border-l', 'bottom-8 right-8 border-b border-r'].map((cls, i) => (
-                  <div key={i} className={`absolute w-10 h-10 ${cls}`} style={{ borderColor: 'rgba(36,128,255,0.3)' }} />
+              {/* Corner decorations (Modernized) */}
+              <div className="absolute inset-0 pointer-events-none z-10 opacity-30">
+                {['top-8 left-8 border-t-2 border-l-2', 'top-8 right-8 border-t-2 border-r-2', 'bottom-8 left-8 border-b-2 border-l-2', 'bottom-8 right-8 border-b-2 border-r-2'].map((cls, i) => (
+                  <div key={i} className={`absolute w-8 h-8 ${cls}`} style={{ borderColor: '#2563eb', borderRadius: i === 0 ? '8px 0 0 0' : i === 1 ? '0 8px 0 0' : i === 2 ? '0 0 0 8px' : '0 0 8px 0' }} />
                 ))}
               </div>
 
               {/* Video */}
-              <div className="w-full h-full">
-                <CameraStream feedId={maximizedFeed.feedId} active={true} />
+              <div className="w-full h-full flex items-center justify-center bg-slate-900/5">
+                <div className="w-full h-full relative">
+                  <CameraStream feedId={maximizedFeed.feedId} active={true} />
+                </div>
               </div>
             </motion.div>
           </div>
@@ -448,80 +456,85 @@ const Monitor: React.FC = () => {
         </AnimatePresence>
       )}
 
-      {/* â”€â”€â”€ LEFT: CAMERA GRID â”€â”€â”€ */}
+      {/* ——— LEFT: CAMERA GRID ——— */}
       <section className="flex-1 overflow-y-auto" style={{ background: 'var(--color-background)' }}>
         <div className="p-6 space-y-6 pb-12">
 
-          {/* â”€â”€ KPI Cards â”€â”€ */}
+          {/* ── KPI Cards ── */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { label: 'Total Nodes',      value: totalNodes,    color: 'var(--color-on-surface)', bg: 'var(--color-surface)',                    border: 'var(--color-outline-variant)',           icon: <Video size={20} /> },
-              { label: 'Active Readiness', value: activeNodes,   color: 'var(--color-primary)', bg: 'var(--color-surface)',       border: 'var(--color-primary)',        icon: <Activity size={20} /> },
-              { label: 'Feed Live',        value: liveFeedCount, color: '#16a34a', bg: 'var(--color-surface)',        border: '#16a34a',         icon: null },
-              { label: 'Node Offline',     value: offlineCount,  color: 'var(--color-outline)', bg: 'var(--color-surface-container-low)',                    border: 'var(--color-outline-variant)',             icon: null },
+              { label: 'Total Nodes',      value: totalNodes,    color: 'var(--color-on-surface)', border: 'var(--color-outline-variant)', bg: 'white' },
+              { label: 'Active Readiness', value: activeNodes,   color: '#2563eb', border: '#2563eb', bg: 'white' },
+              { label: 'Feed Live',        value: liveFeedCount, color: '#16a34a', border: '#16a34a', bg: 'white' },
+              { label: 'Node Offline',     value: offlineCount,  color: 'var(--color-outline)', border: 'var(--color-outline-variant)', bg: 'rgba(241, 245, 249, 0.5)' },
             ].map(kpi => (
-              <div key={kpi.label} className="p-5 flex flex-col justify-between relative overflow-hidden rounded-2xl"
-                style={{ background: kpi.bg, border: `1px solid ${kpi.border}`, boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
-                <p className="text-[9px] font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--color-outline)' }}>{kpi.label}</p>
-                <p className="text-3xl font-bold tracking-tighter" style={{ color: kpi.color, fontFamily: "'Manrope',sans-serif" }}>
-                  {kpi.value.toString().padStart(2, '0')}
-                </p>
+              <div key={kpi.label} className="p-6 flex flex-col justify-between relative overflow-hidden rounded-[1.25rem] transition-all hover:shadow-md h-32"
+                style={{ 
+                  background: kpi.bg, 
+                  border: `1px solid ${kpi.border}`,
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.03)' 
+                }}>
+                <p className="text-[10px] font-extrabold uppercase tracking-[0.2em]" style={{ color: 'var(--color-outline)', opacity: 0.8 }}>{kpi.label}</p>
+                <div className="flex items-baseline gap-1">
+                  <p className="text-4xl font-black tracking-tighter" style={{ color: kpi.color, fontFamily: "'Manrope',sans-serif" }}>
+                    {kpi.value.toString().padStart(2, '0')}
+                  </p>
+                </div>
                 {kpi.label === 'Feed Live' && (
-                  <div className="flex items-center gap-1.5 mt-2">
+                  <div className="flex items-center gap-2 mt-auto">
                     <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#16a34a' }} />
-                    <span className="text-[8px] font-bold" style={{ color: '#16a34a' }}>STREAMING</span>
+                    <span className="text-[9px] font-black tracking-widest" style={{ color: '#16a34a' }}>STREAMING</span>
                   </div>
                 )}
               </div>
             ))}
           </div>
 
-          {/* â”€â”€ Header bar â”€â”€ */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 rounded-2xl"
-            style={{ background: 'var(--color-surface)', border: '1px solid var(--color-outline-variant)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
-            <div className="flex items-center gap-4">
-              <div className="p-2.5 rounded-xl" style={{ background: 'var(--color-surface-container)', border: '1px solid var(--color-outline-variant)', color: 'var(--color-primary)' }}>
+          {/* ── Header bar ── */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 rounded-[1.25rem]"
+            style={{ background: 'white', border: '1px solid var(--color-outline-variant)', boxShadow: '0 4px 12px rgba(0,0,0,0.02)' }}>
+            <div className="flex items-center gap-5">
+              <div className="p-3 rounded-2xl" style={{ background: '#f8fafc', border: '1px solid #f1f5f9', color: '#2563eb' }}>
                 <LayoutGrid className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-sm font-bold uppercase tracking-wide" style={{ color: 'var(--color-on-surface)', fontFamily: "'Manrope',sans-serif" }}>
+                <h3 className="text-[13px] font-black uppercase tracking-[0.15em]" style={{ color: 'var(--color-on-surface)', fontFamily: "'Manrope',sans-serif" }}>
                   Camera Grid
                 </h3>
-                <p className="text-[9px] font-bold uppercase tracking-widest mt-1 flex items-center gap-2" style={{ color: 'var(--color-on-surface-variant)' }}>
-                  <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--color-primary)' }} />
-                  {activeNodes} Nodes Online
-                  {systemLatency !== null && (
-                    <span style={{ color: '#16a34a' }}>
-                      | LATENCY: {Number(systemLatency).toFixed(1)}ms
-                    </span>
-                  )}
-                </p>
+                <div className="flex items-center gap-3 mt-1.5">
+                    <p className="text-[9px] font-bold uppercase tracking-widest flex items-center gap-2" style={{ color: 'var(--color-on-surface-variant)' }}>
+                    <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#2563eb' }} />
+                    {activeNodes} Nodes Online
+                    </p>
+                    {systemLatency !== null && (
+                        <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: '#16a34a' }}>
+                        | LATENCY: {Number(systemLatency).toFixed(1)}ms
+                        </p>
+                    )}
+                </div>
               </div>
             </div>
 
             {/* Detection Mode Selector */}
-            <div className="flex items-center gap-1 p-1 rounded-xl" style={{ background: 'var(--color-surface-container-low)', border: '1px solid var(--color-outline-variant)' }}>
+            <div className="flex items-center gap-1.5 p-1.5 rounded-2xl" style={{ background: '#f8fafc', border: '1px solid #f1f5f9' }}>
               {(['detection', 'search', 'both'] as const).map((key) => {
                 const label = key === 'detection' ? 'DETECT' : key === 'search' ? 'SEARCH' : 'HYBRID';
-                const tip   = key === 'detection' ? 'YOLO object detection only' : key === 'search' ? 'FaceNet person search only' : 'Object detection + Face search';
                 const active = cameraMode === key;
                 return (
                   <button
                     key={key}
                     onClick={() => handleModeChange(key)}
-                    title={tip}
-                    className="relative px-4 py-2 text-[9px] font-black tracking-widest uppercase transition-all duration-300 rounded-lg group"
+                    className="relative px-6 py-2.5 text-[10px] font-black tracking-[0.1em] transition-all duration-300 rounded-xl"
                     style={{ color: active ? '#ffffff' : 'var(--color-on-surface-variant)' }}
                   >
                     {active && (
                       <motion.div
                         layoutId="mode-pill"
-                        className="absolute inset-0 z-0 bg-[var(--color-primary)] shadow-[0_2px_10px_rgba(36,128,255,0.4)]"
-                        style={{ borderRadius: '0.5rem' }}
-                        transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+                        className="absolute inset-0 z-0 bg-[#2563eb] shadow-[0_4px_12px_rgba(37,99,235,0.25)]"
+                        style={{ borderRadius: '0.75rem' }}
                       />
                     )}
-                    <span className="relative z-10 transition-colors group-hover:text-[var(--color-on-surface)] group-data-[active=true]:text-white" data-active={active}>
+                    <span className="relative z-10">
                       {label}
                     </span>
                   </button>

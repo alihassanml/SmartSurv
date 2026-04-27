@@ -96,38 +96,38 @@ const SystemHealth: React.FC = () => {
             {/* Capacity Verdict */}
             <motion.div
                 initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
-                className="col-span-12 lg:col-span-5 p-7 rounded-2xl flex flex-col justify-between"
+                className="col-span-12 lg:col-span-5 p-8 rounded-[1.25rem] flex flex-col justify-between transition-all hover:shadow-md"
                 style={{
                     background: isInsufficient ? 'rgba(186,26,26,0.06)' : 'white',
                     border: `1px solid ${isInsufficient ? '#ba1a1a' : 'var(--color-outline-variant)'}`,
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
                 }}
             >
-                <div className="space-y-2">
-                    <p className="text-xs font-bold tracking-[0.3em] uppercase" style={{ color: 'var(--color-outline)' }}>Capacity Verdict</p>
-                    <h2 className="text-4xl font-bold tracking-tighter" style={{ color: 'var(--color-on-surface)', fontFamily: "'Manrope', sans-serif" }}>
+                <div className="space-y-3">
+                    <p className="text-[10px] font-extrabold tracking-[0.3em] uppercase" style={{ color: 'var(--color-outline)', opacity: 0.7 }}>Capacity Verdict</p>
+                    <h2 className="text-4xl font-black tracking-tighter" style={{ color: 'var(--color-on-surface)', fontFamily: "'Manrope', sans-serif" }}>
                         {isInsufficient ? 'UNSUPPORTED' : `${specs.capacity} CAMERAS`}
                     </h2>
-                    <p className="text-xs font-bold uppercase tracking-widest" style={{ color: isInsufficient ? '#ba1a1a' : 'var(--color-primary)' }}>
+                    <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: isInsufficient ? '#ba1a1a' : '#2563eb' }}>
                         {isInsufficient ? 'INSUFFICIENT RESOURCES' : 'HARDWARE_OPTIMIZED'}
                     </p>
                 </div>
 
-                <div className="mt-8 pt-6 border-t border-[rgba(0,0,0,0.05)]">
-                    <p className="text-[10px] font-bold uppercase tracking-widest mb-4" style={{ color: 'var(--color-outline)' }}>Resource Allocation</p>
-                    <div className="flex gap-2 items-end h-16">
+                <div className="mt-10 pt-8 border-t border-[#f1f5f9]">
+                    <p className="text-[10px] font-extrabold uppercase tracking-widest mb-5" style={{ color: 'var(--color-outline)', opacity: 0.7 }}>Resource Allocation</p>
+                    <div className="flex gap-2.5 items-end h-20">
                         {[...Array(8)].map((_, i) => (
-                            <div key={i} className="flex-1 rounded-sm transition-all duration-500"
+                            <div key={i} className="flex-1 rounded-md transition-all duration-700"
                                 style={{
                                     height: i < (isInsufficient ? 1 : specs.capacity + 2) ? `${40 + Math.random() * 60}%` : '15%',
-                                    background: i < specs.capacity ? '#16a34a' : 'rgba(0,0,0,0.05)',
-                                    opacity: i < specs.capacity ? 0.8 : 1
+                                    background: i < specs.capacity ? '#2563eb' : '#f1f5f9',
+                                    opacity: i < specs.capacity ? 0.85 : 1
                                 }} />
                         ))}
                     </div>
-                    <div className="flex justify-between mt-3">
-                         <span className="text-[10px] font-bold text-[var(--color-outline-variant)]">0.0 NODE_ID</span>
-                         <span className="text-[10px] font-bold text-[var(--color-outline-variant)]">MAX_CAPACITY</span>
+                    <div className="flex justify-between mt-4">
+                         <span className="text-[9px] font-black text-[var(--color-outline)] opacity-50 uppercase tracking-widest">Node_Alpha</span>
+                         <span className="text-[9px] font-black text-[var(--color-outline)] opacity-50 uppercase tracking-widest">Max_Load</span>
                     </div>
                 </div>
             </motion.div>
@@ -135,36 +135,38 @@ const SystemHealth: React.FC = () => {
             {/* Live Performance Chart */}
             <motion.div
                 initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}
-                className="col-span-12 lg:col-span-7 p-7 rounded-2xl"
-                style={{ background: 'white', border: '1px solid var(--color-outline-variant)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}
+                className="col-span-12 lg:col-span-7 p-8 rounded-[1.25rem] transition-all hover:shadow-md"
+                style={{ background: 'white', border: '1px solid var(--color-outline-variant)', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}
             >
-                <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-3">
-                        <Activity className="text-[var(--color-primary)] w-4 h-4" />
+                <div className="flex items-center justify-between mb-8">
+                    <div className="flex items-center gap-4">
+                        <div className="p-2.5 rounded-xl bg-blue-50 text-[#2563eb]">
+                            <Activity className="w-4 h-4" />
+                        </div>
                         <div>
-                            <p className="text-xs font-bold tracking-[0.3em] uppercase" style={{ color: 'var(--color-outline)' }}>Live Diagnostics</p>
-                            <p className="text-xs font-bold" style={{ color: 'var(--color-on-surface)' }}>INFERENCE_LATENCY (RT)</p>
+                            <p className="text-[10px] font-extrabold tracking-[0.3em] uppercase" style={{ color: 'var(--color-outline)', opacity: 0.7 }}>Live Diagnostics</p>
+                            <p className="text-[11px] font-black uppercase tracking-wider" style={{ color: 'var(--color-on-surface)' }}>Inference_Latency (RT)</p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-4 text-[10px] font-bold">
-                        <span className="flex items-center gap-1.5"><span className="w-2.5 h-1 bg-[var(--color-primary)]" />LATENCY (ms)</span>
-                        <span className="flex items-center gap-1.5"><span className="w-2.5 h-1 bg-[#a855f7]" />LOAD (%)</span>
+                    <div className="flex items-center gap-5 text-[9px] font-black tracking-widest uppercase">
+                        <span className="flex items-center gap-2"><span className="w-3 h-1 rounded-full bg-[#2563eb]" />LATENCY</span>
+                        <span className="flex items-center gap-2"><span className="w-3 h-1 rounded-full bg-[#a855f7]" />LOAD</span>
                     </div>
                 </div>
                 
-                <ResponsiveContainer width="100%" height={160}>
+                <ResponsiveContainer width="100%" height={180}>
                     <LineChart data={perfData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.03)" vertical={false} />
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                         <XAxis dataKey="time" hide />
                         <YAxis tick={{ fill: 'var(--color-outline)', fontSize: 7, fontWeight: 900 }} axisLine={false} tickLine={false} />
-                        <Tooltip contentStyle={{ fontSize: '10px', fontWeight: 'bold' }} />
-                        <Line type="monotone" dataKey="latency" stroke="var(--color-primary)" strokeWidth={2.5} dot={false} animationDuration={300} />
-                        <Line type="monotone" dataKey="load" stroke="#a855f7" strokeWidth={2} dot={false} strokeDasharray="5 5" animationDuration={300} />
+                        <Tooltip contentStyle={{ fontSize: '10px', fontWeight: 'bold', borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }} />
+                        <Line type="monotone" dataKey="latency" stroke="#2563eb" strokeWidth={3} dot={false} animationDuration={300} />
+                        <Line type="monotone" dataKey="load" stroke="#a855f7" strokeWidth={2.5} dot={false} strokeDasharray="6 6" animationDuration={300} />
                     </LineChart>
                 </ResponsiveContainer>
-                <div className="flex justify-between items-center mt-4 pt-4 border-t border-[rgba(0,0,0,0.03)]">
-                    <p className="text-[10px] font-bold text-[var(--color-outline-variant)] tracking-widest uppercase">Real-time hardware telemetry active</p>
-                    <p className="text-[10px] font-bold text-[var(--color-primary)]">AVG: {avgLatency}ms</p>
+                <div className="flex justify-between items-center mt-6 pt-6 border-t border-[#f1f5f9]">
+                    <p className="text-[9px] font-black text-[var(--color-outline)] opacity-50 uppercase tracking-[0.2em]">Hardware telemetry link active</p>
+                    <p className="text-[10px] font-black text-[#2563eb] bg-blue-50 px-3 py-1 rounded-full uppercase tracking-widest">AVG: {avgLatency}ms</p>
                 </div>
             </motion.div>
         </div>
@@ -174,60 +176,60 @@ const SystemHealth: React.FC = () => {
 
           {/* CPU Card */}
           <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-            className="p-6 rounded-2xl space-y-4"
-            style={{ background: 'white', border: '1px solid var(--color-outline-variant)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+            className="p-7 rounded-[1.25rem] space-y-6 transition-all hover:shadow-md"
+            style={{ background: 'white', border: '1px solid var(--color-outline-variant)', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
             <div className="flex items-center justify-between">
-                <div className="p-2 bg-[var(--color-primary)]/10 rounded-lg text-[var(--color-primary)]"><Cpu size={18} /></div>
+                <div className="p-3 bg-blue-50 rounded-2xl text-[#2563eb]"><Cpu size={20} /></div>
                 <div className="text-right">
-                    <p className="text-[10px] font-bold text-[var(--color-outline)] tracking-widest uppercase">CPU_CORE</p>
-                    <p className="text-sm font-bold text-[var(--color-on-surface)]">{specs.cores} UNITS</p>
+                    <p className="text-[9px] font-extrabold text-[var(--color-outline)] tracking-widest uppercase opacity-70">CPU_CORE</p>
+                    <p className="text-sm font-black text-[var(--color-on-surface)] uppercase">{specs.cores} Units</p>
                 </div>
             </div>
             <div>
-                <p className="text-[10px] font-bold tracking-widest uppercase mb-1" style={{ color: 'var(--color-outline)' }}>Processor Signature</p>
-                <p className="text-sm font-bold leading-tight" style={{ color: 'var(--color-on-surface)' }}>{specs.cpu}</p>
+                <p className="text-[9px] font-extrabold tracking-[0.15em] uppercase mb-1.5" style={{ color: 'var(--color-outline)', opacity: 0.6 }}>Processor Signature</p>
+                <p className="text-[13px] font-black leading-tight" style={{ color: 'var(--color-on-surface)' }}>{specs.cpu}</p>
             </div>
           </motion.div>
 
           {/* Memory Card */}
           <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
-            className="p-6 rounded-2xl space-y-4"
-            style={{ background: 'white', border: '1px solid var(--color-outline-variant)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+            className="p-7 rounded-[1.25rem] space-y-6 transition-all hover:shadow-md"
+            style={{ background: 'white', border: '1px solid var(--color-outline-variant)', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
             <div className="flex items-center justify-between">
-                <div className="p-2 bg-[#a855f7]/10 rounded-lg text-[#a855f7]"><HardDrive size={18} /></div>
+                <div className="p-3 bg-purple-50 rounded-2xl text-[#a855f7]"><HardDrive size={20} /></div>
                 <div className="text-right">
-                    <p className="text-[10px] font-bold text-[var(--color-outline)] tracking-widest uppercase">RAM_POOL</p>
-                    <p className="text-sm font-bold text-[var(--color-on-surface)]">{specs.ram}GB ADDR</p>
+                    <p className="text-[9px] font-extrabold text-[var(--color-outline)] tracking-widest uppercase opacity-70">RAM_POOL</p>
+                    <p className="text-sm font-black text-[var(--color-on-surface)] uppercase">{specs.ram}GB Addr</p>
                 </div>
             </div>
             <div>
-                <p className="text-[10px] font-bold tracking-widest uppercase mb-1" style={{ color: 'var(--color-outline)' }}>Memory Saturation</p>
-                <div className="w-full h-1.5 bg-[rgba(0,0,0,0.05)] rounded-full overflow-hidden mt-2">
-                    <div className="h-full bg-[#a855f7]" style={{ width: '42%' }} />
+                <p className="text-[9px] font-extrabold tracking-[0.15em] uppercase mb-2" style={{ color: 'var(--color-outline)', opacity: 0.6 }}>Memory Saturation</p>
+                <div className="w-full h-2 bg-[#f8fafc] rounded-full overflow-hidden mt-3">
+                    <div className="h-full bg-[#a855f7] rounded-full" style={{ width: '42%' }} />
                 </div>
-                <p className="text-[10px] font-bold text-[var(--color-outline-variant)] mt-2 uppercase tracking-widest">4.2GB Available / System Reserved</p>
+                <p className="text-[9px] font-black text-[var(--color-outline)] mt-3 opacity-50 uppercase tracking-widest">4.2GB Available / System Reserved</p>
             </div>
           </motion.div>
 
           {/* GPU Card */}
           <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-            className="p-6 rounded-2xl space-y-4"
-            style={{ background: 'white', border: '1px solid var(--color-outline-variant)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+            className="p-7 rounded-[1.25rem] space-y-6 transition-all hover:shadow-md"
+            style={{ background: 'white', border: '1px solid var(--color-outline-variant)', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
             <div className="flex items-center justify-between">
-                <div className="p-2 bg-[#16a34a]/10 rounded-lg text-[#16a34a]"><Zap size={18} /></div>
+                <div className="p-3 bg-green-50 rounded-2xl text-[#16a34a]"><Zap size={20} /></div>
                 <div className="text-right">
-                    <p className="text-[10px] font-bold text-[var(--color-outline)] tracking-widest uppercase">GPU_ACCEL</p>
-                    <p className="text-sm font-bold text-[#16a34a]">{specs.gpu ? 'ENABLED' : 'DISABLED'}</p>
+                    <p className="text-[9px] font-extrabold text-[var(--color-outline)] tracking-widest uppercase opacity-70">GPU_ACCEL</p>
+                    <p className="text-sm font-black text-[#16a34a] uppercase">{specs.gpu ? 'Enabled' : 'Disabled'}</p>
                 </div>
             </div>
             {specs.gpu ? (
                 <div>
-                    <p className="text-[10px] font-bold tracking-widest uppercase mb-1" style={{ color: 'var(--color-outline)' }}>NVIDIA Architecture</p>
-                    <p className="text-sm font-bold truncate" style={{ color: 'var(--color-on-surface)' }}>{specs.gpu.name}</p>
-                    <p className="text-xs font-bold text-[#16a34a] mt-1">{specs.gpu.vram}GB DEDICATED VRAM</p>
+                    <p className="text-[9px] font-extrabold tracking-[0.15em] uppercase mb-1.5" style={{ color: 'var(--color-outline)', opacity: 0.6 }}>NVIDIA Architecture</p>
+                    <p className="text-[13px] font-black truncate uppercase" style={{ color: 'var(--color-on-surface)' }}>{specs.gpu.name}</p>
+                    <p className="text-[10px] font-black text-[#16a34a] mt-2 uppercase tracking-widest bg-green-50 px-2 py-0.5 rounded-sm inline-block">{specs.gpu.vram}GB Dedicated VRAM</p>
                 </div>
             ) : (
-                <p className="text-[10px] font-bold text-red-500 uppercase tracking-widest">No CUDA acceleration found</p>
+                <p className="text-[10px] font-black text-red-500 uppercase tracking-widest">No CUDA acceleration found</p>
             )}
           </motion.div>
 
